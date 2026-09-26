@@ -19,15 +19,22 @@ describe("map screen", () => {
   it("frames marks as private orientation, never reports or live fire data", () => {
     const html = renderToStaticMarkup(<MapScreen />);
     expect(html).toContain("are not reports");
-    expect(html).toContain("does not show live fires, evacuation zones, or hazards");
+    expect(html).toContain("Live fire data isn’t connected, so this\n        is not an all-clear".replace(/\s+/g, " "));
     expect(html).toContain("call 911");
   });
 
   it("is the whole homepage, with the prep and official-source page one link away", () => {
     const html = renderToStaticMarkup(<Home />);
-    expect(html).toContain('class="map-screen"');
+    expect(html).toMatch(/class="map-screen[" ]/);
     expect(html).toContain('href="/prepare"');
     expect(html).not.toContain('class="hero"');
+  });
+
+  it("puts directions on the same screen as the fire marks", () => {
+    const html = renderToStaticMarkup(<MapScreen />);
+    expect(html).toContain('class="fire-token"');
+    expect(html).toContain('class="ev-bar"');
+    expect(html).toContain("Allow location access to see routes from where you are.");
   });
 
   it("keeps the prep page intact and links back to the map", () => {
