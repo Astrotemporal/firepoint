@@ -12,6 +12,10 @@ This is the working guide for the **new Firepoint repository**. Read [source pol
 
 This project uses Next.js 16, React 19, TypeScript, Tailwind CSS 4, and npm in its starter. Before editing Next.js behavior, read the installed docs under `node_modules/next/dist/docs/` and the repository's `AGENTS.md`; do not assume older Next.js APIs apply.
 
+### Make and CI shortcuts
+
+The root `Makefile` wraps the same npm scripts: `make install`, `make dev`, `make lint`, `make typecheck`, `make test`, `make build`, or `make check` for all four checks. It requires `make` and Node 24/npm; direct npm commands are equivalent. `.github/workflows/ci.yml` runs `npm ci`, lint, typecheck, tests and build on PRs and `main` pushes with no GIS/NWS secrets or network feed test. It checks code, **not** emergency-source health. If editing `public/offline.html` or its cached icons, bump `CACHE` in `public/sw.js` so installed copies refresh. GIS developer commands are `make gis-fetch` for the pinned snapshot, `make gis-local` to start the stdio MCP server (it will wait for an MCP client), and `make gis-health` for the hosted service's *public* health endpoint. `uvx` is required for local GIS commands. None connects the GIS MCP to the resident UI, and `gis-health` does not test a bearer key or data correctness.
+
 ## Product boundaries for proposals
 
 - **Area selection:** let people enter or choose an area manually. If device location is added, ask permission at the moment of use, make it optional, and do not persist precise coordinates by default. An approximate neighborhood or camera center is not an official boundary.

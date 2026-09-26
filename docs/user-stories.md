@@ -1,0 +1,13 @@
+# Resident stories inspired by Citizen, with stricter trust boundaries
+
+These are **our proposed stories**, not Citizen data, an API integration, or a partnership. Citizen describes nearby alerts, incident maps, videos and multiple saved alert zones on its [site](https://citizen.com/) and [iOS listing](https://apps.apple.com/us/app/citizen-safety-live-video/id1039889567). Its [terms](https://citizen.com/privacy/tos) say mixed-source content is not guaranteed complete or accurate and its service is not emergency dispatch. Its [privacy policy](https://citizen.com/privacy/policy) explains location and shared-content trade-offs. We should not copy its incident feed, claim its “verified” label means an agency order, or encourage filming at a dangerous scene.
+
+1. **I choose my area without an account.** I can start with a coarse neighborhood, optionally enter a specific location with consent, and clear local data. No continuous GPS is required. A neighborhood is not my evacuation zone.
+2. **I check what the app really knows.** I see each official source's latest successful check, issue time if supplied, coverage and original link. If a feed is down, absent, or stale, the screen says so instead of saying “safe.”
+3. **I distinguish three kinds of information.** An issuing agency's notice, a standing mapped hazard, and an unverified resident observation never share a trust badge. I can open “Why shown?” for the source trace.
+4. **I follow an evolving agency notice.** Its updates and issuer link stay visible; disappearance from a feed is not the same as the agency ending an order. The app does not make a route or evacuation decision for me.
+5. **I prepare when connectivity is poor.** My checklist remains editable offline. Notices and maps are clearly unavailable or dated; no new order can arrive through an offline PWA.
+6. **I can report responsibly, if a moderated channel is built.** A draft stays on my device until a real receipt. I see privacy warnings and the right 911/agency channels for danger; a public report remains unverified after moderation.
+7. **I can read or hear instructions accessibly.** Large type, reduced motion and source-exact read-aloud are optional presentation settings; audio or simplified preparedness text must not fabricate an official order. A child/caregiver path should direct urgent decisions to adults and emergency services.
+
+**Not an app feature yet:** live Citizen-style video, push notifications, direct city dispatch, moderation, multiple saved precise locations or city-issued zone lookup. Add only after publisher rights, staffing and privacy are addressed.
