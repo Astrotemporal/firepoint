@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SpeechPassage } from "@/domain/guide-speech";
-import { createGuideReader, detectSpeechSupport, pickEnglishVoice, type ReaderState, type SpeechEngineLike, type UtteranceLike, type VoiceLike } from "./guide-reader";
+import { createGuideReader, detectSpeechSupport, openGuideReader, pickLocalEnglishVoice, type ReaderState, type SpeechEngineLike, type UtteranceLike, type VoiceLike } from "./guide-reader";
 
 // Synthetic only: a fake speech engine that records calls and lets a test fire utterance events.
 class FakeUtterance implements UtteranceLike {
@@ -34,34 +34,69 @@ const PASSAGES: readonly SpeechPassage[] = [
   { section: "Second", parts: ["Three."] },
 ];
 
-function reader(voices: VoiceLike[] = []) {
+const LOCAL_EN = voice("en-US", { localService: true });
+
+function reader(voices: VoiceLike[] = [LOCAL_EN]) {
   const fake = fakeEngine(voices);
   const states: ReaderState[] = [];
   const guide = createGuideReader({
     engine: fake.engine, createUtterance: (text) => new FakeUtterance(text), passages: PASSAGES,
-    voice: pickEnglishVoice(voices), onChange: (state) => states.push(state),
+    voice: pickLocalEnglishVoice(voices) ?? LOCAL_EN, onChange: (state) => states.push(state),
   });
   return { ...fake, states, guide };
 }
 
-describe("speech support detection", () => {
+describe("speech support detection (fails closed)", () => {
   it("reports an honest text-only state when the browser has no speechSynthesis", () => {
     expect(detectSpeechSupport({})).toEqual({ kind: "unsupported" });
     expect(detectSpeechSupport({ speechSynthesis: fakeEngine().engine })).toEqual({ kind: "unsupported" });
   });
 
-  it("reports no English voice when the voice list is known and has none", () => {
-    const host = { speechSynthesis: fakeEngine([voice("es-MX"), voice("hy-AM")]).engine, SpeechSynthesisUtterance: FakeUtterance };
-    expect(detectSpeechSupport(host)).toEqual({ kind: "no-english-voice" });
+  it("is only loading, never ready, while the voice list is empty", () => {
+    expect(detectSpeechSupport({ speechSynthesis: fakeEngine().engine, SpeechSynthesisUtterance: FakeUtterance })).toEqual({ kind: "loading" });
   });
 
-  it("is ready with an empty voice list (Chrome fills it in later) and prefers a local English voice", () => {
-    expect(detectSpeechSupport({ speechSynthesis: fakeEngine().engine, SpeechSynthesisUtterance: FakeUtterance })).toEqual({ kind: "ready", voice: null });
-    const remote = voice("en-US");
+  it("refuses when the only English voices are network voices, or there is no English voice", () => {
+    const remoteOnly = { speechSynthesis: fakeEngine([voice("en-US"), voice("en-GB", { default: true })]).engine, SpeechSynthesisUtterance: FakeUtterance };
+    expect(detectSpeechSupport(remoteOnly)).toEqual({ kind: "no-local-english-voice" });
+    const noEnglish = { speechSynthesis: fakeEngine([voice("es-MX", { localService: true }), voice("hy-AM", { localService: true })]).engine, SpeechSynthesisUtterance: FakeUtterance };
+    expect(detectSpeechSupport(noEnglish)).toEqual({ kind: "no-local-english-voice" });
+  });
+
+  it("is ready only with an on-device English voice, and never picks a network voice", () => {
+    const remote = voice("en-US", { default: true });
     const local = voice("en-GB", { localService: true });
-    expect(pickEnglishVoice([voice("es-ES"), remote, local])).toBe(local);
-    expect(pickEnglishVoice([voice("es-ES"), remote])).toBe(remote);
-    expect(pickEnglishVoice([voice("english")])).toBeNull();
+    expect(pickLocalEnglishVoice([voice("es-ES"), remote, local])).toBe(local);
+    expect(pickLocalEnglishVoice([remote])).toBeNull();
+    expect(pickLocalEnglishVoice([voice("english", { localService: true })])).toBeNull();
+    expect(detectSpeechSupport({ speechSynthesis: fakeEngine([remote, local]).engine, SpeechSynthesisUtterance: FakeUtterance })).toEqual({ kind: "ready", voice: local });
+  });
+});
+
+describe("opening a reader from the browser", () => {
+  it.each([
+    ["an empty voice list", []],
+    ["network-only English voices", [voice("en-US"), voice("en-AU", { default: true })]],
+    ["no English voice", [voice("es-MX", { localService: true })]],
+  ])("with %s returns null and never calls speak", (_name, voices) => {
+    const fake = fakeEngine(voices as VoiceLike[]);
+    const opened = openGuideReader({ speechSynthesis: fake.engine, SpeechSynthesisUtterance: FakeUtterance }, PASSAGES);
+    expect(opened).toBeNull();
+    expect(fake.calls).not.toContain("speak");
+    expect(fake.spoken).toEqual([]);
+  });
+
+  it("returns null without speechSynthesis", () => {
+    expect(openGuideReader({}, PASSAGES)).toBeNull();
+  });
+
+  it("speaks with the on-device English voice only after play", () => {
+    const fake = fakeEngine([voice("en-US"), LOCAL_EN]);
+    const opened = openGuideReader({ speechSynthesis: fake.engine, SpeechSynthesisUtterance: FakeUtterance }, PASSAGES)!;
+    expect(fake.calls).not.toContain("speak");
+    opened.play();
+    expect(fake.spoken.map((u) => u.text)).toEqual(["One.", "Two.", "Three."]);
+    for (const u of fake.spoken) expect(u.voice).toBe(LOCAL_EN);
   });
 });
 
@@ -73,11 +108,10 @@ describe("guide reader", () => {
   });
 
   it("queues every exact part in order, in English, after play", () => {
-    const local = voice("en-US", { localService: true });
-    const { spoken, guide } = reader([local]);
+    const { spoken, guide } = reader();
     guide.play();
     expect(spoken.map((u) => u.text)).toEqual(["One.", "Two.", "Three."]);
-    for (const u of spoken) { expect(u.lang).toBe("en-US"); expect(u.voice).toBe(local); }
+    for (const u of spoken) { expect(u.lang).toBe("en-US"); expect(u.voice).toBe(LOCAL_EN); }
     spoken[0]!.fire("start");
     expect(guide.state).toEqual({ status: "playing", section: "First" });
     spoken[2]!.fire("start");
@@ -109,6 +143,15 @@ describe("guide reader", () => {
     guide.resume();
     expect(guide.state).toEqual({ status: "playing", section: "First" });
     expect(calls.filter((c) => c === "pause" || c === "resume")).toEqual(["pause", "resume"]);
+  });
+
+  it("reports a failure instead of throwing when the browser rejects the utterance or voice", () => {
+    const fake = fakeEngine([LOCAL_EN]);
+    fake.engine.speak = () => { throw new TypeError("not a SpeechSynthesisVoice"); };
+    const guide = createGuideReader({ engine: fake.engine, createUtterance: (text) => new FakeUtterance(text), passages: PASSAGES, voice: LOCAL_EN });
+    expect(() => guide.play()).not.toThrow();
+    expect(guide.state).toEqual({ status: "failed" });
+    expect(fake.calls.at(-1)).toBe("cancel");
   });
 
   it("reports a failure and cancels the rest when the engine errors", () => {

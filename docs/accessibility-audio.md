@@ -1,11 +1,12 @@
 # Accessible audio: read-aloud on `/prepare`
 
-**Status: shipped as progressive enhancement, English only, on-device.** The `/prepare` wildfire guide has a
-"Listen to this guide" control ([`guide-listen.tsx`](../src/components/guide-listen.tsx)) that reads the page's
-exact English text through the browser's own [Web Speech API `speechSynthesis`](https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesis).
-There is **no ElevenLabs integration, no audio endpoint and no server call**. This is for residents who prefer to
-hear the guide (children, seniors, low vision, reading fatigue); it is not an alert channel and never speaks a
-notice, order, zone or all-clear.
+**Status: proposed in [PR #30](https://github.com/Astrotemporal/firepoint/pull/30), not merged and not deployed.**
+The PR adds a "Listen to this guide" control ([`guide-listen.tsx`](../src/components/guide-listen.tsx)) to the
+`/prepare` wildfire guide. It reads the page's exact English text through the browser's own
+[Web Speech API `speechSynthesis`](https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesis), using
+**only a voice the browser reports as on-device**. There is **no ElevenLabs integration, no audio endpoint and
+no server call**. It is for residents who prefer to hear the guide (children, seniors, low vision, reading
+fatigue); it is not an alert channel and never speaks a notice, order, zone or all-clear.
 
 ## What it does
 
@@ -18,39 +19,54 @@ notice, order, zone or all-clear.
 - **English only.** Spanish and Eastern Armenian pages get no control at all, not a fallback English voice: the
   translations are unreviewed ([translations.md](translations.md)), and a translated page reading English aloud
   would be confusing. The component also refuses to render for any non-`en` locale even if handed passages.
-- Honest text-only states: no `speechSynthesis` in the browser → "Read-aloud is not available in this browser";
-  a known voice list with no English voice → "This device has no English voice"; an engine error mid-way →
-  "Audio stopped unexpectedly". Each note says everything is in the page text.
 - No microphone, speech recognition, chat, routing or navigation. The code contains no `fetch`, no `/api/` call
   and no analytics.
 
+## Voice rule: on-device only, fail closed
+
+The control never lets the browser choose a voice. [`guide-reader.ts`](../src/lib/guide-reader.ts) requires a
+voice with `localService === true` and an English `lang`; otherwise there is **no audio**, and the page says so:
+
+| Browser state | Result |
+| --- | --- |
+| No `speechSynthesis` / `SpeechSynthesisUtterance` | "Read-aloud is not available in this browser." Text only. |
+| Voice list still empty (Chrome publishes it after `voiceschanged`) | "Checking for an on-device English voice…", Play disabled. After 4 s with no list: treated as no voice. |
+| Voices known, but the only English voices are **network voices** (for example Chrome's "Google …" voices) | "No on-device English voice is available, so there is no audio." Nothing is spoken. |
+| Voices known, none English | Same text-only note. |
+| An on-device English voice exists | Play enabled; that voice is set on every utterance. Support is re-checked at tap time. |
+| Engine error mid-read | Queue cancelled; "Audio stopped unexpectedly." |
+
+Network voices are excluded because they send the text to the vendor's servers; the guide text is public, but the
+feature's promise is "read by this device", so a remote voice is not used even as a fallback. Tests
+(`guide-reader.test.ts`) assert that an empty list, a network-only list and a no-English list never call `speak`.
+
 ## Browser support and caveats
 
-| Browser | Behaviour |
-| --- | --- |
-| Safari iOS / iPadOS, macOS | Works with the device's built-in voices (on-device). Pause / Resume work. |
-| Chrome / Edge desktop | Works. Chrome's "Google …" voices are **network voices**: the guide text is sent to Google to synthesize. The control prefers a `localService` English voice when one exists. Historical Chrome bug: single utterances over ~15 s can stop; the guide is split into short utterances to avoid this. |
-| Chrome Android | Works with Google TTS if an English voice is installed. |
-| Firefox | Works where an OS speech engine exists (Windows, macOS; Linux needs `speech-dispatcher`). |
-| Older / locked-down browsers, some kiosks | `speechSynthesis` missing → text-only note. |
+Whether an on-device English voice exists depends on the operating system, its installed language packs and
+the browser; **no platform is guaranteed**. Observed behaviour, to be re-verified on real devices before any launch:
 
-Other limits: voices can be silent when the device is in silent mode or media volume is zero (the status still
-says "Reading"); some engines ignore `pause()`; background tabs may stop speaking; the `voiceschanged` event fires
-late on Chrome, so the button is disabled until the browser confirms support. The read-aloud is not offline-tested:
-`public/offline.html` remains text only.
+- Safari (iOS / iPadOS / macOS) exposes Apple's built-in voices as `localService`; typically usable.
+- Chrome / Edge on Windows and macOS usually expose the OS voices as local alongside Google network voices; only the
+  OS voices qualify. On ChromeOS or a clean Linux install there may be no local voice at all → text-only note.
+- Chrome on Android depends on the installed TTS engine and language data.
+- Firefox needs an OS speech engine (Linux: `speech-dispatcher`).
+- Headless or locked-down browsers and some kiosks have no voices → text-only note.
+
+Other limits: no sound in silent mode or at zero media volume while the status still says "Reading"; some engines
+ignore `pause()`; background tabs may stop; long single utterances can be cut off by a known Chrome bug, which the
+short per-item utterances avoid. Read-aloud is not offline-tested; `public/offline.html` remains text only.
 
 ## Privacy
 
 - Nothing from this control is sent to a Firepoint server: no resident location, no address, no text, no analytics.
-- The text spoken is the public guide only. Whether the *browser's* voice engine sends that text to a vendor
-  (Chrome network voices) is a browser setting outside this app; the app prefers on-device voices when available.
+- Only on-device voices are used, so the guide text is not sent to a voice vendor by this feature.
 - No audio is recorded. There is no microphone permission request.
 
 ## Provider note (ElevenLabs): placeholder only
 
 `.env.example` lists `ELEVENLABS_API_KEY=` as a **placeholder**. No code reads it, there is no `/api/…/speech`
 route and no client fetches audio. If a hosted voice is ever added it must follow
-[pwa-storage-and-systems.md](pwa-storage-and-systems.md#read-aloud-and-provenance-your-systems-lane) and [hackathon-roles.md](hackathon-roles.md):
-server-only key, bound to a cited text hash, explicit tap, transcript visible first, no resident data in the
-request, vendor retention reviewed, and a text fallback. The on-device control above is the lower-cost, more
-private default and should stay available even if a hosted voice is added.
+[pwa-storage-and-systems.md](pwa-storage-and-systems.md#read-aloud-and-provenance-your-systems-lane) and
+[hackathon-roles.md](hackathon-roles.md): server-only key, bound to a cited text hash, explicit tap, transcript
+visible first, no resident data in the request, vendor retention reviewed, and a text fallback. The on-device
+control above is the lower-cost, more private default and should stay available even if a hosted voice is added.

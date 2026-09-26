@@ -4,7 +4,7 @@ import { SPEECH_LANG, type SpeechPassage } from "@/domain/guide-speech";
  * On-device read-aloud for the /prepare guide, built on the browser's Web Speech API (speechSynthesis).
  * It speaks only the exact passages it is given, never before an explicit user action, and it is
  * written against small structural types so tests can drive it without a browser. No network, no
- * server, no microphone: nothing leaves the device except whatever the browser's own voice engine does.
+ * server, no microphone, and only voices the browser reports as on-device: no network voice is ever used.
  */
 
 export type VoiceLike = { readonly name: string; readonly lang: string; readonly localService: boolean; readonly default: boolean };
@@ -26,26 +26,32 @@ export type SpeechHost = { speechSynthesis?: SpeechEngineLike; SpeechSynthesisUt
 
 export type SpeechSupport =
   | { kind: "unsupported" }
-  | { kind: "no-english-voice" }
-  | { kind: "ready"; voice: VoiceLike | null };
+  | { kind: "loading" }
+  | { kind: "no-local-english-voice" }
+  | { kind: "ready"; voice: VoiceLike };
 
-/** Prefer a voice that runs on the device, then any English voice; null lets the engine pick by `lang`. */
-export function pickEnglishVoice(voices: readonly VoiceLike[]): VoiceLike | null {
-  const english = voices.filter((voice) => /^en([-_]|$)/i.test(voice.lang));
-  return english.find((voice) => voice.localService && voice.default) ?? english.find((voice) => voice.localService) ?? english[0] ?? null;
+/**
+ * Only a voice that the browser reports as running on the device (`localService`) and speaking English
+ * qualifies. Network voices (for example Chrome's "Google …" voices) would send the text to a vendor,
+ * so they are never used: no voice means no audio.
+ */
+export function pickLocalEnglishVoice(voices: readonly VoiceLike[]): VoiceLike | null {
+  const local = voices.filter((voice) => voice.localService === true && /^en([-_]|$)/i.test(voice.lang));
+  return local.find((voice) => voice.default) ?? local[0] ?? null;
 }
 
 /**
- * Whether this browser can read English aloud. An empty voice list is not proof of absence (Chrome
- * fills it in later), so only a non-empty list with no English voice counts as "no English voice".
+ * Fail closed. The API must exist, the voice list must be known (Chrome fills it in after
+ * `voiceschanged`; until then the state is "loading", not ready), and it must contain an on-device
+ * English voice. The engine is never left to pick a voice by itself.
  */
 export function detectSpeechSupport(host: SpeechHost): SpeechSupport {
   const engine = host.speechSynthesis;
   if (!engine || typeof host.SpeechSynthesisUtterance !== "function" || typeof engine.speak !== "function") return { kind: "unsupported" };
   const voices = engine.getVoices();
-  const voice = pickEnglishVoice(voices);
-  if (voices.length > 0 && !voice) return { kind: "no-english-voice" };
-  return { kind: "ready", voice };
+  if (voices.length === 0) return { kind: "loading" };
+  const voice = pickLocalEnglishVoice(voices);
+  return voice ? { kind: "ready", voice } : { kind: "no-local-english-voice" };
 }
 
 export type ReaderState =
@@ -72,7 +78,7 @@ export function createGuideReader(options: {
   engine: SpeechEngineLike;
   createUtterance: (text: string) => UtteranceLike;
   passages: readonly SpeechPassage[];
-  voice: VoiceLike | null;
+  voice: VoiceLike;
   onChange?: (state: ReaderState) => void;
 }): GuideReader {
   const { engine, createUtterance, passages, voice, onChange } = options;
@@ -88,26 +94,35 @@ export function createGuideReader(options: {
 
   const play = () => {
     stop();
-    const run = generation;
     const parts = passages.flatMap((passage) => passage.parts.map((text) => ({ section: passage.section, text })));
     const last = parts.length - 1;
     if (last < 0) return;
-    parts.forEach(({ section, text }, i) => {
-      const utterance = createUtterance(text);
-      utterance.text = text;
-      utterance.lang = SPEECH_LANG;
-      utterance.voice = voice;
-      utterance.addEventListener("start", () => { if (run === generation) set({ status: "playing", section }); });
-      utterance.addEventListener("end", () => { if (run === generation && i === last) set({ status: "ended" }); });
-      utterance.addEventListener("error", (event) => {
-        if (run !== generation || CANCELLED.has(event.error ?? "")) return;
-        generation += 1;
-        engine.cancel();
-        set({ status: "failed" });
-      });
-      engine.speak(utterance);
-    });
+    try {
+      parts.forEach(({ section, text }, i) => speakPart(section, text, i === last));
+    } catch {
+      // A browser that rejects the voice or utterance gets the same honest failure as a mid-read error.
+      generation += 1;
+      engine.cancel();
+      set({ status: "failed" });
+    }
   };
+
+  function speakPart(section: string, text: string, isLast: boolean) {
+    const run = generation;
+    const utterance = createUtterance(text);
+    utterance.text = text;
+    utterance.lang = SPEECH_LANG;
+    utterance.voice = voice;
+    utterance.addEventListener("start", () => { if (run === generation) set({ status: "playing", section }); });
+    utterance.addEventListener("end", () => { if (run === generation && isLast) set({ status: "ended" }); });
+    utterance.addEventListener("error", (event) => {
+      if (run !== generation || CANCELLED.has(event.error ?? "")) return;
+      generation += 1;
+      engine.cancel();
+      set({ status: "failed" });
+    });
+    engine.speak(utterance);
+  }
 
   const pause = () => {
     if (state.status !== "playing") return;
@@ -122,4 +137,15 @@ export function createGuideReader(options: {
   };
 
   return { get state() { return state; }, play, pause, resume, stop };
+}
+
+/**
+ * The only way the UI obtains a reader: re-checks support at tap time and returns null (speaking
+ * nothing) unless an on-device English voice is confirmed right now.
+ */
+export function openGuideReader(host: SpeechHost, passages: readonly SpeechPassage[], onChange?: (state: ReaderState) => void): GuideReader | null {
+  const support = detectSpeechSupport(host);
+  if (support.kind !== "ready" || !host.speechSynthesis || !host.SpeechSynthesisUtterance) return null;
+  const Utterance = host.SpeechSynthesisUtterance;
+  return createGuideReader({ engine: host.speechSynthesis, createUtterance: (text) => new Utterance(text), passages, voice: support.voice, onChange });
 }

@@ -70,14 +70,14 @@ export function guideSpeechPassages(locale: Locale, c: GuideContent): readonly S
 /** Control labels for the English-only read-aloud control. Not part of GuideContent: never translated. */
 export const SPEECH_UI_EN = {
   label: "Listen to this guide",
-  intro: "English audio, read aloud by this device. The text stays on this page.",
+  intro: "English audio from a voice built into this device. The text stays on this page.",
   play: "Play",
   pause: "Pause",
   resume: "Resume",
   stop: "Stop",
-  checking: "Checking whether this browser can read aloud…",
+  checking: "Checking for an on-device English voice…",
   unsupported: "Read-aloud is not available in this browser. Everything is in the text on this page.",
-  noEnglishVoice: "This device has no English voice for read-aloud. Everything is in the text on this page.",
+  noEnglishVoice: "No on-device English voice is available, so there is no audio. Everything is in the text on this page.",
   reading: "Reading:",
   paused: "Paused:",
   ended: "Finished reading.",

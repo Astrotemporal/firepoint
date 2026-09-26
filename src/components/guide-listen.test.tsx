@@ -42,5 +42,8 @@ describe("listen control", () => {
       expect(source.toLowerCase()).not.toContain(banned.toLowerCase());
     }
     expect(source).toContain('window.addEventListener("pagehide", stop)');
+    // The UI can only obtain a reader through the fail-closed opener, and must not build one itself.
+    expect(readFileSync("src/components/guide-listen.tsx", "utf8")).toContain("openGuideReader(");
+    expect(readFileSync("src/components/guide-listen.tsx", "utf8")).not.toContain("createGuideReader");
   });
 });
