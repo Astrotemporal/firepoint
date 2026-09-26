@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "glendale-gis": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/HackerFund/GlendaleGisMcp@59beb3409a7f3c5db8fbab79075ba646b8082386",
+        "glendale-gis-mcp"
+      ]
+    }
+  }
+}
