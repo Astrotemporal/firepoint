@@ -39,8 +39,8 @@ export const AggregationConfigSchema = z.object({
    * Cells with fewer published observations are withheld, without saying where they are.
    * A threshold is a coarse suppression rule, not a privacy guarantee; each deployment needs its own review.
    */
-  minReportsPerCell: z.number().int().min(2).max(50),
-  /** Counts saturate here so that volume cannot visually escalate authority. */
+  minReportsPerCell: z.number().int().min(3).max(50),
+  /** Counts saturate here so that volume cannot visually escalate authority. Must be >= minReportsPerCell. */
   countCap: z.number().int().min(3).max(100),
   /** Named service coverage. Observations outside are excluded, never silently mapped elsewhere. */
   coverage: z.object({
@@ -78,6 +78,8 @@ export const AggregationInputSchema = z.object({
   now: Instant,
   config: AggregationConfigSchema,
   moderation: ModerationAttestationSchema,
+  /** Publication terms (consent, retention, takedown, reuse) reviewed for this config version. False withholds. */
+  rightsReviewed: z.boolean(),
   /** Only moderated, published observations. Raw submissions and private marks do not parse. */
   observations: z.array(PublishedObservationSchema).max(10_000),
 }).strict();
@@ -90,7 +92,7 @@ export const ExclusionReasonSchema = z.enum([
 export type ExclusionReason = z.infer<typeof ExclusionReasonSchema>;
 
 const Id = z.string().min(1).max(256);
-const CountBin = z.enum(["2-3", "4-9", "10+"]);
+const CountBin = z.enum(["3-5", "6-9", "10+"]);
 
 /** One coarse cell, one hazard kind, one time bin. No point, no polygon, no name of a person. */
 export const AggregateCellSchema = z.object({
@@ -101,7 +103,7 @@ export const AggregateCellSchema = z.object({
   timeBinStart: Instant,
   timeBinEnd: Instant,
   /** Published observations counted, capped at `config.countCap`. Never unique people or confirmed events. */
-  reportCount: z.number().int().min(2),
+  reportCount: z.number().int().min(3),
   countSaturated: z.boolean(),
   countBin: CountBin,
   oldestPublishedAt: Instant,
@@ -128,6 +130,7 @@ const CaveatsSchema = z.object({
 const ProvenanceSchema = z.object({
   config: AggregationConfigSchema,
   moderation: ModerationAttestationSchema,
+  rightsReviewed: z.boolean(),
   offeredObservationCount: z.number().int().nonnegative(),
   countedObservationCount: z.number().int().nonnegative(),
   /** How many offered observations each rule excluded. Zero counts are listed so the reader sees the rule ran. */
@@ -161,11 +164,15 @@ const AggregateBaseSchema = z.object({
   caveats: CaveatsSchema,
 });
 
-export const WithheldReasonSchema = z.enum(["missing-moderation", "no-eligible-observations", "all-cells-below-threshold"]);
+export const WithheldReasonSchema = z.enum(["missing-moderation", "rights-unreviewed", "no-eligible-observations", "all-cells-below-threshold"]);
 export type WithheldReason = z.infer<typeof WithheldReasonSchema>;
 
 export const ObservationAggregateSchema = z.discriminatedUnion("state", [
-  AggregateBaseSchema.extend({ state: z.literal("published"), cells: z.array(AggregateCellSchema).min(1) }).strict(),
+  AggregateBaseSchema.extend({
+    state: z.literal("published"),
+    cells: z.array(AggregateCellSchema).min(1),
+  }).strict().refine((item) => item.provenance.moderation.status === "attested" && item.provenance.rightsReviewed,
+    { message: "published output requires attested moderation and a rights review", path: ["state"] }),
   AggregateBaseSchema.extend({ state: z.literal("withheld"), reason: WithheldReasonSchema, cells: z.array(AggregateCellSchema).length(0) }).strict(),
 ]);
 export type ObservationAggregate = z.infer<typeof ObservationAggregateSchema>;
@@ -202,7 +209,7 @@ function insideBounds(config: AggregationConfig, point: readonly [number, number
 }
 
 function countBin(count: number): z.infer<typeof CountBin> {
-  return count >= 10 ? "10+" : count >= 4 ? "4-9" : "2-3";
+  return count >= 10 ? "10+" : count >= 6 ? "6-9" : "3-5";
 }
 
 const round = (value: number) => Number(value.toFixed(6));
@@ -215,7 +222,7 @@ const round = (value: number) => Number(value.toFixed(6));
  */
 export function aggregateObservations(rawInput: unknown): AggregationResult {
   const input = AggregationInputSchema.parse(rawInput);
-  const { config, moderation, now } = input;
+  const { config, moderation, now, rightsReviewed } = input;
   const nowMs = Date.parse(now);
   const inputObservationIds = input.observations.map((item) => item.id).sort();
   const seen = new Set<string>();
@@ -244,7 +251,7 @@ export function aggregateObservations(rawInput: unknown): AggregationResult {
   const exclusionCounts = Object.fromEntries(ExclusionReasonSchema.options.map((reason) =>
     [reason, excluded.filter((item) => item.reason === reason).length])) as Record<ExclusionReason, number>;
   const provenance: z.infer<typeof ProvenanceSchema> = {
-    config, moderation,
+    config, moderation, rightsReviewed,
     offeredObservationCount: input.observations.length,
     countedObservationCount: counted.length,
     exclusionCounts,
@@ -269,6 +276,7 @@ export function aggregateObservations(rawInput: unknown): AggregationResult {
     finish({ ...base, state: "withheld", reason, withheldCellCount, cells: [] }, withheldCellCount);
 
   if (moderation.status !== "attested") return withheld("missing-moderation", 0);
+  if (!rightsReviewed) return withheld("rights-unreviewed", 0);
   if (counted.length === 0) return withheld("no-eligible-observations", 0);
 
   const groups = new Map<string, typeof counted>();

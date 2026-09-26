@@ -7,7 +7,7 @@ import {
 const now = "2026-01-01T02:00:00Z";
 const config = {
   configVersion: "synthetic-test-config", algorithm: "coarse-cell-count-bin", cellSizeDegrees: 0.02,
-  timeBinSeconds: 3600, maxAgeSeconds: 6 * 3600, minReportsPerCell: 2, countCap: 10,
+  timeBinSeconds: 3600, maxAgeSeconds: 6 * 3600, minReportsPerCell: 3, countCap: 10,
   coverage: { description: "SYNTHETIC TEST ONLY", bounds: [[-1, -1], [1, 1]] },
 };
 const attested = { status: "attested", queueId: "synthetic-queue", policyVersion: "synthetic-policy-0",
@@ -22,8 +22,8 @@ function observation(overrides: Record<string, unknown> = {}) {
     approximatePoint: [0.123456, 0.654321], precisionMeters: 500, verification: "unverified", ...overrides,
   };
 }
-const run = (observations: unknown[], moderation: unknown = attested, extra: Partial<typeof config> = {}) =>
-  aggregateObservations({ now, config: { ...config, ...extra }, moderation, observations });
+const run = (observations: unknown[], moderation: unknown = attested, extra: Partial<typeof config> = {}, rightsReviewed = true) =>
+  aggregateObservations({ now, config: { ...config, ...extra }, moderation, rightsReviewed, observations });
 
 /** Every id offered must be absent from the public half, whatever its state. */
 function expectNoIds(aggregate: unknown, offered: { id: string }[]) {
@@ -50,17 +50,18 @@ describe("observation aggregate", () => {
 
   it("publishes a coarse cell per hazard kind and time bin, and never a point, polygon, text or id", () => {
     const offered = [
-      observation(), observation({ approximatePoint: [0.129999, 0.650001] }),
-      observation({ topic: "road-obstruction" }), observation({ topic: "road-obstruction" }), observation({ topic: "road-obstruction" }),
+      observation(), observation({ approximatePoint: [0.129999, 0.650001] }), observation(),
+      ...Array.from({ length: 6 }, () => observation({ topic: "road-obstruction" })),
       observation({ topic: "flooding", observedAt: "2026-01-01T00:10:00Z" }), observation({ topic: "flooding", observedAt: "2026-01-01T00:50:00Z" }),
-      observation({ topic: "wind-damage" }), // alone in its cell/kind/bin -> withheld
+      observation({ topic: "flooding", observedAt: "2026-01-01T00:59:00Z" }),
+      observation({ topic: "wind-damage" }), observation({ topic: "wind-damage" }), // two in a cell/kind/bin -> withheld, not hinted
     ];
     const { aggregate } = run(offered);
     expect(ObservationAggregateSchema.safeParse(aggregate).success).toBe(true);
     expect(aggregate.state).toBe("published");
     if (aggregate.state !== "published") return;
     expect(aggregate.cells.map((cell) => [cell.hazardKind, cell.reportCount, cell.countBin])).toEqual([
-      ["flooding", 2, "2-3"], ["road-obstruction", 3, "2-3"], ["smoke", 2, "2-3"],
+      ["flooding", 3, "3-5"], ["road-obstruction", 6, "6-9"], ["smoke", 3, "3-5"],
     ]);
     expect(aggregate.withheldCellCount).toBe(1);
     const cell = aggregate.cells[0]!;
@@ -119,15 +120,26 @@ describe("observation aggregate", () => {
   });
 
   it("withholds when every cell is under the threshold and reports only how many", () => {
-    const offered = [observation(), observation({ topic: "fire" })];
-    const { aggregate, audit } = run(offered, attested, { minReportsPerCell: 3 });
+    const offered = [observation(), observation(), observation({ topic: "fire" }), observation({ topic: "fire" })];
+    const { aggregate, audit } = run(offered, attested, { minReportsPerCell: 4 });
     expect(aggregate).toMatchObject({ state: "withheld", reason: "all-cells-below-threshold", withheldCellCount: 2 });
+    expect(JSON.stringify(aggregate)).not.toContain("cell:");
     expectNoIds(aggregate, offered);
     expect(audit.withheldCellCount).toBe(2);
   });
 
+  it("withholds when rights are not reviewed, and a published aggregate cannot claim otherwise", () => {
+    const offered = [observation(), observation(), observation()];
+    const { aggregate } = run(offered, attested, {}, false);
+    expect(aggregate).toMatchObject({ state: "withheld", reason: "rights-unreviewed", cells: [] });
+    expectNoIds(aggregate, offered);
+    const published = run(offered).aggregate;
+    expect(ObservationAggregateSchema.safeParse({ ...published, provenance: { ...published.provenance, rightsReviewed: false } }).success).toBe(false);
+    expect(ObservationAggregateSchema.safeParse({ ...published, provenance: { ...published.provenance, moderation: { status: "missing", detail: "x" } } }).success).toBe(false);
+  });
+
   it("keeps the audit as a separate, explicitly private object", () => {
-    const { aggregate, audit } = run([observation(), observation()]);
+    const { aggregate, audit } = run([observation(), observation(), observation()]);
     expect(AggregationAuditSchema.safeParse(audit).success).toBe(true);
     expect(audit.audience).toBe("private-audit");
     expect(ObservationAggregateSchema.safeParse({ ...aggregate, audit }).success).toBe(false);
@@ -140,7 +152,7 @@ describe("observation aggregate", () => {
     expect(() => run([observation({ verification: "official" })])).toThrow();
     expect(() => run([observation({ kind: "official-notice" })])).toThrow();
     expect(() => run([observation({ redactedText: undefined })])).toThrow();
-    const { aggregate } = run([observation(), observation()]);
+    const { aggregate } = run([observation(), observation(), observation()]);
     expect(ObservationAggregateSchema.safeParse({ ...aggregate, allClear: true }).success).toBe(false);
     expect(ObservationAggregateSchema.safeParse({ ...aggregate, usage: { ...aggregate.usage, routingHazardInput: true } }).success).toBe(false);
     expect(ObservationAggregateSchema.safeParse({ ...aggregate, state: "published", cells: [] }).success).toBe(false);
@@ -150,14 +162,15 @@ describe("observation aggregate", () => {
   it("bounds the configuration so cells stay coarse and windows stay short", () => {
     expect(AggregationConfigSchema.safeParse(config).success).toBe(true);
     expect(AggregationConfigSchema.safeParse({ ...config, cellSizeDegrees: 0.001 }).success).toBe(false);
-    expect(AggregationConfigSchema.safeParse({ ...config, minReportsPerCell: 1 }).success).toBe(false);
+    expect(AggregationConfigSchema.safeParse({ ...config, minReportsPerCell: 2 }).success).toBe(false);
+    expect(AggregationConfigSchema.safeParse({ ...config, minReportsPerCell: 3 }).success).toBe(true);
     expect(AggregationConfigSchema.safeParse({ ...config, minReportsPerCell: 11 }).success).toBe(false);
     expect(AggregationConfigSchema.safeParse({ ...config, coverage: { description: "x", bounds: [[1, 1], [-1, -1]] } }).success).toBe(false);
     expect(AggregationConfigSchema.safeParse({ ...config, configVersion: "" }).success).toBe(false);
   });
 
   it("is deterministic regardless of input order", () => {
-    const inputs = [observation(), observation()];
+    const inputs = [observation(), observation(), observation()];
     expect(run([...inputs].reverse())).toEqual(run(inputs));
   });
 });

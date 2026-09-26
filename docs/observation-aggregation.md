@@ -9,12 +9,13 @@ One moderated `PublishedObservationSchema` list in; out come two separate object
 | Step | Rule | Why |
 | --- | --- | --- |
 | Input gate | Only `kind: "community-observation"` with `verification: "unverified"` parses. Private `FireMark`s, raw submissions and official notices throw. | Marks are personal bookmarks; raw submissions have not been moderated; notices belong to their issuer. |
-| Moderation gate | `moderation.status` must be `attested` (queue id, policy version, owner role, time). `missing` yields `state: "withheld", reason: "missing-moderation"` with full provenance and zero cells. | A count with no accountable reviewer is not publishable. Withheld is a first-class state, never an empty "published". |
+| Moderation gate | `moderation.status` must be `attested` (queue id, policy version, owner role, time). `missing` yields `state: "withheld", reason: "missing-moderation"` with coarse provenance and zero cells. | A count with no accountable reviewer is not publishable. Withheld is a first-class state, never an empty "published". |
+| Rights gate | `rightsReviewed: false` yields `withheld` / `rights-unreviewed`. The `published` variant refuses to parse unless moderation is attested **and** rights are reviewed. | Consent, retention, takedown and reuse terms are a release condition, not a follow-up. |
 | Space bin | `cellSizeDegrees` in [0.01, 1] (0.01 is ~1.1 km). `cellId = cell:<size>:<floor(lon/size)>:<floor(lat/size)>`; only whole-cell bounds are exported. | No exact point, no centroid, no polygon derived from reports. |
 | Time bin | `timeBinSeconds` in [15 min, 24 h], epoch-aligned, on `observedAt ?? publishedAt`. `maxAgeSeconds` ≤ 7 days. | Old reports expire out; "recent" has a stated width. |
 | Exclusions | Each dropped observation is listed with one reason: `no-public-point`, `precision-coarser-than-cell`, `outside-coverage`, `expired`, `future-dated`, `published-after-attestation`, `duplicate-id`. | Nothing is silently moved, snapped or repaired. |
-| Threshold | Cells with fewer than `minReportsPerCell` (≥ 2) are withheld; only `withheldCellCount` is public, never where. | Coarse suppression of small cells. It reduces, and does not remove, re-identification risk; the value needs a per-deployment privacy review and says nothing about unique reporters. |
-| Cap | `reportCount` saturates at `countCap`; `countBin` is `2-3`, `4-9`, `10+`. | Volume must not visually escalate authority. |
+| Threshold | Cells with fewer than `minReportsPerCell` (schema minimum 3, set explicitly per config version) are withheld; only `withheldCellCount` is public, never which cells or how close they came. | Coarse suppression of small cells. It reduces, and does not remove, re-identification risk; the value needs a per-deployment privacy review and says nothing about unique reporters. |
+| Cap | `reportCount` saturates at `countCap`; `countBin` is `3-5`, `6-9`, `10+`. | Volume must not visually escalate authority. |
 | Public provenance | `configVersion`, `algorithm`, full config, moderation attestation, `offeredObservationCount`, `countedObservationCount`, `exclusionCounts` per reason, earliest/latest observed and published times, `uniqueReporterDedupe: "not-possible"`. No ids, no digest. | Reproducible in shape without a join key; nobody can claim dedupe that did not happen. |
 | Private audit | Separate object: sorted `inputObservationIds`, `excluded [{id, reason}]`, `withheldCellCount`, `configVersion`, `generatedAt`. The aggregate schema is `.strict()` and rejects these fields. | Ids of withheld or excluded reports would defeat suppression if published. If a future publisher needs an integrity proof, use a server-keyed HMAC over stored inputs, not a public hash of predictable ids. |
 | Fixed wording | `caveats` are literal strings (uncertainty, abuse, privacy, not-all-clear). `usage` is literally `{ routingHazardInput: false, officialAuthority: false, boundaryOrModelEstimate: false }`. `allClear: false`. | A consumer cannot strip the caveats and still validate. |
@@ -48,10 +49,14 @@ Why it is unsafe, and how this contract differs:
 5. **Straight into routing.** On `main`, private marks already become 500 m routing hazards (`src/evacuation/marks.ts`). PR #11 would have made a user-drawn circle steer escape routes. This contract sets `routingHazardInput: false` and the aggregate cannot be parsed as an evacuation `Hazard`.
 6. **Concentric rings.** Red/yellow evacuation circles around an estimate (a "battle-royale ring") would invent zones no agency issued. Not added; `EvacuationZoneSchema` stays `unavailable` until a verified standing-zone source exists.
 
+## If a map layer is ever built (not in this PR)
+
+Render each published cell as one neutral, single, grey symbol with a persistent "unverified community reports" legend and the caveats beside it. No colour ramp by count, no filled danger area, no red/yellow rings, no routing effect. The aggregate's `usage` flags are literally `false` so a renderer that wants those must build and review a different system.
+
 ## Limitations and open decisions
 
 - No moderation owner exists. Until one is named, the only valid output is `withheld` / `missing-moderation`, and the function should not run in any served route.
-- Cell bounds are exported (coarse, ≥ ~1.1 km) and `minReportsPerCell` is a suppression rule, not a proof of anonymity or of distinct reporters. A privacy review must set both per deployment; then change the config and bump `configVersion`, do not special-case cells.
+- Cell bounds are exported (coarse, ≥ ~1.1 km). `minReportsPerCell` has a schema floor of 3, but 3 is a coarse suppression rule, not a proof of anonymity, of three distinct people, or of three separate events. A privacy review must set both per deployment; then change the config and bump `configVersion`, do not special-case cells.
 - The audit object must never reach a UI, public route, log line, or analytics event. A publisher that cannot store it under access control should discard it.
 - Observations with `precisionMeters` coarser than the cell are excluded rather than smeared across cells. A future version could spread them; that is a documented change, not a silent one.
 - Time bins use the resident's `observedAt` when given. A resident can misstate it; moderation may reject such reports, but the aggregator cannot tell.
