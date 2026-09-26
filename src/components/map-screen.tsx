@@ -2,12 +2,12 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import type { Map as LeafletMap } from "leaflet";
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
 import { MARKS_KEY, MAX_MARKS, addMark, createMark, moveMark, parseMarks, type FireMark } from "@/domain/fire-marks";
 import { Flame } from "./flame";
+import type { MapHandle } from "./fire-map";
 
-// Leaflet touches `window` on import, so the map only ever renders in the browser.
+// Mapbox GL touches `window` and WebGL on import, so the map only ever renders in the browser.
 const FireMap = dynamic(() => import("./fire-map").then((mod) => mod.FireMap), {
   ssr: false,
   loading: () => <div className="map-loading" role="status">Loading map…</div>,
@@ -21,7 +21,7 @@ export function MapScreen() {
   const [canStore, setCanStore] = useState(true);
   const [hint, setHint] = useState<string | null>(null);
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
-  const mapRef = useRef<LeafletMap | null>(null);
+  const mapRef = useRef<MapHandle | null>(null);
   const drag = useRef<Drag | null>(null);
   const skipClick = useRef(false);
 
@@ -37,7 +37,7 @@ export function MapScreen() {
     return () => { active = false; };
   }, []);
 
-  const onReady = useCallback((map: LeafletMap | null) => { mapRef.current = map; }, []);
+  const onReady = useCallback((map: MapHandle | null) => { mapRef.current = map; }, []);
 
   function save(next: FireMark[]) {
     setMarks(next);
@@ -75,14 +75,14 @@ export function MapScreen() {
     skipClick.current = true;
     const map = mapRef.current;
     if (!map) return;
-    const rect = map.getContainer().getBoundingClientRect();
+    const rect = map.container.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
     if (x < 0 || y < 0 || x > rect.width || y > rect.height) {
       setHint("Drop the fire inside the map to place it.");
       return;
     }
-    const { lat, lng } = map.containerPointToLatLng([x, y]);
+    const { lat, lng } = map.pointToLatLng(x, y);
     place(lat, lng);
   }
 
@@ -96,7 +96,7 @@ export function MapScreen() {
     if (skipClick.current) { skipClick.current = false; return; }
     const map = mapRef.current;
     if (!map) return;
-    const { lat, lng } = map.getCenter();
+    const { lat, lng } = map.center();
     place(lat, lng);
   }
 

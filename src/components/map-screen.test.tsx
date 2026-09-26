@@ -9,7 +9,7 @@ describe("map screen", () => {
   it("server-renders a placeholder instead of Leaflet, with the fire disabled until hydrated", () => {
     const html = renderToStaticMarkup(<MapScreen />);
     expect(html).toContain("Loading map…");
-    expect(html).not.toContain("leaflet-container");
+    expect(html).not.toContain("mapboxgl-map");
     expect(html).toMatch(/<button[^>]*class="fire-token"[^>]*disabled=""/);
     expect(html).toContain("Local to this device");
     expect(html).not.toContain("Clear all");

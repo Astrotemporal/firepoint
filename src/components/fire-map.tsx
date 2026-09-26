@@ -1,85 +1,121 @@
 "use client";
 
-import "leaflet/dist/leaflet.css";
-import L, { type Map as LeafletMap } from "leaflet";
-import { useEffect } from "react";
-import { MapContainer, Marker, Popup, TileLayer, ZoomControl, useMap } from "react-leaflet";
+import "mapbox-gl/dist/mapbox-gl.css";
+import mapboxgl from "mapbox-gl";
+import { useEffect, useRef } from "react";
 import type { FireMark } from "@/domain/fire-marks";
 import { FLAME_SVG } from "./flame";
 
-// Glendale, CA. A display camera only, never a coverage or zone boundary.
-const GLENDALE: [number, number] = [34.165, -118.255];
+// Glendale, CA as [lng, lat]. A display camera only, never a coverage or zone boundary.
+const GLENDALE: [number, number] = [-118.255, 34.165];
+const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
-// Keeps opened popups clear of the floating toolbar over the map.
-const POPUP_CLEARANCE: [number, number] = [16, 120];
+type LatLng = { lat: number; lng: number };
 
-const fireIcon = L.divIcon({
-  className: "fire-pin",
-  html: `<span class="fire-pin-badge">${FLAME_SVG}</span>`,
-  iconSize: [42, 52],
-  iconAnchor: [21, 50],
-  popupAnchor: [0, -46],
-});
+/** What the page needs from the map, kept independent of the map library. */
+export type MapHandle = {
+  container: HTMLElement;
+  pointToLatLng: (x: number, y: number) => LatLng;
+  center: () => LatLng;
+};
 
 type FireMapProps = {
   marks: FireMark[];
-  onReady: (map: LeafletMap | null) => void;
+  onReady: (map: MapHandle | null) => void;
   onMove: (id: string, lat: number, lng: number) => void;
   onRemove: (id: string) => void;
 };
 
+type PinView = { marker: mapboxgl.Marker; title: HTMLElement; coords: HTMLElement; pin: HTMLElement };
+
 export function FireMap({ marks, onReady, onMove, onRemove }: FireMapProps) {
-  return (
-    <MapContainer center={GLENDALE} zoom={13} zoomControl={false} scrollWheelZoom={false} className="fire-map">
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-        maxZoom={19}
-      />
-      <ZoomControl position="bottomright" />
-      <MapBridge onReady={onReady} />
-      {marks.map((mark, index) => (
-        <Marker
-          key={mark.id}
-          position={[mark.lat, mark.lng]}
-          icon={fireIcon}
-          draggable
-          title={`Your fire mark ${index + 1}. Drag to move, press Enter for options.`}
-          eventHandlers={{
-            dragend: (event) => {
-              const { lat, lng } = (event.target as L.Marker).getLatLng();
-              onMove(mark.id, lat, lng);
-            },
-          }}
-        >
-          <Popup autoPanPaddingTopLeft={POPUP_CLEARANCE}>
-            <div className="fire-popup">
-              <strong>Your mark {index + 1}</strong>
-              <span>{mark.lat.toFixed(4)}, {mark.lng.toFixed(4)}</span>
-              <small>Private to this device. Not a report.</small>
-              <button type="button" onClick={() => onRemove(mark.id)}>Remove mark</button>
-            </div>
-          </Popup>
-        </Marker>
-      ))}
-    </MapContainer>
-  );
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const pins = useRef(new Map<string, PinView>());
+  // Marker listeners are attached once, so they read the latest callbacks through a ref.
+  const handlers = useRef({ onMove, onRemove });
+  useEffect(() => { handlers.current = { onMove, onRemove }; });
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!TOKEN || !container) return;
+    const views = pins.current;
+    const map = new mapboxgl.Map({
+      accessToken: TOKEN,
+      container,
+      style: "mapbox://styles/mapbox/streets-v12",
+      center: GLENDALE,
+      zoom: 13,
+      logoPosition: "bottom-right",
+    });
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "bottom-right");
+    mapRef.current = map;
+    onReady({
+      container,
+      pointToLatLng: (x, y) => map.unproject([x, y]),
+      center: () => map.getCenter(),
+    });
+    return () => {
+      onReady(null);
+      views.forEach((view) => view.marker.remove());
+      views.clear();
+      map.remove();
+      mapRef.current = null;
+    };
+  }, [onReady]);
+
+  // Mapbox markers live outside React, so sync them with the stored marks by id.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const views = pins.current;
+    const live = new Set(marks.map((mark) => mark.id));
+    views.forEach((view, id) => {
+      if (!live.has(id)) { view.marker.remove(); views.delete(id); }
+    });
+    marks.forEach((mark, index) => {
+      const view = views.get(mark.id) ?? createPin(mark.id, map, handlers);
+      views.set(mark.id, view);
+      view.marker.setLngLat([mark.lng, mark.lat]);
+      view.title.textContent = `Your mark ${index + 1}`;
+      view.coords.textContent = `${mark.lat.toFixed(4)}, ${mark.lng.toFixed(4)}`;
+      view.pin.setAttribute("aria-label", `Your fire mark ${index + 1}. Drag to move, press Enter for options.`);
+    });
+  }, [marks]);
+
+  if (!TOKEN) {
+    return (
+      <div className="map-loading" role="status">
+        <p>Map unavailable: set <code>NEXT_PUBLIC_MAPBOX_TOKEN</code> in <code>.env.local</code>.</p>
+      </div>
+    );
+  }
+  return <div ref={containerRef} className="fire-map" />;
 }
 
-/** Hands the map instance to the page and only captures the scroll wheel once someone engages the map. */
-function MapBridge({ onReady }: { onReady: FireMapProps["onReady"] }) {
-  const map = useMap();
-  useEffect(() => {
-    onReady(map);
-    const engage = () => map.scrollWheelZoom.enable();
-    const release = () => map.scrollWheelZoom.disable();
-    map.on("click focus", engage);
-    map.on("blur mouseout", release);
-    return () => {
-      map.off("click focus", engage);
-      map.off("blur mouseout", release);
-      onReady(null);
-    };
-  }, [map, onReady]);
-  return null;
+function createPin(id: string, map: mapboxgl.Map, handlers: { current: Pick<FireMapProps, "onMove" | "onRemove"> }): PinView {
+  const pin = document.createElement("button");
+  pin.type = "button";
+  pin.className = "fire-pin";
+  pin.innerHTML = `<span class="fire-pin-badge">${FLAME_SVG}</span>`;
+
+  const content = document.createElement("div");
+  content.className = "fire-popup";
+  const title = document.createElement("strong");
+  const coords = document.createElement("span");
+  const note = document.createElement("small");
+  note.textContent = "Private to this device. Not a report.";
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.textContent = "Remove mark";
+  remove.addEventListener("click", () => handlers.current.onRemove(id));
+  content.append(title, coords, note, remove);
+
+  const popup = new mapboxgl.Popup({ offset: 48, maxWidth: "240px", focusAfterOpen: true }).setDOMContent(content);
+  const marker = new mapboxgl.Marker({ element: pin, anchor: "bottom", draggable: true }).setLngLat(map.getCenter()).setPopup(popup).addTo(map);
+  marker.on("dragend", () => {
+    const { lat, lng } = marker.getLngLat();
+    handlers.current.onMove(id, lat, lng);
+  });
+  return { marker, title, coords, pin };
 }
