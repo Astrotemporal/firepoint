@@ -28,7 +28,12 @@
 .g-back::before { content: "‹"; font-size: 28px; line-height: 1; margin-top: -3px; }
 .guide .g-back:hover { background: rgba(255, 255, 255, .1); }
 .g-appbar-title { font-weight: 800; font-size: 16px; }
-.g-appbar-brand { justify-self: end; padding: 8px; }
+.g-appbar-end { justify-self: end; display: flex; align-items: center; gap: 4px; }
+.g-appbar-brand { padding: 8px; }
+.guide .g-lang-select { height: 40px; background-color: rgba(255, 255, 255, .12); color: var(--white); box-shadow: none; font-family: var(--sans);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='white' stroke-width='1.6'/%3E%3C/svg%3E"); }
+.guide .g-lang-select:hover { background-color: rgba(255, 255, 255, .2); color: var(--white); }
+.guide .lang-noscript a { color: var(--white); }
 .guide .g-appbar .brand-mark { background: var(--white); }
 .guide .g-appbar .brand-mark span { background: var(--gold); }
 .g-chips {
@@ -142,14 +147,7 @@
 .g-official { display: block; margin-top: 4px; font: 700 12px/1.4 var(--sans); color: var(--muted); letter-spacing: .02em; }
 .g-official [lang="en"] { color: var(--ink); }
 
-/* Language picker and the unofficial-translation note */
-.g-langs { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px 10px; font-size: 13px; }
-.g-langs-label { color: var(--muted); font-weight: 700; }
-.g-langs ul { display: flex; flex-wrap: wrap; gap: 4px; }
-.guide .g-langs a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 999px; color: var(--ink); font-weight: 700; text-decoration: none; }
-.guide .g-langs a:hover { background: var(--white); }
-.guide .g-langs a[aria-current] { background: var(--ink); color: var(--white); }
-.g-translation-note { margin-top: 6px; padding: 12px 14px; border-radius: 12px; background: #fbf0dc; border-left: 4px solid var(--gold); font-size: 13px; line-height: 1.5; }
+.g-translation-note { margin-top: 0; padding: 12px 14px; border-radius: 12px; background: #fbf0dc; border-left: 4px solid var(--gold); font-size: 13px; line-height: 1.5; }
 .guide .g-translation-note a { font-weight: 700; }
 .guide .g-source { font-size: 12px; color: var(--muted); margin-top: 10px; }
 .g-steps { counter-reset: step; }

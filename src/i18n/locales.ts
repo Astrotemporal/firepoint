@@ -11,6 +11,12 @@ export const LOCALE_COOKIE = "firepoint.lang";
 /** Each language's name, written in that language. */
 export const LOCALE_NAMES: Record<Locale, string> = { en: "English", es: "Español", hy: "Հայերեն" };
 
+/** Short labels for the language select. "AM" (Armenian) is what residents recognize; the code stays ISO "hy". */
+export const LOCALE_CODES: Record<Locale, string> = { en: "EN", es: "ES", hy: "AM" };
+
+/** The select's accessible name, in each language. */
+export const LANGUAGE_LABEL: Record<Locale, string> = { en: "Language", es: "Idioma", hy: "Լեզու" };
+
 export function isLocale(value: unknown): value is Locale {
   return typeof value === "string" && (LOCALES as readonly string[]).includes(value);
 }

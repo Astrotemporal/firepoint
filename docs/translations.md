@@ -9,7 +9,7 @@ Firepoint offers **English, Spanish and Eastern Armenian**, reflecting Glendale'
 | Surface | Status |
 | --- | --- |
 | `/prepare` wildfire guide | Translated: [`wildfire-guide.es.ts`](../src/domain/wildfire-guide.es.ts), [`wildfire-guide.hy.ts`](../src/domain/wildfire-guide.hy.ts) |
-| Map screen and route bar (`/`) | Not yet. Waits for the open map PRs to land, then uses the same locale system |
+| Map screen and route bar (`/`) | Language select only; the text is still English. Translating it waits for the open map PR #19 to land |
 | `public/offline.html` | English only (a static fallback; tests keep it in sync with the English guide) |
 | Official notices, agency names, photo credits | Never translated: shown as published |
 
@@ -22,7 +22,8 @@ Firepoint offers **English, Spanish and Eastern Armenian**, reflecting Glendale'
 
 ## How it works
 
-- `src/i18n/locales.ts` lists the languages. The choice comes from the `firepoint.lang` cookie, set by plain links to `GET /api/lang?to=es&next=/prepare`, and otherwise from the browser's `Accept-Language`.
+- `src/i18n/locales.ts` lists the languages. An **EN / ES / AM select** sits in the top-right corner of the map and the guide ([`language-select.tsx`](../src/components/language-select.tsx)). "AM" is the label residents recognize; the code stays ISO `hy`.
+- Choosing a language calls `GET /api/lang?to=es&next=<this page>`, which saves the `firepoint.lang` cookie and returns. Without JavaScript the select falls back to plain links. With no saved choice, the browser's `Accept-Language` decides.
 - `GuideContent` in [`wildfire-guide.ts`](../src/domain/wildfire-guide.ts) is the English shape; each translation must match it. [`guide-content.test.ts`](../src/domain/guide-content.test.ts) fails if a section, list item or string is missing, or if a string was left in English.
 - Armenian pages load Noto Sans/Serif Armenian, since the guide's Latin fonts have no Armenian letters.
 

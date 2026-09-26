@@ -3,7 +3,7 @@ import Link from "next/link";
 import { PHOTOS, SOURCES, TERMS, ZONES, type GuideContent, type Source } from "@/domain/wildfire-guide";
 import { guideContent } from "@/domain/guide-content";
 import type { Locale } from "@/i18n/locales";
-import { LanguagePicker } from "./language-picker";
+import { LanguageSelect } from "./language-select";
 import { RegisterServiceWorker } from "./register-service-worker";
 
 type Photo = (typeof PHOTOS)[keyof typeof PHOTOS];
@@ -99,16 +99,18 @@ export function WildfireGuide({ locale = "en" }: { locale?: Locale } = {}) {
       <header className="g-appbar">
         <Link className="g-back" href="/">{c.ui.back}</Link>
         <span className="g-appbar-title">{c.ui.title}</span>
-        <Link className="brand g-appbar-brand" href="/" aria-label={c.ui.brandLabel}>
-          <span className="brand-mark" aria-hidden="true"><span /></span>
-        </Link>
+        <div className="g-appbar-end">
+          <LanguageSelect current={locale} label={c.ui.languageLabel} returnTo="/prepare" className="g-lang-select" />
+          <Link className="brand g-appbar-brand" href="/" aria-label={c.ui.brandLabel}>
+            <span className="brand-mark" aria-hidden="true"><span /></span>
+          </Link>
+        </div>
       </header>
       <nav className="g-chips" aria-label={c.ui.chaptersLabel}>
         {CHAPTERS.map((chapter, i) => <a key={chapter.id} href={`#${chapter.id}`}>{c.chapters[i]?.word}</a>)}
       </nav>
 
       <main className="g-main">
-        <LanguagePicker current={locale} returnTo="/prepare" label={c.ui.languageLabel} />
         {translated && (
           <p className="g-translation-note" role="note">
             {c.ui.translationNotice} <a href="/api/lang?to=en&next=%2Fprepare" lang="en" hrefLang="en">{c.ui.readInEnglish}</a>
