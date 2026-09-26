@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { MARKS_KEY, MAX_MARKS, addMark, createMark, moveMark, parseMarks, type FireMark } from "@/domain/fire-marks";
 import { GLENDALE_CITY_HALL, SAFE_ZONES, SERVICE_RADIUS_METERS, SHELTERS } from "@/evacuation/data/glendale";
 import { isAppleMobile } from "@/evacuation/format";
-import { getActiveHazards, setStubHazards, SIMULATED_HAZARDS, subscribeToHazards } from "@/evacuation/hazards";
+import { getActiveHazards, subscribeToHazards } from "@/evacuation/hazards";
 import { DEFAULT_FIX, LocationTracker, type LocationFix } from "@/evacuation/location";
 import { markHazards } from "@/evacuation/marks";
 import { RoutePlanner } from "@/evacuation/route-planner";
@@ -48,7 +48,7 @@ export function MapScreen() {
     getRoute, shelters: SHELTERS, zones: SAFE_ZONES, isOnline: () => navigator.onLine,
   }));
   const location = useSyncExternalStore(tracker.subscribe, tracker.getSnapshot, tracker.getSnapshot);
-  const { plan, pending } = useSyncExternalStore(planner.subscribe, planner.getSnapshot, planner.getSnapshot);
+  const { plan, pending, escapeRequested } = useSyncExternalStore(planner.subscribe, planner.getSnapshot, planner.getSnapshot);
   const stubHazards = useSyncExternalStore(subscribeToHazards, getActiveHazards, getActiveHazards);
   const online = useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true);
   const appleMaps = useSyncExternalStore(subscribeNever, () => isAppleMobile(navigator), () => false);
@@ -62,7 +62,7 @@ export function MapScreen() {
   const [hint, setHint] = useState<string | null>(null);
   const mapRef = useRef<MapHandle | null>(null);
 
-  // Fire marks count as fires for routing, next to the hazard feed (a simulated stub for now).
+  // Fire marks count as fires for routing, next to the hazard feed (an empty stub until a real feed is connected).
   const hazards = useMemo(() => [...stubHazards, ...markHazards(marks)], [stubHazards, marks]);
   const fix = location.fix;
   const metersFromGlendale = fix?.source === "gps" ? haversine(fix, GLENDALE_CITY_HALL) : 0;
@@ -115,10 +115,11 @@ export function MapScreen() {
   }
 
   const identity = origin ? startIdentity(origin) : null;
-  // Center on each new start location (and on "my location"); fit once to its first routes.
+  // Center on each new start location (and on "my location"); fit once to its first routes, and
+  // again when the escape route is requested and resolves, so it lands on screen too.
   const centerKey = identity && `${identity}:${locateCount}`;
-  const fitKey = identity && plan && startIdentity(plan.origin) === identity ? identity : null;
-  const simulatedShown = stubHazards.some((hazard) => hazard.simulated);
+  const escapeReady = plan ? plan.escape.kind !== "not-requested" : false;
+  const fitKey = identity && plan && startIdentity(plan.origin) === identity ? `${identity}:${escapeReady}` : null;
 
   return (
     <main className="map-screen ev-shell">
@@ -163,10 +164,12 @@ export function MapScreen() {
         pending={pending}
         online={online}
         appleMaps={appleMaps}
+        escapeRequested={escapeRequested}
         onUseLocation={() => tracker.start()}
         onManualLocation={(place) => tracker.setManual(place, place.label)}
         onRetryRoutes={() => planner.refresh()}
-        onToggleSimulated={() => setStubHazards(simulatedShown ? [] : SIMULATED_HAZARDS)}
+        onRequestEscape={() => { if (!origin) tracker.start(); planner.requestEscape(); }}
+        onClearEscape={() => planner.clearEscape()}
       />
     </main>
   );

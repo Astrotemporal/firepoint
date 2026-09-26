@@ -249,7 +249,9 @@ export type EscapePick =
   /** Every driving route found passed too close to a hazard. */
   | { kind: "no-safe-route"; zone: SafeZone }
   | { kind: "routing-unavailable"; zone: SafeZone; reason: "offline" | "provider-error" }
-  | { kind: "no-zone" };
+  | { kind: "no-zone" }
+  /** The user hasn't asked for an escape route yet; nothing was computed. */
+  | { kind: "not-requested" };
 
 /** Tries escape points in rank order and returns the first route (or alternative) clear of hazards. */
 export async function pickEscapeRoute(
