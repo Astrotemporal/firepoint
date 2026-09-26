@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import type { Map as LeafletMap } from "leaflet";
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
 import { MARKS_KEY, MAX_MARKS, addMark, createMark, moveMark, parseMarks, type FireMark } from "@/domain/fire-marks";
@@ -14,7 +15,7 @@ const FireMap = dynamic(() => import("./fire-map").then((mod) => mod.FireMap), {
 
 type Drag = { startX: number; startY: number; moved: boolean };
 
-export function MapSection() {
+export function MapScreen() {
   const [marks, setMarks] = useState<FireMark[]>([]);
   const [ready, setReady] = useState(false);
   const [canStore, setCanStore] = useState(true);
@@ -100,35 +101,36 @@ export function MapSection() {
   }
 
   return (
-    <section id="map" className="map-section" aria-labelledby="map-heading">
-      <div className="section-kicker">MARK YOUR MAP <span> / 02</span></div>
-      <div className="section-heading"><h2 id="map-heading">Put a pin<br /><em>where it matters.</em></h2><p>Drag the fire onto the map to mark a place you want to remember. Your marks stay in this browser. They are not reports, and no one else can see them.</p></div>
-      <div className="map-frame">
-        <FireMap marks={marks} onReady={onReady} onMove={(id, lat, lng) => save(moveMark(marks, id, lat, lng))} onRemove={(id) => { save(marks.filter((mark) => mark.id !== id)); setHint("Mark removed."); }} />
-        <div className="map-panel">
-          <button
-            type="button"
-            className={`fire-token${ghost ? " is-dragging" : ""}`}
-            disabled={!ready}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerCancel}
-            onClick={onClick}
-            aria-label="Add a fire mark. Drag onto the map, or press to place it at the map centre."
-          >
-            <Flame className="fire-token-flame" />
-          </button>
-          <div className="map-panel-copy">
-            <strong>Drag the fire onto the map</strong>
-            <span aria-live="polite">{hint ?? (ready ? `${marks.length} ${marks.length === 1 ? "mark" : "marks"} on this device` : "Local to this device")}</span>
-          </div>
-          {marks.length > 0 && <button type="button" className="map-clear" onClick={() => { save([]); setHint("All marks cleared."); }}>Clear all</button>}
+    <main className="map-screen">
+      <h1 className="sr-only">Firepoint map</h1>
+      <FireMap marks={marks} onReady={onReady} onMove={(id, lat, lng) => save(moveMark(marks, id, lat, lng))} onRemove={(id) => { save(marks.filter((mark) => mark.id !== id)); setHint("Mark removed."); }} />
+      <div className="map-panel">
+        <button
+          type="button"
+          className={`fire-token${ghost ? " is-dragging" : ""}`}
+          disabled={!ready}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerCancel}
+          onClick={onClick}
+          aria-label="Add a fire mark. Drag onto the map, or press to place it at the map centre."
+        >
+          <Flame className="fire-token-flame" />
+        </button>
+        <div className="map-panel-copy">
+          <strong>Drag the fire onto the map</strong>
+          <span aria-live="polite">{hint ?? (ready ? `${marks.length} ${marks.length === 1 ? "mark" : "marks"} on this device` : "Local to this device")}</span>
         </div>
+        {marks.length > 0 && <button type="button" className="map-clear" onClick={() => { save([]); setHint("All marks cleared."); }}>Clear all</button>}
       </div>
-      <p className="map-note"><span aria-hidden="true">!</span> For orientation only. This map does not show live fires, evacuation zones, or hazards. To report a fire, call 911.</p>
-      {!canStore && <p className="storage-warning" role="status">Browser storage is unavailable. Marks may be lost when you leave this page.</p>}
+      <Link className="map-brand" href="/prepare" aria-label="Firepoint: official sources and prep list">
+        <span className="brand-mark" aria-hidden="true"><span /></span>
+        <span>Official sources &amp; prep <span aria-hidden="true">↗</span></span>
+      </Link>
+      <p className="map-note"><span aria-hidden="true">!</span> Your marks are private and are not reports. This map does not show live fires, evacuation zones, or hazards. To report a fire, call 911.</p>
+      {!canStore && <p className="map-storage-warning" role="status">Browser storage is unavailable. Marks may be lost when you leave this page.</p>}
       {ghost && <Flame className="fire-ghost" style={{ left: ghost.x, top: ghost.y }} />}
-    </section>
+    </main>
   );
 }

@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { MapSection } from "./map-section";
+import { MapScreen } from "./map-screen";
 import { FLAME_SVG, Flame } from "./flame";
 import { FirepointHome } from "./firepoint-home";
+import Home from "../app/page";
 
-describe("map section", () => {
+describe("map screen", () => {
   it("server-renders a placeholder instead of Leaflet, with the fire disabled until hydrated", () => {
-    const html = renderToStaticMarkup(<MapSection />);
+    const html = renderToStaticMarkup(<MapScreen />);
     expect(html).toContain("Loading map…");
     expect(html).not.toContain("leaflet-container");
     expect(html).toMatch(/<button[^>]*class="fire-token"[^>]*disabled=""/);
@@ -15,19 +16,26 @@ describe("map section", () => {
   });
 
   it("frames marks as private orientation, never reports or live fire data", () => {
-    const html = renderToStaticMarkup(<MapSection />);
-    expect(html).toContain("They are not reports");
+    const html = renderToStaticMarkup(<MapScreen />);
+    expect(html).toContain("are not reports");
     expect(html).toContain("does not show live fires, evacuation zones, or hazards");
     expect(html).toContain("call 911");
   });
 
-  it("sits between the hero and official sources with renumbered kickers", () => {
+  it("is the whole homepage, with the prep and official-source page one link away", () => {
+    const html = renderToStaticMarkup(<Home />);
+    expect(html).toContain('class="map-screen"');
+    expect(html).toContain('href="/prepare"');
+    expect(html).not.toContain('class="hero"');
+  });
+
+  it("keeps the prep page intact and links back to the map", () => {
     const html = renderToStaticMarkup(<FirepointHome />);
-    expect(html).toContain('href="#map"');
-    const order = ["/ 02", "/ 03", "/ 04", "/ 05"].map((k) => html.indexOf(k));
+    expect(html).not.toContain('class="map-screen"');
+    const order = ["/ 01", "/ 02", "/ 03", "/ 04"].map((k) => html.indexOf(k));
     expect(order.every((i) => i > 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    expect(html.indexOf('id="map"')).toBeLessThan(html.indexOf('id="official"'));
+    expect(html).toMatch(/<a[^>]*href="\/"[^>]*>Map<\/a>/);
   });
 });
 
