@@ -59,7 +59,7 @@ The homepage (`/`) is one full-screen [Mapbox](https://www.mapbox.com/) map: the
 - **🏠 Nearest shelter** (solid blue): open, not-full shelters more than 1 km outside every hazard, ranked by straight-line distance. Driving routes are requested for the top three, and the fastest route (or Mapbox alternative route) whose path stays more than 500 m outside every hazard wins. If all three are rejected, the next three are tried. If none clears, the row says "No safe shelter route — follow evacuation route."
 - **🚗 Escape route** (dashed orange): the evacuation point whose bearing differs most from the bearing to the nearest hazard, with the same path check. It is listed first within 3 km of a hazard. If every driving route passes a hazard, the row points directly away from the hazard and offers no **Go** link, since a maps app would take the same road.
 
-**Fire marks are private visual bookmarks, not fire reports.** Dragging the flame onto the map (or pressing it to drop one at the map center) places a mark saved only in this browser. Marks are shown as draggable pins, **without 500 m hazard circles** and without changing routes or emergency status. Even multiple marks do not imply a live fire event, a perimeter, an evacuation zone or a multi-user report. A future public report flow needs separate consent, moderation, privacy protection and provenance.
+**Fire marks are private visual bookmarks, not fire reports.** Dragging the flame onto the map (or pressing it to drop one at the map center) places a mark saved only in this browser. Marks are shown as draggable pins with **dashed, low-opacity red 500 m display halos**. That UI radius is arbitrary: it is **not** a measured fire extent, warning/order zone, or route-avoidance buffer. Moving or overlapping marks does not change routes or emergency status. Even multiple private marks do not imply a live fire event, perimeter, evacuation zone or multi-user report. A future public report flow needs separate consent, moderation, privacy protection and provenance.
 
 Each route is one row in the bar. Tapping a row shows step-by-step directions and details, and **Go** opens Apple Maps on iOS or Google Maps elsewhere, passing only the destination. If routing fails or the device is offline, a row shows the straight-line direction and distance, and its details show a north-up compass arrow and the shelter address. The camera centers on each new start location, fits the first routes found for it, and afterwards stays where the person leaves it. The round button recenters it.
 
@@ -126,7 +126,7 @@ Shelter and evacuation-point data are bundled with the page. After one online vi
 | `src/evacuation/location.ts` | `watchPosition` state machine: prompt on load, retry, fallback, manual |
 | `src/evacuation/route-planner.ts` | When to recalculate (150 m / hazard change / debounce) |
 | `src/evacuation/hazards.ts` | Hazard stub (replace with the real feed) |
-| `src/evacuation/marks.ts` | Keeps private fire marks separate from routing hazards |
+| `src/evacuation/marks.ts` | Display-only private sketch halos; keeps marks out of routing hazards |
 | `src/evacuation/data/glendale.ts` | Shelters (unverified), evacuation points, City Hall default |
 | `src/lib/mapbox.ts` | Token and light/dark style URLs |
 | `src/components/evacuation-map.tsx` | Mapbox GL map (client-only): blue dot, hazards, fire marks, pins, routes |

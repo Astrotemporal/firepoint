@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FireMark } from "@/domain/fire-marks";
 import { GLENDALE_CITY_HALL } from "@/evacuation/data/glendale";
 import type { LocationFix } from "@/evacuation/location";
-import { markLabel } from "@/evacuation/marks";
+import { markLabel, privateMarkHalos } from "@/evacuation/marks";
 import type { RoutePlan } from "@/evacuation/route-planner";
 import {
   DESTINATION_HAZARD_BUFFER_METERS, destinationPoint, escapeHeading, isShelterAvailable, pointInHazard,
@@ -76,10 +76,14 @@ function pinElement(className: string, glyph: string, label: string): HTMLButton
 }
 
 function addLayers(map: MapboxMap): void {
-  for (const id of ["hazards", "accuracy", "routes"]) map.addSource(id, { type: "geojson", data: EMPTY });
-  // Only sourced hazards may use area fills; private marks are separate draggable pins.
+  for (const id of ["hazards", "private-mark-halos", "accuracy", "routes"]) map.addSource(id, { type: "geojson", data: EMPTY });
+  // Incident geometry (none connected today) and private visual sketches have separate sources/paint.
   map.addLayer({ id: "hazards-fill", type: "fill", source: "hazards", paint: { "fill-color": "#ef4444", "fill-opacity": 0.28 } });
   map.addLayer({ id: "hazards-line", type: "line", source: "hazards", paint: { "line-color": COLORS.hazard, "line-width": 2 } });
+  map.addLayer({ id: "private-mark-halos-fill", type: "fill", source: "private-mark-halos",
+    paint: { "fill-color": "#ef4444", "fill-opacity": 0.07 } });
+  map.addLayer({ id: "private-mark-halos-outline", type: "line", source: "private-mark-halos",
+    paint: { "line-color": COLORS.hazard, "line-opacity": 0.65, "line-width": 2, "line-dasharray": [2, 2] } });
   map.addLayer({ id: "accuracy-fill", type: "fill", source: "accuracy", paint: { "fill-color": COLORS.you, "fill-opacity": 0.12 } });
   map.addLayer({ id: "accuracy-line", type: "line", source: "accuracy", paint: { "line-color": COLORS.you, "line-opacity": 0.4, "line-width": 1 } });
   const lineLayout = { "line-join": "round", "line-cap": "round" } as const;
@@ -212,6 +216,13 @@ function MapboxView({
       features: hazards.map((hazard) => circle(hazard.center, hazard.radiusMeters)),
     });
   }, [hazards, loaded]);
+
+  useEffect(() => {
+    const source = mapRef.current?.getSource<GeoJSONSource>("private-mark-halos");
+    if (!loaded || !source) return;
+    source.setData({ type: "FeatureCollection", features: privateMarkHalos(marks).map((halo) =>
+      circle(halo.center, halo.displayRadiusMeters, { kind: halo.kind, id: halo.id })) });
+  }, [marks, loaded]);
 
   // Mapbox markers live outside React, so sync them with the stored marks by id.
   useEffect(() => {
