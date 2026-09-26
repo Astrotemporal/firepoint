@@ -24,12 +24,18 @@ export function buildHazardFeed(result: GisHazardsResult | "not-configured", gen
     check = { ...BASE, status: "down", lastAttemptAt: result.attemptedAt, lastSuccessAt: null, sourceAsOf: null,
       detail: DETAIL[result.reason] ?? `Glendale GIS request unavailable (${result.reason}${result.httpStatus ? ` ${result.httpStatus}` : ""})` };
   } else {
-    const outside = result.hazards.every((hazard) => hazard.lookup === "unavailable");
+    // A successful RPC with every layer unavailable can mean a missing snapshot, not
+    // that this resident is outside the City's map. Require explicit out-of-bounds.
+    const unusable = result.hazards.length === 0 || result.hazards.every((hazard) => hazard.lookup === "unavailable");
+    const outside = result.hazards.length > 0 && result.hazards.every((hazard) =>
+      hazard.lookup === "unavailable" && hazard.coverage === "out-of-bounds");
     check = {
       ...BASE,
-      status: outside ? "outside-coverage" : result.anyStale ? "stale" : "ok",
-      lastAttemptAt: result.checkedAt, lastSuccessAt: result.checkedAt, sourceAsOf: result.snapshotAsOf,
+      status: outside ? "outside-coverage" : unusable ? "down" : result.anyStale ? "stale" : "ok",
+      lastAttemptAt: result.checkedAt, lastSuccessAt: unusable && !outside ? null : result.checkedAt,
+      sourceAsOf: result.snapshotAsOf,
       detail: outside ? "This place is outside the Glendale hazard maps' coverage (Glendale plus about 2 km)."
+        : unusable ? "Glendale hazard layers returned no usable coverage; no place classification was established."
         : result.anyStale ? "The GIS server reports that some hazard layers are stale." : null,
     };
   }

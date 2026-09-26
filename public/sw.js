@@ -1,5 +1,5 @@
 /* Firepoint offline fallback. No official notices, API responses, or live data are cached. */
-const CACHE = "firepoint-shell-v1";
+const CACHE = "firepoint-shell-v2";
 const SHELL = ["/offline.html", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {

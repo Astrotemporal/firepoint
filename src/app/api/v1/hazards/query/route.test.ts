@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StandingHazardFeedSchema } from "@/domain/contracts";
 import { POST } from "./route";
 
@@ -6,9 +6,20 @@ const body = JSON.stringify({ point: [-118.25, 34.15], userInitiated: true });
 function request(payload = body) {
   return new Request("http://localhost/api/v1/hazards/query", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload });
 }
+beforeEach(() => { vi.stubEnv("FIREPOINT_DEMO_LIVE_SOURCES", "enabled"); });
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 describe("standing hazard route", () => {
+  it("does not contact publishers when public live queries are paused", async () => {
+    vi.stubEnv("FIREPOINT_DEMO_LIVE_SOURCES", "");
+    const upstream = vi.fn(); vi.stubGlobal("fetch", upstream);
+    const response = await POST(request());
+    expect(response.status).toBe(503);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(await response.json()).toMatchObject({ error: expect.stringContaining("paused") });
+    expect(upstream).not.toHaveBeenCalled();
+  });
+
   it("refuses invalid input without contacting the GIS server", async () => {
     const upstream = vi.fn(); vi.stubGlobal("fetch", upstream);
     expect((await POST(request("{}"))).status).toBe(400);
