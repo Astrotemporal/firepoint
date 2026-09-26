@@ -107,13 +107,15 @@ export const PlanningCellSchema = z.object({
       ctx.addIssue({ code: "custom", path: [...path, "retrievedAt"], message: "an input cannot be retrieved after its run/evaluation" });
     }
   }
-  for (const [name, review, earliest] of [
-    ["windHindcast", scenario.validation.windHindcast, windAt],
-    ["fireHindcast", scenario.validation.fireHindcast, fireAt],
-    ["clearanceReview", scenario.validation.clearanceReview, 0],
+  // A model/method configuration can be hindcast and accepted before a later run of that
+  // unchanged configuration; the bound hash and accepted outcome carry that approval.
+  for (const [name, review] of [
+    ["windHindcast", scenario.validation.windHindcast],
+    ["fireHindcast", scenario.validation.fireHindcast],
+    ["clearanceReview", scenario.validation.clearanceReview],
   ] as const) {
-    if (review && (Date.parse(review.reviewedAt) < earliest || Date.parse(review.reviewedAt) > evaluatedAt)) {
-      ctx.addIssue({ code: "custom", path: ["validation", name, "reviewedAt"], message: "review must follow its run and predate evaluation" });
+    if (review && Date.parse(review.reviewedAt) > evaluatedAt) {
+      ctx.addIssue({ code: "custom", path: ["validation", name, "reviewedAt"], message: "review cannot occur after evaluation" });
     }
   }
 });
@@ -163,7 +165,9 @@ export function evaluatePlanningCell(raw: unknown): PlanningEvaluation {
   const unavailable = (reason: "no-arrival-output" | "stale-run" | "missing-validation" | "validation-not-accepted" | "validation-mismatch") =>
     PlanningEvaluationSchema.parse({ ...base, status: "unavailable", reason, timeOfArrivalMin: null, modeledSlackMin: null });
   if (cell.timeOfArrivalMin === null) return unavailable("no-arrival-output");
-  if (Date.parse(cell.evaluatedAt) - Date.parse(cell.fire.runAt) > cell.maxRunAgeMin * 60_000) return unavailable("stale-run");
+  // The age limit applies to BOTH runs. Equality at the explicit limit is allowed.
+  if ([cell.wind.runAt, cell.fire.runAt].some((runAt) =>
+    Date.parse(cell.evaluatedAt) - Date.parse(runAt) > cell.maxRunAgeMin * 60_000)) return unavailable("stale-run");
   const reviews = [
     [cell.validation.windHindcast, cell.wind.configurationSha256],
     [cell.validation.fireHindcast, cell.fire.configurationSha256],

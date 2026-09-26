@@ -62,6 +62,20 @@ describe("planning-only model comparison", () => {
       .toMatchObject({ status: "modeled-clearance-deficit", modeledSlackMin: -15 });
   });
 
+  it("bounds both run ages, accepts exactly the limit, and allows config review before a matching run", () => {
+    expect(evaluatePlanningCell({ ...base, maxRunAgeMin: 180 }).status).toBe("modeled-margin-met-under-assumptions");
+    expect(evaluatePlanningCell({ ...base, maxRunAgeMin: 179 }))
+      .toMatchObject({ status: "unavailable", reason: "stale-run", timeOfArrivalMin: null });
+    const old = "2025-12-31T20:00:00Z";
+    expect(evaluatePlanningCell({ ...base, wind: { ...base.wind, runAt: old,
+      terrain: { ...base.wind.terrain, retrievedAt: old },
+      initialization: { ...base.wind.initialization, retrievedAt: old, cycleAt: old, validAt: old } } }))
+      .toMatchObject({ status: "unavailable", reason: "stale-run", timeOfArrivalMin: null });
+    expect(evaluatePlanningCell({ ...base, validation: { ...base.validation,
+      fireHindcast: { ...base.validation.fireHindcast, reviewedAt: at } } }).status)
+      .toBe("modeled-margin-met-under-assumptions");
+  });
+
   it("does not expose a stale, unvalidated or absent arrival value as a usable margin", () => {
     expect(evaluatePlanningCell({ ...base, timeOfArrivalMin: null }))
       .toMatchObject({ status: "unavailable", reason: "no-arrival-output", timeOfArrivalMin: null, modeledSlackMin: null });
