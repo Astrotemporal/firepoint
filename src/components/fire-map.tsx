@@ -9,6 +9,7 @@ import type { FireMark } from "@/domain/fire-marks";
 // Glendale, CA as [lng, lat]. A display camera only, never a coverage or zone boundary.
 const GLENDALE: [number, number] = [-118.255, 34.165];
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+const STYLES = { light: "mapbox://styles/mapbox/streets-v12", dark: "mapbox://styles/mapbox/navigation-night-v1" };
 
 type LatLng = { lat: number; lng: number };
 
@@ -20,6 +21,7 @@ export type MapHandle = {
 };
 
 type FireMapProps = {
+  dark: boolean;
   marks: FireMark[];
   onReady: (map: MapHandle | null) => void;
   onMove: (id: string, lat: number, lng: number) => void;
@@ -28,13 +30,15 @@ type FireMapProps = {
 
 type PinView = { marker: mapboxgl.Marker; fire: DotLottie; title: HTMLElement; coords: HTMLElement; pin: HTMLElement };
 
-export function FireMap({ marks, onReady, onMove, onRemove }: FireMapProps) {
+export function FireMap({ dark, marks, onReady, onMove, onRemove }: FireMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const pins = useRef(new Map<string, PinView>());
   // Marker listeners are attached once, so they read the latest callbacks through a ref.
   const handlers = useRef({ onMove, onRemove });
   useEffect(() => { handlers.current = { onMove, onRemove }; });
+  const style = dark ? STYLES.dark : STYLES.light;
+  const styleRef = useRef(style);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -43,7 +47,7 @@ export function FireMap({ marks, onReady, onMove, onRemove }: FireMapProps) {
     const map = new mapboxgl.Map({
       accessToken: TOKEN,
       container,
-      style: "mapbox://styles/mapbox/streets-v12",
+      style: styleRef.current,
       center: GLENDALE,
       zoom: 13,
       logoPosition: "bottom-right",
@@ -63,6 +67,14 @@ export function FireMap({ marks, onReady, onMove, onRemove }: FireMapProps) {
       mapRef.current = null;
     };
   }, [onReady]);
+
+  // Swap the basemap in place; DOM markers and popups survive a style change.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || styleRef.current === style) return;
+    styleRef.current = style;
+    map.setStyle(style);
+  }, [style]);
 
   // Mapbox markers live outside React, so sync them with the stored marks by id.
   useEffect(() => {
@@ -126,7 +138,11 @@ function createPin(id: string, map: mapboxgl.Map, handlers: { current: Pick<Fire
   return { marker, fire, title, coords, pin };
 }
 
-function removePin(view: PinView) {
-  view.fire.destroy();
-  view.marker.remove();
+function removePin({ fire, marker }: PinView) {
+  marker.remove();
+  // Destroying mid-load aborts the fetch and logs an error (every dev mount, via StrictMode).
+  if (fire.isLoaded) { fire.destroy(); return; }
+  const destroy = () => fire.destroy();
+  fire.addEventListener("load", destroy);
+  fire.addEventListener("loadError", destroy);
 }
