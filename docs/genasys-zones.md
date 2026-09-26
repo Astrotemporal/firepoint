@@ -1,6 +1,6 @@
 # Genasys / LA County zone source check (2026-09-26)
 
-**Implemented now:** an ordinary external [Genasys Protect map](https://protect.genasys.com/en?lat=34.2147&lng=-118.2629&z=11.3) link on `/prepare` and the offline fallback's “When you reconnect” list. The URL's `lat`, `lng` and `z` **only position the camera over Glendale**. They do not look up an address or attest to a zone or order. Search your address on the external site and follow the responsible agency. Firepoint does not fetch, embed, cache, redraw or claim an active Genasys zone; it has no resident lookup and no all-clear.
+**Implemented now:** an ordinary external [Genasys Protect map](https://protect.genasys.com/en?lat=34.2147&lng=-118.2629&z=11.3) link on `/prepare` and the offline fallback's “When you reconnect” list. The URL's `lat`, `lng` and `z` **only position the camera over Glendale**. They do not look up an address or attest to a zone or order. Search your address on the external site and follow the responsible agency. Firepoint does not fetch, embed, cache, redraw or claim an active Genasys zone; it has no resident lookup and no all-clear. After PR #23 added Spanish and Eastern Armenian guide text, the new Genasys link and its caution appear **only in the English guide**. The translated source lists keep Glendale Fire’s existing Know Your Zone link; adding Genasys there needs fluent review of both label and caveat. The static offline fallback is English-only.
 
 ## Separate publisher sources for a possible future overlay
 

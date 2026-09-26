@@ -1,9 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MapScreen } from "./map-screen";
 import { Flame } from "./flame";
 import { WildfireGuide } from "./wildfire-guide";
 import Home from "../app/page";
+
+// The homepage reads the saved language from request cookies; outside a request, use English.
+vi.mock("@/i18n/server", () => ({ getLocale: async () => "en" }));
 import { THEME_KEY, THEME_SCRIPT } from "./theme";
 
 describe("map screen", () => {
@@ -23,8 +26,8 @@ describe("map screen", () => {
     expect(html).toContain("call 911");
   });
 
-  it("is the whole homepage, with the prep and official-source page one link away", () => {
-    const html = renderToStaticMarkup(<Home />);
+  it("is the whole homepage, with the prep and official-source page one link away", async () => {
+    const html = renderToStaticMarkup(await Home());
     expect(html).toMatch(/class="map-screen[" ]/);
     expect(html).toContain('href="/prepare"');
     expect(html).not.toContain('class="hero"');
