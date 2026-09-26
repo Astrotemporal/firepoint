@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AreaMap } from "@/components/area-map";
+import { LiveSources } from "@/components/live-sources";
 
 const CHECKLIST_KEY = "firepoint.prep.v1";
 const AREA_KEY = "firepoint.area.v1";
@@ -131,6 +132,7 @@ export function FirepointHome() {
                 <p className="status-caption">For current decisions, follow emergency officials and their published instructions.</p>
               </div>
             </div>
+            <LiveSources />
           </section>
 
           <section id="official" className="official-section" aria-labelledby="official-heading">

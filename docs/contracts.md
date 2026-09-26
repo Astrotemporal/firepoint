@@ -1,6 +1,6 @@
 # Firepoint shared contract (v1)
 
-This is a **new contract authored for Firepoint**, not the earlier Trigger Point model/scenario schema. The executable source of truth is [`src/domain/contracts.ts`](../src/domain/contracts.ts); its tests use conspicuously synthetic values and never reach the UI. Import Zod validators at network/storage boundaries and derive types with `z.infer`. There is no public reporting service, standing evacuation-zone lookup, GIS backend adapter, or official city partnership. The only present source adapter handles NWS point-filtered weather alerts and is not connected to the resident UI.
+This is a **new contract authored for Firepoint**, not the earlier Trigger Point model/scenario schema. The executable source of truth is [`src/domain/contracts.ts`](../src/domain/contracts.ts); its tests use conspicuously synthetic values and never reach the UI. Import Zod validators at network/storage boundaries and derive types with `z.infer`. There is no public reporting service, standing evacuation-zone lookup, GIS backend adapter, or official city partnership. Present source adapters handle NWS point-filtered weather alerts plus CAL FIRE incidents, NIFC/WFIGS perimeters and AirNow observations (see [Fire and air context](#fire-and-air-context)). The resident page calls both routes only after an explicit button press.
 
 ## Client flow
 
@@ -23,15 +23,27 @@ export function parseNoticeResponse(payload: unknown) {
 }
 ```
 
-The route exists, but the resident UI does not call it and the NWS User-Agent is blank by default. Show **“Not checked”** with direct official links until a real user-initiated query succeeds. HTTP 404/501/503, transport failure, or malformed JSON is unavailable, *not* a synthetic empty feed. Synthetic fixtures belong only in `*.test.ts`.
+The resident UI calls the route only when the visitor asks, and the NWS User-Agent is blank by default. Show **“Not checked”** with direct official links until a real user-initiated query succeeds. HTTP 404/501/503, transport failure, or malformed JSON is unavailable, *not* a synthetic empty feed. Synthetic fixtures belong only in `*.test.ts`.
 
 ## Source clocks and response behavior
 
 `SourceCheckSchema` records `lastAttemptAt` separately from `lastSuccessAt`, the publisher's `sourceAsOf` if known, a source-specific `staleAfterSeconds`, applicability to this query, and a non-reassuring failure detail. `ok` requires an actual successful fetch; `stale` requires a real last-good record; `not-configured` and `down` need explanations. A status is about **one feed**, not the whole city. Never rewrite an upstream issue timestamp with our retrieval time.
 
-The first server endpoint, `POST /api/v1/notices/query`, accepts `PlaceQuerySchema` and currently covers **only NWS weather alerts**. It uses `Cache-Control: no-store`, bounds the request and NWS timeout, and never echoes the queried point in the source-check URL. It returns 503 plus a typed `not-configured`/`down` state if no valid identifying NWS User-Agent is set or the upstream source fails. There is no durable last-good cache, rate-limit service, city evacuation adapter, or UI call yet; do not describe it as operational emergency coverage. Add source-specific caching, point-log redaction, abuse protection, and monitoring before public release. A future `GET /api/v1/source-health` can expose operational health without leaking user locations.
+The first server endpoint, `POST /api/v1/notices/query`, accepts `PlaceQuerySchema` and currently covers **only NWS weather alerts**. It uses `Cache-Control: no-store`, bounds the request and NWS timeout, and never echoes the queried point in the source-check URL. It returns 503 plus a typed `not-configured`/`down` state if no valid identifying NWS User-Agent is set or the upstream source fails. There is no durable last-good cache, rate-limit service, or city evacuation adapter; do not describe it as operational emergency coverage. Add source-specific caching, point-log redaction, abuse protection, and monitoring before public release. A future `GET /api/v1/source-health` can expose operational health without leaking user locations.
 
 For UI teammate tasks: create loading, unavailable, stale, expired, outside-coverage, and verified-source views first. Do not import code from a model pipeline or fill an empty feed with demonstration numbers. Check the original link and exact text before any optional text-to-speech. For backend tasks: add adapters one publisher at a time, record license/jurisdiction/geography, test broken payloads and partial outages, and independently check the public display against the issuer. See [source policy](source-policy.md).
+
+## Fire and air context
+
+`POST /api/v1/context/query` takes the same `PlaceQuerySchema` body and returns a `ContextFeedSchema` (`version: 1`, `radiusKm`, `sourceChecks`, `incidents`, `perimeters`, `airQuality`, `allClear: false`). These are **context lanes**, deliberately separate from `OfficialNotice`: none is an order, forecast, spread prediction or safety verdict, and every item carries a `caveat` and an `origin` with the publisher's own clock.
+
+| Source key | Publisher and data | Location sent upstream | Notes |
+| --- | --- | --- | --- |
+| `calfire-incidents` | CAL FIRE active incident points (`WildfireIncidentSchema`) | None; the statewide list is fetched and filtered to `radiusKm` (80 km) on our server | `distanceKm` is from the queried point. Off-site record links fall back to the CAL FIRE incident index. |
+| `nifc-current-perimeters` | NIFC/WFIGS current perimeters (`FirePerimeterSchema`, Polygon/MultiPolygon) | A coarse envelope centred on a 0.1°-snapped point | `polygonCapturedAt` is the publisher's mapping time, distinct from `retrievedAt`. Types: wildfire, prescribed, complex, unknown. A truncated page (`exceededTransferLimit`) is `down`, not a partial result. |
+| `airnow-current-observations` | AirNow current reporting-area observations (`AirQualityReadingSchema`) | A 0.1°-snapped point; the key stays server-side | `preliminary: true` always. Negative "no data" AQI values are omitted. `not-configured` without `AIRNOW_API_KEY`. |
+
+Each source produces its own check even when it fails. The route answers 200 when at least one source succeeded and 503 when none did; in both cases, read `sourceChecks` before interpreting empty lists. The resident panel rounds a one-time device location to three decimals before sending it and never stores it.
 
 ## Storage boundary
 
