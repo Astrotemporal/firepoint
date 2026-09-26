@@ -202,3 +202,89 @@ export const PHOTOS = {
     url: "https://commons.wikimedia.org/wiki/File:Angeles_National_Forest_firefighters_during_initial_attack_of_the_Eaton_Firepng.png",
   },
 } as const;
+
+/*
+ * Everything a reader sees on /prepare, per language. English is assembled from the constants above
+ * (which offline.html and tests also use); Spanish and Eastern Armenian live beside this file and must
+ * match this shape item for item. Links, photo files, zone distances and official English terms are shared.
+ */
+type Strings<T> = T extends string ? string : T extends readonly (infer U)[] ? readonly Strings<U>[] : { readonly [K in keyof T]: Strings<T[K]> };
+
+export const GUIDE_UI_EN = {
+  metaTitle: "Firepoint | Ready, Set, Go",
+  metaDescription: "A wildfire guide for Glendale, adapted from the LA County Fire Department's Ready! Set! Go! plan.",
+  back: "Map",
+  title: "Wildfire guide",
+  brandLabel: "Firepoint map",
+  chaptersLabel: "Chapters",
+  languageLabel: "Language",
+  chapter: "Chapter",
+  opensNewTab: "(opens in a new tab)",
+  publicDomain: "public domain",
+  translationNotice: "",
+  readInEnglish: "",
+  officialTerm: "",
+  coverKicker: "A wildfire guide for Glendale",
+  coverTitle: ["Ready.", "Set.", "Go."],
+  coverDek: "Wildfires here are fed by dry brush and driven by strong, dry winds, and very few residents prepare to evacuate until it is too late. This is what firefighters ask you to do: before fire season, when a fire is near, and when it’s time to leave. Based on the LA County Fire Department’s Ready! Set! Go! plan.",
+  emergencyLabel: "Emergency",
+  urgentCall: "In danger? Call 911.",
+  urgentNote: "Firepoint is not an alert system and does not check evacuation orders or your zone.",
+  checkZone: "Check your zone",
+  signUpAlerts: "Sign up for Glendale Alerts",
+  inside: "Inside",
+  defensibleTitle: "Defensible space",
+  defensibleLede: "Defensible space is the buffer between your house and the landscape around it. It slows a fire down and gives firefighters room to stand between your home and the flames. It runs 200 feet out, in three zones.",
+  ringsLabel: "Defensible space: Zone 1 is 0 to 30 feet from the house, Zone 2 is 30 to 100 feet, Zone 3 is 100 to 200 feet.",
+  ringsCaption: "Three zones, 200 feet in all. Your house sits at the center.",
+  feet: "ft",
+  quoteEmbers: "Windblown embers from a wildfire will find the weak link in your home’s fire protection scheme.",
+  quoteLeaveEarly: "By leaving early, you will give your family the best chance of surviving a wildfire.",
+  quoteSource: "Ready! Set! Go! Wildfire Action Plan",
+  hardenTitle: "Harden your home",
+  planTitle: "Your wildfire action plan",
+  planLede: "Make it with everyone in your household, well before fire season. Practice it, and post it where you can find it fast.",
+  kitKicker: "One per person",
+  kitTitle: "Emergency supply kit",
+  kitLede: "A backpack works well. Keep food and water in a tub you can lift into the car.",
+  sixPsTitle: "Remember the six P’s",
+  sixPsLede: "If you have minutes, not hours, grab these.",
+  beforeLeavingTitle: "If an evacuation is coming and there’s time",
+  termsTitle: "Know the official terms",
+  termsLedeBefore: "Officials use these words in alerts. Follow them immediately. Check",
+  termsLedeAfter: "for your area.",
+  termsQuoted: "Terms quoted from",
+  goTitle: "When a wildfire starts",
+  trappedTitle: "If you become trapped",
+  trappedLede: "Stay calm. Call 911 and tell them where you are.",
+  returningTitle: "Coming home",
+  sourcesTitle: "Keep these open",
+  sourcesLede: "Firepoint only explains the guidance. For orders, zones and conditions, go to the source.",
+  footerAdapted: "Adapted from the County of Los Angeles Fire Department’s Ready! Set! Go! Wildfire Action Plan (revised May 20, 2026). Photos are US government works in the public domain.",
+  footerDisclaimer: "Independent community tool, not a government service. General guidance only: no live alerts, zone lookup, or all-clear information. In an emergency, follow local officials. Call 911 for immediate help.",
+} as const;
+
+const GUIDE_EN_SHAPE = {
+  ui: GUIDE_UI_EN,
+  chapters: [
+    { word: "Ready", topic: "Your home", line: "Clear the space around your house and seal it against embers." },
+    { word: "Set", topic: "Your family", line: "Make a plan, pack a kit, and know what to do before you leave." },
+    { word: "Go", topic: "Leaving", line: "Leave early, know the official terms, and what to do if trapped." },
+  ],
+  sources: Object.fromEntries(Object.entries(SOURCES).map(([key, source]) => [key, source.label])) as { [K in keyof typeof SOURCES]: string },
+  zones: ZONES.map(({ name, reach, items }) => ({ name, reach, items })),
+  home: HOME,
+  plan: PLAN,
+  kit: KIT,
+  sixPs: SIX_PS,
+  beforeLeaving: BEFORE_LEAVING,
+  terms: TERMS,
+  go: GO,
+  trapped: TRAPPED,
+  returning: RETURNING,
+  photoAlts: Object.fromEntries(Object.entries(PHOTOS).map(([key, photo]) => [key, photo.alt])) as { [K in keyof typeof PHOTOS]: string },
+};
+
+/** The shape every translation of the guide must fill in. */
+export type GuideContent = Strings<typeof GUIDE_EN_SHAPE>;
+export const GUIDE_EN: GuideContent = GUIDE_EN_SHAPE;

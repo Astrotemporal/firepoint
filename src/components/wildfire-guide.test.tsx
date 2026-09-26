@@ -49,6 +49,32 @@ describe("wildfire guide page", () => {
   });
 });
 
+describe.each(["es", "hy"] as const)("wildfire guide in %s", (locale) => {
+  const page = renderToStaticMarkup(<WildfireGuide locale={locale} />);
+
+  it("marks the page language and says the translation is unofficial", () => {
+    expect(page).toContain(`lang="${locale}"`);
+    expect(page).toContain('role="note"');
+    expect(page).toContain("/api/lang?to=en&amp;next=%2Fprepare");
+  });
+
+  it("still puts 911 before the guide and shows each official English term", () => {
+    const call = page.indexOf("911");
+    expect(call).toBeGreaterThan(-1);
+    expect(call).toBeLessThan(page.indexOf('id="ready"'));
+    for (const { term } of TERMS) expect(page).toContain(`<span lang="en">${term}</span>`);
+  });
+
+  it("keeps every official link and photo, with translated alt text", () => {
+    for (const source of [SOURCES.zone, SOURCES.alerts, SOURCES.terms, SOURCES.rsg, SOURCES.brochure]) expect(page).toContain(source.url);
+    for (const photo of Object.values(PHOTOS)) {
+      expect(page).toContain(photo.url);
+      expect(page).not.toContain(`alt="${photo.alt}"`);
+    }
+    expect(page).not.toContain("<form");
+  });
+});
+
 describe("offline fallback", () => {
   const offline = readFileSync("public/offline.html", "utf8");
 
