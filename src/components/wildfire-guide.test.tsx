@@ -30,6 +30,9 @@ describe("wildfire guide page", () => {
     for (const { term } of TERMS) expect(text).toContain(term);
     expect(html).toContain(SOURCES.terms.url);
     expect(html).toContain(SOURCES.zone.url);
+    expect(html).toContain(SOURCES.genasys.url.replaceAll("&", "&amp;"));
+    expect(text).toContain("centered on Glendale");
+    expect(text).toContain("not a Firepoint zone lookup");
     expect(html).toContain(SOURCES.alerts.url);
   });
 
@@ -64,6 +67,8 @@ describe("offline fallback", () => {
     expect(sw).toContain('url.pathname.startsWith("/api/")');
     expect(sw).toContain('caches.match("/offline.html")');
     expect(offline).toContain("not checked");
+    expect(offline).toContain(SOURCES.genasys.url.replaceAll("&", "&amp;"));
+    expect(offline).toContain("It is not a Firepoint zone lookup");
     expect(offline).not.toContain('type="checkbox"');
   });
 });

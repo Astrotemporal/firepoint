@@ -227,8 +227,10 @@ export function WildfireGuide() {
         <section className="g-sources g-card" aria-labelledby="sources-title">
           <h2 id="sources-title">Keep these open</h2>
           <p>Firepoint only explains the guidance. For orders, zones and conditions, go to the source.</p>
+          <p>Genasys Protect opens a third-party map <strong>centered on Glendale</strong>, not a Firepoint zone lookup.
+            Search your address there and check the issuing agency. A blank map does not establish safety.</p>
           <ul>
-            {[SOURCES.alerts, SOURCES.zone, SOURCES.nws, SOURCES.county, SOURCES.rsg, SOURCES.brochure].map((source) => (
+            {[SOURCES.alerts, SOURCES.zone, SOURCES.genasys, SOURCES.nws, SOURCES.county, SOURCES.rsg, SOURCES.brochure].map((source) => (
               <li key={source.url}><Out source={source} /></li>
             ))}
           </ul>
