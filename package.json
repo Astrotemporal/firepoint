@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/copy-map-worker.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/copy-map-worker.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -14,6 +16,7 @@
     "@lottiefiles/dotlottie-react": "^0.19.16",
     "@lottiefiles/dotlottie-web": "^0.80.0",
     "mapbox-gl": "^3.31.0",
+    "maplibre-gl": "6.11.2",
     "next": "16.3.6",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -26,6 +29,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
+    "playwright": "1.63.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^5.0.2"

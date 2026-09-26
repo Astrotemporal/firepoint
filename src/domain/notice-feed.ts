@@ -20,14 +20,16 @@ export function asNwsNoticeFeed(result: NwsActiveAlertsResult, generatedAt: stri
     staleAfterSeconds: NWS_FRESHNESS_SECONDS,
     detail: success ? null : `NWS request unavailable (${result.reason})`,
   };
-  const notices: OfficialNotice[] = success ? result.alerts.map((alert) => ({
+  // Query-side filtering is not enough: never promote a test/exercise message to a live notice.
+  const notices: OfficialNotice[] = success ? result.alerts.filter((alert) => alert.status === "Actual").map((alert) => ({
     kind: "official-notice",
     category: "weather",
     headline: alert.headline || alert.event,
     description: alert.description || null,
     instructions: alert.instruction,
     startsAt: alert.effective ?? null,
-    endsAt: alert.expires,
+    // CAP `expires` ends this MESSAGE; only `ends` describes the event end, if provided.
+    endsAt: alert.ends ?? null,
     // CAP "Actual" is message type/status, NOT an evacuation order or all-clear.
     issuerStatus: "unknown",
     match: "publisher-point-filter",

@@ -155,6 +155,10 @@ h2 { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(39px, 4.1v
 .area-button:hover { background: #35584c; }
 .area-button:disabled { opacity: .6; cursor: not-allowed; }
 .saved-note { font-size: 12px; color: #4a6954; line-height: 1.5; margin-top: 14px; }
+.map-section { border-top: 1px solid var(--line); padding: 78px 0 115px; }
+.map-section .section-kicker { max-width: 850px; margin: 0 auto 25px; }
+.map-section button { border: 1px solid var(--ink); border-radius: 3px; background: var(--ink); color: var(--white); font-weight: 700; }
+.map-section button:hover { background: #35584c; }
 .footer { background: var(--ink); color: white; }
 .footer-inner { max-width: 1220px; margin: auto; padding: 47px 0 27px; display: grid; grid-template-columns: 1fr 1fr; gap: 36px; }
 .footer-brand { font-size: 25px; font-weight: 800; letter-spacing: -1.5px; }
@@ -175,7 +179,7 @@ h2 { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(39px, 4.1v
   .status-layout,.prepare-grid,.area-section { display: block; } .status-layout { margin-top: 20px; padding-bottom: 64px; } .status-list { margin-top: 30px; } h2 { font-size: 47px; }
   .section-heading { display: block; margin-bottom: 27px; } .section-heading p { margin-top: 17px; } .source-cards { display: block; } .source-card { min-height: 222px; padding: 20px; margin-top: 11px; } .source-card strong { margin-top: 33px; font-size: 28px; }
   .prepare-aside p { margin-bottom: 29px; } .aside-decoration { display: none; } .checklist-card { padding: 20px 18px 12px; } .task-copy strong { font-size: 14px; }
-  .area-section { padding: 93px 0 80px; } .area-card { margin-top: 28px; } .footer-inner { padding-top: 42px; display: block; } .footer-links { margin-top: 30px; } .footer-inner .footer-fine { margin-top: 35px; }
+  .area-section { padding: 93px 0 80px; } .map-section { padding: 55px 0 80px; } .area-card { margin-top: 28px; } .footer-inner { padding-top: 42px; display: block; } .footer-links { margin-top: 30px; } .footer-inner .footer-fine { margin-top: 35px; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .source-card,.fire-token { transition: none; } }
 @media (prefers-reduced-motion: no-preference) { .map-panel,.map-note,.theme-toggle,.map-brand,.fire-map .mapboxgl-popup-content { transition: background-color .25s, color .25s; } }
