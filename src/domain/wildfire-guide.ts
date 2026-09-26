@@ -174,3 +174,31 @@ export const RETURNING = [
   "Check propane tanks, regulators and lines before turning gas on.",
   "Check the house carefully for hidden embers.",
 ] as const;
+
+/** Chapter photos: US government works (public domain), served from public/guide. */
+export const PHOTOS = {
+  cover: {
+    src: "/guide/cover-eaton-fire.jpg", width: 1600, height: 1200,
+    alt: "Smoke from the Eaton Fire rising over the ridges of the San Gabriel Mountains.",
+    credit: "Eaton Fire, January 8, 2025. Matt Muller, USDA Forest Service",
+    url: "https://commons.wikimedia.org/wiki/File:Eaton_Fire_on_2025-1-8_(cropped).jpg",
+  },
+  ready: {
+    src: "/guide/ready-brush-clearance.jpg", width: 1400, height: 1050,
+    alt: "Firefighters cutting and clearing dry brush on a slope below a house.",
+    credit: "Crews clear brush behind homes near Altadena. USDA Forest Service",
+    url: "https://commons.wikimedia.org/wiki/File:2025_Southern_California_fires_and_the_United_States_Forest_Service_(USFS)_-_Cleveland_National_Forest_Engine_Crews_clear_brush_at_the_Eaton_Fire_(54265150391).jpg",
+  },
+  set: {
+    src: "/guide/set-supply-kit.jpg", width: 1200, height: 797,
+    alt: "An emergency supply bag with water bottles, a flashlight, batteries, gloves, goggles, a whistle and a poncho.",
+    credit: "A ready-to-go supply kit. FEMA / American Red Cross",
+    url: "https://commons.wikimedia.org/wiki/File:FEMA_-_37174_-_Emergency_Preparedness_%22ready_to_go%22_kit..jpg",
+  },
+  go: {
+    src: "/guide/go-eaton-fire-night.jpg", width: 1400, height: 1050,
+    alt: "Fire engines on a residential street at night while a house burns.",
+    credit: "Initial attack on the Eaton Fire. USDA Forest Service",
+    url: "https://commons.wikimedia.org/wiki/File:Angeles_National_Forest_firefighters_during_initial_attack_of_the_Eaton_Firepng.png",
+  },
+} as const;

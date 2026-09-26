@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { WildfireGuide } from "./wildfire-guide";
-import { GO, KIT, SIX_PS, SOURCES, TERMS, TRAPPED } from "@/domain/wildfire-guide";
+import { GO, KIT, PHOTOS, SIX_PS, SOURCES, TERMS, TRAPPED } from "@/domain/wildfire-guide";
 import manifest from "../app/manifest";
 
 const html = renderToStaticMarkup(<WildfireGuide />);
@@ -31,6 +31,14 @@ describe("wildfire guide page", () => {
     expect(html).toContain(SOURCES.terms.url);
     expect(html).toContain(SOURCES.zone.url);
     expect(html).toContain(SOURCES.alerts.url);
+  });
+
+  it("shows each photo with alt text and a public-domain credit link", () => {
+    for (const photo of Object.values(PHOTOS)) {
+      expect(existsSync(`public${photo.src}`)).toBe(true);
+      expect(html).toContain(`alt="${photo.alt}"`);
+      expect(html).toContain(photo.url);
+    }
   });
 
   it("is informational only: no checkboxes, forms, or live source checks", () => {
