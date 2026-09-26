@@ -44,7 +44,7 @@ The `Makefile` also has `make gis-fetch`/`make gis-local` developer-only MCP ste
 
 - [Team start](docs/team-start.md): setup, small-change workflow, review gates, and proposed feature boundaries.
 - [Source policy](docs/source-policy.md): source trust, coverage, freshness, location privacy, offline behavior, and reports.
-- [Data contracts](docs/contracts.md): proposed and implemented schemas; check its status notes before claiming a route or UI integration exists.
+- [Data contracts](docs/contracts.md): proposed and implemented schemas; check its status notes before claiming a route or UI integration exists. [Observation aggregation](docs/observation-aggregation.md) is a pure contract for moderated community reports with no route, layer, or moderation owner behind it.
 - [Map decisions](docs/maps.md): current Mapbox home, secondary OpenFreeMap map, attribution, cost, privacy and limits.
 - [PWA storage, systems, audio and route handoff](docs/pwa-storage-and-systems.md): shipped versus proposed behavior and provenance gates.
 - [Resident stories](docs/user-stories.md), [four-person scope](docs/hackathon-roles.md), and [source/storage roadmap](docs/source-roadmap.md): proposals and ownership boundaries, not shipped services.
