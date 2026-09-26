@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState, type FormEvent, type ReactNode } from "react";
+import { useSheet } from "./use-sheet";
 import {
   compassDirection, directionsUrl, formatDuration, formatMiles, formatShortDistance,
 } from "@/evacuation/format";
@@ -44,52 +45,88 @@ type RowView = {
   details: ReactNode;
 };
 
-/** Compact bar under the map: one status line and two tappable route rows. */
+/**
+ * Directions drawer: a bottom sheet on phones (like Apple Maps, with an escape button where its search field sits)
+ * and a left side card on wider screens. The escape button, fire warning and status make up the peek.
+ */
 export function RouteBar(props: RouteBarProps) {
   const { location, origin, hazards, threat, escapeFirst, escapeRequested, online } = props;
   const [open, setOpen] = useState<"escape" | "shelter" | null>(null);
+  const [hidden, setHidden] = useState(false);
+  const { snap, setSnap, dragging, style, handleProps, sheetRef, innerRef, peekRef } = useSheet();
   const simulated = hazards.some((hazard) => hazard.simulated);
-  const shelterView = shelterRow(props);
-  const order = escapeFirst ? (["escape", "shelter"] as const) : (["shelter", "escape"] as const);
+
+  // The peek holds one line under the button: the fire warning when there is one, otherwise the location status.
+  const danger = origin && threat && escapeFirst ? (
+    <p className="ev-danger" role="status">
+      <span aria-hidden="true">🔥 </span>
+      {threat.edgeMeters <= 0
+        ? `You appear to be inside the hazard area (${threat.hazard.label}). `
+        : `${threat.hazard.label} is ${threat.edgeMeters < 161 ? "less than 0.1 mi" : formatMiles(threat.edgeMeters)} away. `}
+      {escapeRequested ? "Take the escape route." : "Tap Get escape route."}
+    </p>
+  ) : null;
+  const status = <StatusLine {...props} onEditing={(editing) => editing && setSnap("half")} />;
+
+  const requestEscape = () => { props.onRequestEscape(); setSnap("half"); };
+  const clearEscape = () => { props.onClearEscape(); setOpen(null); setSnap("peek"); };
 
   return (
-    <section className="ev-bar" aria-labelledby="ev-bar-title">
-      <h2 id="ev-bar-title" className="ev-sr-only">Directions</h2>
-      <StatusLine {...props} />
-      {origin && threat && escapeFirst && (
-        <p className="ev-danger" role="status">
-          <span aria-hidden="true">🔥 </span>
-          {threat.edgeMeters <= 0
-            ? `You appear to be inside the hazard area (${threat.hazard.label}). `
-            : `${threat.hazard.label} is ${threat.edgeMeters < 161 ? "less than 0.1 mi" : formatMiles(threat.edgeMeters)} away. `}
-          {escapeRequested ? "Take the escape route." : "Tap Get escape route."}
-        </p>
-      )}
-      {location.status !== "idle" && (
-        <ul className="ev-rows">
-          {order.map((kind) => kind === "escape" ? (
-            <EscapeRow
-              key="escape" requested={escapeRequested} view={escapeRequested ? escapeRow(props) : null}
-              appleMaps={props.appleMaps} expanded={open === "escape"}
-              onToggle={() => setOpen(open === "escape" ? null : "escape")}
-              onRequest={props.onRequestEscape} onClear={props.onClearEscape}
-            />
-          ) : (
-            <RouteRow
-              key="shelter" kind="shelter" view={shelterView} appleMaps={props.appleMaps}
-              expanded={open === "shelter"} onToggle={() => setOpen(open === "shelter" ? null : "shelter")}
-            />
-          ))}
-        </ul>
-      )}
-      <p className="ev-note">
-        {simulated ? "Demo: simulated fire, unverified shelters. " : "Shelters are unverified. "}
-        Fire marks stay on this device and are not reports; routes avoid them. Live fire data isn’t connected, so this
-        is not an all-clear. Follow official orders; to report a fire, call 911.{" "}
-        <button type="button" className="ev-link-button" onClick={props.onToggleSimulated}>
-          {simulated ? "Hide simulated fire" : "Show simulated fire"}
-        </button>
-      </p>
+    <section
+      ref={sheetRef} style={style} aria-labelledby="ev-bar-title"
+      className={`ev-bar ev-sheet ev-sheet-${snap}${dragging ? " ev-sheet-dragging" : ""}${hidden ? " ev-sheet-hidden" : ""}`}
+    >
+      <button
+        type="button" className="ev-sheet-handle" aria-expanded={snap !== "peek"} aria-controls="ev-sheet-body"
+        aria-label={snap === "full" ? "Collapse directions" : "Expand directions"} {...handleProps}
+      >
+        <span aria-hidden="true" />
+      </button>
+      <button
+        type="button" className="ev-sheet-tab" aria-expanded={!hidden} aria-controls="ev-sheet-body"
+        aria-label={hidden ? "Show directions" : "Hide directions"} onClick={() => setHidden(!hidden)}
+      >
+        <span aria-hidden="true">{hidden ? "›" : "‹"}</span>
+      </button>
+      <div className="ev-sheet-scroll">
+        <div className="ev-sheet-inner" ref={innerRef}>
+          <h2 id="ev-bar-title" className="ev-sr-only">Directions</h2>
+          <div className="ev-sheet-peek" ref={peekRef}>
+            {escapeRequested ? (
+              <ul className="ev-rows">
+                <EscapeRow
+                  view={escapeRow(props)} appleMaps={props.appleMaps} expanded={open === "escape"}
+                  onToggle={() => setOpen(open === "escape" ? null : "escape")} onClear={clearEscape}
+                />
+              </ul>
+            ) : (
+              <button type="button" className="ev-escape-cta" onClick={requestEscape}>
+                <span aria-hidden="true">🚗</span> Get escape route
+              </button>
+            )}
+            {danger ?? status}
+          </div>
+          <div id="ev-sheet-body" className="ev-sheet-body">
+            {danger && status}
+            {location.status !== "idle" && (
+              <ul className="ev-rows">
+                <RouteRow
+                  kind="shelter" view={shelterRow(props)} appleMaps={props.appleMaps}
+                  expanded={open === "shelter"} onToggle={() => setOpen(open === "shelter" ? null : "shelter")}
+                />
+              </ul>
+            )}
+            <p className="ev-note">
+              {simulated ? "Demo: simulated fire, unverified shelters. " : "Shelters are unverified. "}
+              Fire marks stay on this device and are not reports; routes avoid them. Live fire data isn’t connected, so this
+              is not an all-clear. Follow official orders; to report a fire, call 911.{" "}
+              <button type="button" className="ev-link-button" onClick={props.onToggleSimulated}>
+                {simulated ? "Hide simulated fire" : "Show simulated fire"}
+              </button>
+            </p>
+          </div>
+        </div>
+      </div>
       {!online && <span className="ev-sr-only" role="status">You are offline.</span>}
     </section>
   );
@@ -102,8 +139,11 @@ const FALLBACK_COPY = {
   unsupported: "This browser can’t share location. Routes start from Glendale City Hall.",
 } as const;
 
-function StatusLine({ location, outsideAreaMeters, online, pending, onUseLocation, onManualLocation }: RouteBarProps) {
-  const [editing, setEditing] = useState(false);
+function StatusLine({ location, outsideAreaMeters, online, pending, onUseLocation, onManualLocation, onEditing }: RouteBarProps & {
+  onEditing: (editing: boolean) => void;
+}) {
+  const [editing, setEditingState] = useState(false);
+  const setEditing = (next: boolean) => { setEditingState(next); onEditing(next); };
   const choose = (place: GeocodeResult) => { setEditing(false); onManualLocation(place); };
   const enterAddress = (
     <button type="button" className="ev-link-button" onClick={() => setEditing(!editing)} aria-expanded={editing}>
@@ -203,23 +243,13 @@ function AddressForm({ onLocated }: { onLocated: (place: GeocodeResult) => void 
 }
 
 /** Escape row: a call-to-action button until requested, then the normal route row plus a Clear control. */
-function EscapeRow({ requested, view, appleMaps, expanded, onToggle, onRequest, onClear }: {
-  requested: boolean; view: RowView | null; appleMaps: boolean; expanded: boolean; onToggle: () => void;
-  onRequest: () => void; onClear: () => void;
+function EscapeRow({ view, appleMaps, expanded, onToggle, onClear }: {
+  view: RowView; appleMaps: boolean; expanded: boolean; onToggle: () => void; onClear: () => void;
 }) {
-  if (!requested) {
-    return (
-      <li className="ev-row ev-row-escape">
-        <button type="button" className="ev-row-main ev-escape-cta" onClick={onRequest}>
-          <span aria-hidden="true">🚗 </span>Get escape route
-        </button>
-      </li>
-    );
-  }
   return (
     <RouteRow
       kind="escape" appleMaps={appleMaps} expanded={expanded} onToggle={onToggle}
-      view={{ ...view!, details: <>{view!.details}<ClearButton onClear={onClear} /></> }}
+      view={{ ...view, details: <>{view.details}<ClearButton onClear={onClear} /></> }}
     />
   );
 }

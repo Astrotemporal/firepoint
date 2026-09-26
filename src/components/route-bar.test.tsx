@@ -45,12 +45,12 @@ describe("RouteBar", () => {
     expect(html).toContain("Demo: simulated fire, unverified shelters.");
   });
 
-  it("lists the escape route first near a hazard, the shelter first otherwise", () => {
-    const order = (html: string) => html.indexOf("Escape route") < html.indexOf("Nearest shelter") ? "escape" : "shelter";
-    expect(order(render())).toBe("shelter");
-    const near = render({ escapeFirst: true, threat: { hazard: SIMULATED_HAZARDS[0], edgeMeters: 1200 } });
-    expect(order(near)).toBe("escape");
-    expect(near).toContain("Take the escape route.");
+  it("keeps the escape route at the top of the drawer once requested, with the fire warning in the peek", () => {
+    const html = render();
+    expect(html.indexOf("Escape route")).toBeLessThan(html.indexOf("Nearest shelter"));
+    expect(html.indexOf("Escape route")).toBeLessThan(html.indexOf('id="ev-sheet-body"'));
+    const near = render({ threat: { hazard: SIMULATED_HAZARDS[0], edgeMeters: 900 }, escapeFirst: true });
+    expect(near.indexOf("Take the escape route.")).toBeLessThan(near.indexOf('id="ev-sheet-body"'));
   });
 
   it("falls back to a compass arrow, straight-line distance, and address when routing fails", () => {
@@ -89,6 +89,14 @@ describe("RouteBar", () => {
     expect(denied).toContain("Enter address");
   });
 
+  it("renders as a drawer: a handle for phones, a hide tab for the side card, starting at the peek", () => {
+    const html = render({ escapeRequested: false });
+    expect(html).toMatch(/class="ev-bar ev-sheet ev-sheet-peek"/);
+    expect(html).toMatch(/<button[^>]*class="ev-sheet-handle"[^>]*aria-expanded="false"[^>]*aria-label="Expand directions"/);
+    expect(html).toMatch(/<button[^>]*class="ev-sheet-tab"[^>]*aria-label="Hide directions"/);
+    expect(html.indexOf("Get escape route")).toBeLessThan(html.indexOf('id="ev-sheet-body"'));
+  });
+
   it("never treats an empty hazard list as an all-clear", () => {
     expect(render({ hazards: [] })).toContain("this is not an all-clear");
   });
@@ -108,7 +116,7 @@ describe("RouteBar", () => {
       expect(html).toContain("Get escape route");
       expect(html).not.toContain("toward Burbank via SR-134");
       expect(html).not.toContain("destination=34.180800"); // no Go link for the (unrequested) escape zone
-      expect(html.match(/aria-expanded/g)).toHaveLength(1); // only the shelter row toggles
+      expect(html.match(/class="ev-row-main" aria-expanded/g)).toHaveLength(1); // only the shelter row toggles
     });
 
     it("does not compute or highlight an escape route just because a start location exists", () => {
@@ -121,7 +129,7 @@ describe("RouteBar", () => {
       const html = render(); // default: escapeRequested + a resolved plan.escape
       expect(html).toContain("toward Burbank via SR-134 · 9 min");
       expect(html).toContain("Hide escape route");
-      expect(html.match(/aria-expanded/g)).toHaveLength(2);
+      expect(html.match(/class="ev-row-main" aria-expanded/g)).toHaveLength(2);
     });
 
     it("shows a pending message once requested but before a route comes back", () => {

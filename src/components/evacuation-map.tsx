@@ -347,7 +347,7 @@ function MapboxView({
     const { shelter, zone } = planTargets(plan);
     if (shelter) bounds.extend(toLngLat(shelter));
     if (zone) bounds.extend(toLngLat(zone));
-    map.fitBounds(bounds, { padding: { top: 72, bottom: 48, left: 32, right: 64 }, maxZoom: 16, duration: 900 });
+    map.fitBounds(bounds, { padding: fitPadding(map.getContainer()), maxZoom: 16, duration: 900 });
   }, [fitKey, plan, origin, loaded]);
 
   return (
@@ -361,4 +361,15 @@ function MapboxView({
       {failed && <MapNotice text="The map couldn’t load. Check your connection; routes below still work." />}
     </>
   );
+}
+
+/** Keep fitted routes clear of the directions drawer: the side card on wide screens, the raised sheet on phones. */
+function fitPadding(container: HTMLElement) {
+  if (window.matchMedia("(min-width: 760px)").matches) return { top: 72, bottom: 48, left: 440, right: 64 };
+  const shell = container.closest<HTMLElement>(".ev-shell");
+  const px = (name: string) => (shell ? parseFloat(getComputedStyle(shell).getPropertyValue(name)) || 0 : 0);
+  // The map already ends at the peek, so only the part of the sheet above it covers routes.
+  const covered = Math.max(0, px("--ev-sheet-h") - px("--ev-peek"));
+  const bottom = Math.min(container.clientHeight * 0.6, covered + 32);
+  return { top: 150, bottom: Math.max(48, bottom), left: 32, right: 48 };
 }
