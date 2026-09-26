@@ -2,7 +2,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { PHOTOS, SOURCES, TERMS, ZONES, type GuideContent, type Source } from "@/domain/wildfire-guide";
 import { guideContent } from "@/domain/guide-content";
+import { guideSpeechPassages } from "@/domain/guide-speech";
 import type { Locale } from "@/i18n/locales";
+import { GuideListen } from "./guide-listen";
 import { LanguageSelect } from "./language-select";
 import { RegisterServiceWorker } from "./register-service-worker";
 
@@ -92,6 +94,7 @@ function ZoneRings({ c }: { c: GuideContent }) {
 export function WildfireGuide({ locale = "en" }: { locale?: Locale } = {}) {
   const c = guideContent(locale);
   const translated = locale !== "en";
+  const passages = guideSpeechPassages(locale, c);
   const [ready, set, go] = c.ui.coverTitle;
   return (
     <div className="guide" lang={locale}>
@@ -134,6 +137,8 @@ export function WildfireGuide({ locale = "en" }: { locale?: Locale } = {}) {
             <p><strong>{c.ui.urgentCall}</strong> {c.ui.urgentNote}</p>
             <p className="g-urgent-links"><Out source={SOURCES.zone} c={c}>{c.ui.checkZone}</Out><Out source={SOURCES.alerts} c={c}>{c.ui.signUpAlerts}</Out></p>
           </aside>
+          {/* Read-aloud is English-only until the translations are reviewed: nothing renders here for es/hy. */}
+          {passages && <GuideListen locale={locale} passages={passages} />}
         </section>
 
         <nav className="g-contents g-card" aria-labelledby="contents-title">

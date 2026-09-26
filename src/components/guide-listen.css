@@ -1,0 +1,13 @@
+/* "Listen to this guide" on /prepare: one small card under the cover text, English pages only. */
+.g-listen { margin-top: 16px; padding: 16px 20px; border-radius: var(--radius); background: var(--white); box-shadow: var(--shadow); }
+.g-listen-intro { font-size: 14px; line-height: 1.5; color: var(--text); }
+.g-listen-intro strong { color: #000; }
+.g-listen-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.guide .g-listen button {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 96px; padding: 0 20px;
+  border: 2px solid var(--ink); border-radius: 12px; background: var(--ink); color: var(--white); font: 700 16px var(--sans); cursor: pointer;
+}
+.guide .g-listen button.g-listen-stop { background: var(--white); color: var(--ink); }
+.guide .g-listen button:disabled { opacity: .45; cursor: default; }
+.guide .g-listen button:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+.g-listen-status { min-height: 1.5em; margin-top: 10px; font-size: 14px; line-height: 1.5; color: var(--muted); }
