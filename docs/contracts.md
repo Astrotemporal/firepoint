@@ -52,6 +52,7 @@ Each source produces its own check even when it fails. The route answers 200 whe
 - These are **regulatory reference maps from a dated snapshot**, never current conditions, evacuation zones or a property safety rating. `sourceAsOf` is the snapshot fetch time; `origin.updatedAt` is the publisher's last edit of that layer; `origin.issuer` is the agency (CAL FIRE, FEMA, CGS, DWR, USGS).
 - `lookup: outside` means "not in a mapped zone", which is **not** "no hazard"; each item's `caveat` carries the server's notes and disclaimer. CAL FIRE `NonWildland` is unzoned, not safe.
 - A point outside Glendale plus about 2 km gives `lookup: unavailable, coverage: out-of-bounds` for every layer and a check status of `outside-coverage`. A rejected key (401) or rate limit (429) is `down` with a named detail.
+- **Local development without the event key:** set `GLENDALE_GIS_MCP_URL=http://127.0.0.1:8765/mcp` and any made-up `GLENDALE_GIS_MCP_KEY` in `.env.local`, then run `npm run gis:local` in a second terminal (needs [uv](https://docs.astral.sh/uv/)). It runs the `.mcp.json`-pinned server over HTTP on this machine only, requiring that same key. The adapter accepts plain HTTP only for `127.0.0.1`/`localhost`.
 - The hazard layers' reuse terms still need the per-source review in [source policy](source-policy.md) before resident launch.
 
 ## Storage boundary
