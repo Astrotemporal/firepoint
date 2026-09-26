@@ -7,8 +7,9 @@ import { SAFE_ZONES, SHELTERS } from "@/evacuation/data/glendale";
 import { GUIDE_ES } from "@/domain/wildfire-guide.es";
 import { GUIDE_HY } from "@/domain/wildfire-guide.hy";
 import type { Locale } from "@/i18n/locales";
+import { mapText } from "@/i18n/map";
 import Home from "../app/page";
-import { PUBLIC_STATUS_BODY, PUBLIC_STATUS_TITLE, PublicMapScreen } from "./public-map-screen";
+import { PUBLIC_MAP_FAILED, PUBLIC_MAP_LABEL, PUBLIC_STATUS_BODY, PUBLIC_STATUS_TITLE, PublicMapScreen } from "./public-map-screen";
 
 // The homepage reads the saved language from request cookies; outside a request, use the test's choice.
 const request = vi.hoisted(() => ({ locale: "en" as Locale }));
@@ -18,7 +19,7 @@ afterEach(() => { vi.unstubAllEnvs(); request.locale = "en"; });
 /** Markup the unverified routing prototype produces and the public screen must never contain. */
 const PROTOTYPE_MARKERS = [
   "ev-escape-cta", "Escape", "ev-bar", "ev-sheet", "ev-go", "Nearest shelter", "Escape route", "Go</a>",
-  "Allow location access", "Enter address", "Routes start from", "ev-locate", "routes avoid",
+  "Allow location access", "Use my location", "ev-ask-button", "Enter address", "Routes start from", "ev-locate", "routes avoid",
   ...SHELTERS.map((shelter) => shelter.name),
   ...SAFE_ZONES.map((zone) => zone.name),
 ];
@@ -39,8 +40,10 @@ describe("public homepage (release gate off)", () => {
     expect(html).toContain("call 911");
     expect(html).toContain('href="/prepare"');
     expect(html).toContain('href="/prepare#sources-title"');
-    expect(html).toMatch(/<a lang="en" class="map-brand" aria-label="Firepoint: official sources and the Ready, Set, Go guide"/);
+    // The prep link is named by its visible text; no aria-label promises a "prep list".
+    expect(html).toMatch(/<a class="map-brand" href="\/prepare"><span class="brand-mark"[^>]*><span><\/span><\/span><span>Official sources &amp; prep /);
     expect(html).not.toContain("prep list");
+    expect(html).not.toContain("preparation list");
     expect(html).toMatch(/<button[^>]*class="theme-toggle"/);
     expect(html).toContain("lang-select");
   });
@@ -67,20 +70,38 @@ describe("public homepage (release gate off)", () => {
 describe("public homepage languages", () => {
   const card = (html: string) => html.match(/<section[^>]*class="ev-public-status"[^>]*>[\s\S]*<\/section>/)?.[0] ?? "";
 
-  it("marks its English-only card, mark control and English controls with lang=\"en\" and shows no fallback on English", () => {
+  it("marks its English-only card with lang=\"en\" and shows no fallback on English", () => {
     const html = renderToStaticMarkup(<PublicMapScreen locale="en" localized={publicScreenLocalized("en")} />);
+    expect(html).toMatch(/<main lang="en" class="map-screen ev-shell ev-shell-static">/);
     expect(card(html)).toMatch(/^<section[^>]*lang="en"/);
-    expect(html).toMatch(/<div lang="en"><div class="map-panel">/);
-    expect(html).toMatch(/<button type="button" lang="en" class="theme-toggle"/);
     expect(html).not.toContain(ENGLISH_ONLY_NOTICE);
     expect(html).not.toContain("ev-public-status-localized");
+  });
+
+  it("never uses the map strings that promise routes, in any language", () => {
+    for (const locale of ["en", "es", "hy"] as const) {
+      const t = mapText(locale);
+      const html = renderToStaticMarkup(<PublicMapScreen locale={locale} localized={publicScreenLocalized(locale)} />);
+      for (const text of [t.mapLabel, t.mapFailed, t.noMapToken, t.placed, t.marksOnDevice(1), t.marksOnDevice(2), t.prepLinkLabel]) {
+        expect(html, `${locale}: ${text}`).not.toContain(text);
+      }
+    }
+    expect(PUBLIC_MAP_LABEL).toBe("Map with your private marks. No live incidents, shelters or routes are shown.");
+    expect(PUBLIC_MAP_FAILED).toBe("The map couldn’t load. Check your connection.");
   });
 
   it.each([["es", GUIDE_ES], ["hy", GUIDE_HY]] as const)("on %s says the status is English only and reuses only existing guide lines", (locale, guide) => {
     const localized = publicScreenLocalized(locale);
     const html = renderToStaticMarkup(<PublicMapScreen locale={locale} localized={localized} />);
     expect(ENGLISH_ONLY_NOTICE).toBe("Map status is available in English only.");
+    expect(html).toMatch(new RegExp(`<main lang="${locale}" class="map-screen ev-shell ev-shell-static">`));
     expect(card(html)).toMatch(/^<section[^>]*lang="en"/);
+    // Controls and the mark button use the existing map translations (not new text).
+    const t = mapText(locale);
+    expect(html).toContain(`aria-label="${t.fireLabel}"`);
+    expect(html).toContain(`aria-label="${t.switchToDark}"`);
+    expect(html).toContain(`<span>${t.prepLink} <span aria-hidden="true">↗</span></span>`);
+    expect(html).toContain(t.localToDevice);
     expect(html).toContain(`<p class="ev-public-status-english-only">${ENGLISH_ONLY_NOTICE}</p>`);
     // The only non-English text is copied verbatim from that language's existing /prepare guide translation.
     expect(localized).toEqual({ locale, urgentCall: guide.ui.urgentCall, guideTitle: guide.ui.title });
@@ -128,6 +149,7 @@ describe("homepage release gate", () => {
     const html = renderToStaticMarkup(await Home());
     expect(html).not.toContain("ev-shell-static");
     expect(html).toContain("ev-escape-cta");
-    expect(html).toContain("Allow location access to see routes from where you are.");
+    expect(html).toContain("Use my location");
+    expect(html).toContain('class="ev-ask-button"');
   });
 });

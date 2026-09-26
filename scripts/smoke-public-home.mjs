@@ -5,9 +5,9 @@ import { chromium } from "playwright";
 
 const base = process.env.FIREPOINT_PREVIEW_URL ?? "http://127.0.0.1:3000";
 const STATUS_TITLE = "No verified incident, shelter or route loaded";
-const FORBIDDEN_SELECTORS = [".ev-escape-cta", ".ev-bar", ".ev-sheet", ".ev-go", ".ev-pin", ".ev-locate", ".ev-you", ".ev-start", ".ev-status", ".ev-form"];
+const FORBIDDEN_SELECTORS = [".ev-escape-cta", ".ev-bar", ".ev-sheet", ".ev-go", ".ev-pin", ".ev-locate", ".ev-ask-button", ".ev-you", ".ev-start", ".ev-status", ".ev-form"];
 const FORBIDDEN_TEXT = [
-  "Escape", "Nearest shelter", "Allow location access", "Routes start from", "Enter address", "routes avoid",
+  "Escape", "Nearest shelter", "Allow location access", "Use my location", "Routes start from", "Enter address", "routes avoid",
   "Glendale Civic Auditorium", "Pacific Community Center", "Sparr Heights Community Center",
   "Glendale Galleria / I-5 corridor", "Burbank via SR-134",
 ];
@@ -32,10 +32,12 @@ try {
     const directions = [];
     const shippedPrototype = [];
     // The prototype must not even be shipped: no script the public page loads may carry its markup or provider URL.
+    // (Mapbox GL's own unused GeolocateControl also contains "watchPosition", so that word is not a signal here;
+    // real geolocation use is counted at runtime above.)
     context.on("response", async (response) => {
       if (!response.url().includes("/_next/static/") || !response.url().endsWith(".js")) return;
       const body = await response.text().catch(() => "");
-      if (/api\.mapbox\.com\/directions|ev-escape-cta|watchPosition/.test(body)) shippedPrototype.push(response.url());
+      if (/api\.mapbox\.com\/directions|ev-escape-cta|ev-sheet-handle|ev-ask-button/.test(body)) shippedPrototype.push(response.url());
     });
     await context.route("**/*", (route) => {
       const url = route.request().url();
@@ -44,38 +46,46 @@ try {
     });
     const page = await context.newPage();
     try {
-      let response;
-      for (let attempt = 0; attempt < 24; attempt += 1) {
-        try { response = await page.goto(base + "/", { waitUntil: "domcontentloaded", timeout: 2000 }); break; }
-        catch (error) { if (attempt === 23) throw error; await new Promise((resolve) => setTimeout(resolve, 250)); }
+      // English (no cookie), then Spanish and Armenian via the saved-language cookie. Same gate, same English status.
+      for (const locale of ["en", "es", "hy"]) {
+        await context.clearCookies();
+        if (locale !== "en") await context.addCookies([{ name: "firepoint.lang", value: locale, url: base }]);
+        let response;
+        for (let attempt = 0; attempt < 24; attempt += 1) {
+          try { response = await page.goto(base + "/", { waitUntil: "domcontentloaded", timeout: 2000 }); break; }
+          catch (error) { if (attempt === 23) throw error; await new Promise((resolve) => setTimeout(resolve, 250)); }
+        }
+        check(response?.status() === 200, `${name}/${locale}: homepage returned ${response?.status()}`);
+        await page.locator(".ev-public-status-title").waitFor();
+        // Let hydration, stored-mark reads, service-worker registration and any (forbidden) effects run.
+        await page.waitForTimeout(3000);
+        const title = (await page.locator(".ev-public-status-title").textContent())?.trim();
+        check(title === STATUS_TITLE, `${name}/${locale}: status title was ${JSON.stringify(title)}`);
+        check(await page.locator(`main[lang="${locale}"]`).count() === 1, `${name}/${locale}: main is not lang=${locale}`);
+        check(await page.locator('section.ev-public-status[lang="en"]').count() === 1, `${name}/${locale}: status card is not marked lang=en`);
+        check(await page.locator(".fire-token").count() === 1, `${name}/${locale}: fire mark button missing`);
+        check(await page.locator('a.map-brand[href="/prepare"]').count() === 1, `${name}/${locale}: prep link missing`);
+        check(await page.locator(`select.lang-select option[value="${locale}"]:checked`).count() === 1, `${name}/${locale}: language select not on ${locale}`);
+        for (const selector of FORBIDDEN_SELECTORS) check(await page.locator(selector).count() === 0, `${name}/${locale}: found ${selector}`);
+        const text = await page.locator("body").innerText();
+        for (const needle of FORBIDDEN_TEXT) check(!text.includes(needle), `${name}/${locale}: page text contains ${JSON.stringify(needle)}`);
+        if (locale === "en") {
+          check(await page.locator(".ev-public-status-english-only").count() === 0, `${name}/en: English-only notice shown on English`);
+        } else {
+          const englishOnly = (await page.locator(".ev-public-status-english-only").textContent())?.trim();
+          check(englishOnly === "Map status is available in English only.", `${name}/${locale}: fallback line was ${JSON.stringify(englishOnly)}`);
+          const localized = await page.locator(`.ev-public-status-localized[lang="${locale}"]`).textContent();
+          check(localized?.includes("911") === true, `${name}/${locale}: localized 911 line missing`);
+        }
+        check(await page.evaluate(() => window.__geolocationCalls) === 0, `${name}/${locale}: geolocation was requested`);
+        check(directions.length === 0, `${name}/${locale}: directions/geocoding requested: ${directions.join(", ")}`);
+        check(shippedPrototype.length === 0, `${name}/${locale}: prototype code shipped in ${shippedPrototype.join(", ")}`);
+        console.log(`${name}/${locale}: public homepage OK — ${JSON.stringify(title)}; geolocation calls 0; directions requests 0; prototype chunks 0${locale === "en" ? "" : "; English-only notice shown"}`);
       }
-      check(response?.status() === 200, `${name}: homepage returned ${response?.status()}`);
-      await page.locator(".ev-public-status-title").waitFor();
-      // Let hydration, stored-mark reads, service-worker registration and any (forbidden) effects run.
-      await page.waitForTimeout(3000);
-      const title = (await page.locator(".ev-public-status-title").textContent())?.trim();
-      check(title === STATUS_TITLE, `${name}: status title was ${JSON.stringify(title)}`);
-      check(await page.locator(".fire-token").count() === 1, `${name}: fire mark button missing`);
-      check(await page.locator('a.map-brand[href="/prepare"]').count() === 1, `${name}: prep link missing`);
-      for (const selector of FORBIDDEN_SELECTORS) check(await page.locator(selector).count() === 0, `${name}: found ${selector}`);
-      const text = await page.locator("body").innerText();
-      for (const needle of FORBIDDEN_TEXT) check(!text.includes(needle), `${name}: page text contains ${JSON.stringify(needle)}`);
-      check(await page.evaluate(() => window.__geolocationCalls) === 0, `${name}: geolocation was requested`);
-      check(directions.length === 0, `${name}: directions/geocoding requested: ${directions.join(", ")}`);
-      check(shippedPrototype.length === 0, `${name}: prototype code shipped in ${shippedPrototype.join(", ")}`);
-      // A saved non-English language: the card stays English, says so, and shows only the guide's existing 911 line.
-      await context.addCookies([{ name: "firepoint.lang", value: "es", url: base }]);
-      await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-      await page.locator(".ev-public-status-title").waitFor();
-      const englishOnly = (await page.locator(".ev-public-status-english-only").textContent())?.trim();
-      check(englishOnly === "Map status is available in English only.", `${name}: es fallback line was ${JSON.stringify(englishOnly)}`);
-      check(await page.locator('section.ev-public-status[lang="en"]').count() === 1, `${name}: es card is not marked lang=en`);
-      check((await page.locator('.ev-public-status-localized[lang="es"]').textContent())?.includes("911") === true, `${name}: es 911 line missing`);
-      check(await page.locator(".ev-public-status-title").textContent() === STATUS_TITLE, `${name}: es status title changed`);
       await context.clearCookies();
       const guide = await page.goto(base + "/prepare", { waitUntil: "domcontentloaded" });
       check(guide?.status() === 200 && await page.locator("#guide-title").count() === 1, `${name}: /prepare did not render`);
-      console.log(`${name}: public homepage OK — ${JSON.stringify(title)}; geolocation calls 0; directions requests 0; prototype chunks 0; es fallback shown`);
+      console.log(`${name}: /prepare OK`);
     } finally { await context.close(); }
   }
 } finally { await browser.close(); }
