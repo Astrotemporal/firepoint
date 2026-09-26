@@ -45,14 +45,17 @@ type RowView = {
 };
 
 /**
- * Directions drawer: a bottom sheet on phones (like Apple Maps, with an escape button where its search field sits)
- * and a left side card on wider screens. The escape button, fire warning and status make up the peek.
+ * Directions drawer: a left side card on wider screens. On phones only the escape button shows (the sheet is
+ * "idle") until it is pressed; it then opens as a bottom sheet, and sliding it all the way down brings the button back. The escape button, fire warning and status make up the peek.
  */
 export function RouteBar(props: RouteBarProps) {
   const { location, origin, threat, escapeFirst, escapeRequested, online } = props;
   const [open, setOpen] = useState<"escape" | "shelter" | null>(null);
   const [hidden, setHidden] = useState(false);
-  const { snap, setSnap, dragging, style, handleProps, sheetRef, innerRef, peekRef } = useSheet();
+  // On phones, sliding the drawer all the way down closes the escape route and brings the button back.
+  const { snap, setSnap, dragging, style, handleProps, sheetRef, innerRef, peekRef } = useSheet({
+    onCollapse: () => { if (escapeRequested) clearEscape(); },
+  });
 
   // The peek holds one line under the button: the fire warning when there is one, otherwise the location status.
   const danger = origin && threat && escapeFirst ? (
@@ -72,7 +75,7 @@ export function RouteBar(props: RouteBarProps) {
   return (
     <section
       ref={sheetRef} style={style} aria-labelledby="ev-bar-title"
-      className={`ev-bar ev-sheet ev-sheet-${snap}${dragging ? " ev-sheet-dragging" : ""}${hidden ? " ev-sheet-hidden" : ""}`}
+      className={`ev-bar ev-sheet ev-sheet-${snap}${dragging ? " ev-sheet-dragging" : ""}${hidden ? " ev-sheet-hidden" : ""}${escapeRequested ? "" : " ev-sheet-idle"}`}
     >
       <button
         type="button" className="ev-sheet-handle" aria-expanded={snap !== "peek"} aria-controls="ev-sheet-body"
@@ -235,24 +238,24 @@ function AddressForm({ onLocated }: { onLocated: (place: GeocodeResult) => void 
   );
 }
 
-/** Escape row: a call-to-action button until requested, then the normal route row plus a Clear control. */
+/** Escape row: the normal route row plus a close control that brings the Escape button back (side card only; phones swipe down). */
 function EscapeRow({ view, appleMaps, expanded, onToggle, onClear }: {
   view: RowView; appleMaps: boolean; expanded: boolean; onToggle: () => void; onClear: () => void;
 }) {
   return (
     <RouteRow
-      kind="escape" appleMaps={appleMaps} expanded={expanded} onToggle={onToggle}
-      view={{ ...view, details: <>{view.details}<ClearButton onClear={onClear} /></> }}
+      kind="escape" view={view} appleMaps={appleMaps} expanded={expanded} onToggle={onToggle}
+      action={
+        <button type="button" className="ev-escape-close" aria-label="Hide escape route" onClick={onClear}>
+          <span aria-hidden="true">✕</span>
+        </button>
+      }
     />
   );
 }
 
-function ClearButton({ onClear }: { onClear: () => void }) {
-  return <button type="button" className="ev-button ev-button-quiet" onClick={onClear}>Hide escape route</button>;
-}
-
-function RouteRow({ kind, view, appleMaps, expanded, onToggle }: {
-  kind: "escape" | "shelter"; view: RowView; appleMaps: boolean; expanded: boolean; onToggle: () => void;
+function RouteRow({ kind, view, appleMaps, expanded, onToggle, action }: {
+  kind: "escape" | "shelter"; view: RowView; appleMaps: boolean; expanded: boolean; onToggle: () => void; action?: ReactNode;
 }) {
   const detailsId = useId();
   return (
@@ -270,6 +273,7 @@ function RouteRow({ kind, view, appleMaps, expanded, onToggle }: {
           Go<span className="ev-sr-only"> to {view.goTo.name} in {appleMaps ? "Apple Maps" : "Google Maps"}</span>
         </a>
       )}
+      {action}
       <div id={detailsId} className="ev-row-details" hidden={!expanded}>{view.details}</div>
     </li>
   );

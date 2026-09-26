@@ -91,7 +91,7 @@ describe("RouteBar", () => {
 
   it("renders as a drawer: a handle for phones, a hide tab for the side card, starting at the peek", () => {
     const html = render({ escapeRequested: false });
-    expect(html).toMatch(/class="ev-bar ev-sheet ev-sheet-peek"/);
+    expect(html).toMatch(/class="ev-bar ev-sheet ev-sheet-peek ev-sheet-idle"/);
     expect(html).toMatch(/<button[^>]*class="ev-sheet-handle"[^>]*aria-expanded="false"[^>]*aria-label="Expand directions"/);
     expect(html).toMatch(/<button[^>]*class="ev-sheet-tab"[^>]*aria-label="Hide directions"/);
     expect(html.indexOf("> Escape</button>")).toBeLessThan(html.indexOf('id="ev-sheet-body"'));
@@ -130,6 +130,18 @@ describe("RouteBar", () => {
       expect(html).toContain("toward Burbank via SR-134 · 9 min");
       expect(html).toContain("Hide escape route");
       expect(html.match(/class="ev-row-main" aria-expanded/g)).toHaveLength(2);
+    });
+
+    it("keeps the hide control visible on the escape row, not inside its collapsed details", () => {
+      const html = render();
+      const close = html.search(/<button[^>]*class="ev-escape-close"[^>]*aria-label="Hide escape route"/);
+      expect(close).toBeGreaterThan(-1);
+      expect(close).toBeLessThan(html.indexOf('class="ev-row-details"'));
+    });
+
+    it("marks the drawer idle (phones show only the button) until escape is requested", () => {
+      expect(render(notRequested)).toMatch(/class="[^"]*ev-sheet-idle/);
+      expect(render()).not.toContain("ev-sheet-idle");
     });
 
     it("shows a pending message once requested but before a route comes back", () => {

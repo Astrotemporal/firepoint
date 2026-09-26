@@ -9,9 +9,10 @@ const TAP_SLOP = 6;
 /**
  * Drag, tap and measure logic for the directions bottom sheet (phones; desktop CSS ignores the height).
  * Publishes the visible height as --ev-sheet-h and the peek height as --ev-peek on the enclosing .ev-shell,
- * so the map and its floating buttons can stay clear of the sheet.
+ * so the map and its floating buttons can stay clear of the sheet. `onCollapse` runs when the person
+ * brings the sheet all the way down (drag, tap or arrow key on the handle).
  */
-export function useSheet() {
+export function useSheet({ onCollapse }: { onCollapse?: () => void } = {}) {
   const sheetRef = useRef<HTMLElement | null>(null);
   const innerRef = useRef<HTMLDivElement | null>(null);
   const peekRef = useRef<HTMLDivElement | null>(null);
@@ -20,6 +21,7 @@ export function useSheet() {
   const [drag, setDrag] = useState<number | null>(null);
   const gesture = useRef<{ startY: number; startHeight: number; lastY: number; lastTime: number; velocity: number; moved: boolean } | null>(null);
   const suppressClick = useRef(false);
+  const settle = (next: Snap) => { setSnap(next); if (next === "peek") onCollapse?.(); };
 
   const measure = useCallback(() => {
     const sheet = sheetRef.current, inner = innerRef.current, peek = peekRef.current;
@@ -71,16 +73,16 @@ export function useSheet() {
     gesture.current = null;
     if (!g?.moved || !heights || drag === null) return;
     suppressClick.current = true;
-    setSnap(settleSnap(drag, g.velocity, heights));
+    settle(settleSnap(drag, g.velocity, heights));
     setDrag(null);
   };
   const onClick = () => {
     if (suppressClick.current) { suppressClick.current = false; return; }
-    if (heights) setSnap(cycleSnap(snap, heights));
+    if (heights) settle(cycleSnap(snap, heights));
   };
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === "ArrowUp") { event.preventDefault(); setSnap(snap === "peek" ? "half" : "full"); }
-    if (event.key === "ArrowDown") { event.preventDefault(); setSnap(snap === "full" ? "half" : "peek"); }
+    if (event.key === "ArrowDown") { event.preventDefault(); settle(snap === "full" ? "half" : "peek"); }
   };
 
   return {
