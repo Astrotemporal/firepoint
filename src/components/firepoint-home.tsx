@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AreaMap } from "@/components/area-map";
 
@@ -97,11 +98,11 @@ export function FirepointHome() {
   return (
     <div className="site-shell">
       <header className="topbar">
-        <a className="brand" href="#top" aria-label="Firepoint home">
+        <Link className="brand" href="/" aria-label="Firepoint map">
           <span className="brand-mark" aria-hidden="true"><span /></span>
           <span>firepoint<span className="brand-period">.</span></span>
-        </a>
-        <a className="top-action" href="#official">Official sources <span aria-hidden="true">↗</span></a>
+        </Link>
+        <nav className="top-nav" aria-label="Sections"><Link className="top-action" href="/">Map</Link><a className="top-action" href="#official">Official sources <span aria-hidden="true">↗</span></a></nav>
       </header>
 
       <main id="top">

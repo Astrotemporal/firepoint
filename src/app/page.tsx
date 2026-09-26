@@ -1,5 +1,5 @@
-import { FirepointHome } from "@/components/firepoint-home";
+import { MapScreen } from "@/components/map-screen";
 
 export default function Home() {
-  return <FirepointHome />;
+  return <MapScreen />;
 }

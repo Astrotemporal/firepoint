@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Preloader } from "@/components/preloader";
+import { THEME_SCRIPT } from "@/components/theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,5 +17,11 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
-  return <html lang="en"><body><Preloader />{children}</body></html>;
+  // The theme script sets data-theme on <html> before hydration, hence suppressHydrationWarning.
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <head><script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} /></head>
+      <body><Preloader />{children}</body>
+    </html>
+  );
 }
