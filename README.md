@@ -49,5 +49,6 @@ The `Makefile` also has `make gis-fetch`/`make gis-local` developer-only MCP ste
 - [Data contracts](docs/contracts.md): proposed and implemented schemas; check its status notes before claiming a route or UI integration exists.
 - [Map decisions](docs/maps.md): online basemap attribution and limits.
 - [Resident stories](docs/user-stories.md), [four-person scope](docs/hackathon-roles.md), and [source/storage roadmap](docs/source-roadmap.md): proposals and ownership boundaries, not shipped services.
+- [Product vision](docs/vision.md) and [broader API roadmap](docs/roadmap.md): teammate proposals for later phases. Check their assumptions against the source policy and current status before promising a live feature.
 
 The NWS point-alert adapter and route are the only implemented source integration, and are inactive without a real identifying contact; the browser currently displays official links instead of calling it. Other documents describe future work. Before showing a source in the app, verify its publisher, jurisdiction, update behavior, access terms, and geographic coverage. Never substitute a map view, neighborhood name, or empty feed response for an evacuation status.
