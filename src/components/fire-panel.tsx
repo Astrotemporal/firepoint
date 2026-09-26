@@ -115,7 +115,7 @@ export function FirePanel({ ready, count, hint, map, onPlace, onHint, onClear }:
       <span className="sr-only" aria-live="polite">
         {hint ?? (ready ? `${count} ${count === 1 ? "mark" : "marks"} on this device · private, not reports` : "Local to this device")}
       </span>
-      {count > 0 && <RingLegend ring={LEGEND_HALO} dashed note="around each mark. Not a zone, perimeter or report; routes ignore it." />}
+      {count > 0 && <RingLegend ring={LEGEND_HALO} dashed note="grey ring around each mark. Not a zone, perimeter or report; routes ignore it." />}
       {ghost && <Flame className="fire-ghost" style={{ left: ghost.x, top: ghost.y }} />}
     </div>
   );

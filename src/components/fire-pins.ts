@@ -25,7 +25,7 @@ export function createPin(id: string, map: MapboxMap, handlers: { current: PinHa
   content.className = "fire-popup";
   const title = document.createElement("strong");
   const note = document.createElement("small");
-  note.textContent = "Private to this device, not a report. The dashed 500 m halo is only a display sketch, not a fire perimeter or evacuation zone. It does not affect routes.";
+  note.textContent = "Private to this device, not a report. The grey dashed 500 m halo is only a display sketch, not a fire perimeter or evacuation zone. It does not affect routes.";
   const remove = document.createElement("button");
   remove.type = "button";
   remove.textContent = "Remove mark";

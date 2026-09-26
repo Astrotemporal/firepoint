@@ -118,7 +118,7 @@ export function RouteBar(props: RouteBarProps) {
               </ul>
             )}
             <p className="ev-note">
-              Shelters are unverified. Dashed red mark halos are private sketches, not reports, fire extents or evacuation zones; they do not affect routes. Live fire data isn’t connected, so this is not an all-clear. Follow official orders; to report a fire, call 911.
+              Shelters are unverified. Dashed grey mark halos are private sketches, not reports, fire extents or evacuation zones; they do not affect routes. Live fire data isn’t connected, so this is not an all-clear. Follow official orders; to report a fire, call 911.
             </p>
           </div>
         </div>

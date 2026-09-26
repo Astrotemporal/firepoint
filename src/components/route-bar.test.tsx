@@ -104,7 +104,7 @@ describe("RouteBar", () => {
   it("labels private halos as sketches and never treats an empty incident feed as an all-clear", () => {
     const html = render({ hazards: [], threat: null, escapeFirst: false, escapeRequested: false,
       plan: { ...plan, escape: { kind: "not-requested" } } });
-    expect(html).toContain("Dashed red mark halos are private sketches, not reports, fire extents or evacuation zones; they do not affect routes.");
+    expect(html).toContain("Dashed grey mark halos are private sketches, not reports, fire extents or evacuation zones; they do not affect routes.");
     expect(html).toContain("this is not an all-clear");
     expect(html).not.toContain("Take the escape route.");
   });

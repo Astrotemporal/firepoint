@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FireMark } from "@/domain/fire-marks";
 import { GLENDALE_CITY_HALL } from "@/evacuation/data/glendale";
 import type { LocationFix } from "@/evacuation/location";
+import { PRIVATE_MARK_STYLE, privateMarkPaint, type MapTheme } from "@/domain/private-mark-style";
 import { RING_DASH, ringStack } from "@/domain/ring-visual";
 import { markLabel, privateMarkHalos } from "@/evacuation/marks";
 import type { RoutePlan } from "@/evacuation/route-planner";
@@ -76,20 +77,22 @@ function pinElement(className: string, glyph: string, label: string): HTMLButton
   return element;
 }
 
-function addLayers(map: MapboxMap): void {
+function addLayers(map: MapboxMap, theme: MapTheme): void {
   for (const id of ["hazards", "private-mark-halos", "accuracy", "routes"]) map.addSource(id, { type: "geojson", data: EMPTY });
   // Incident geometry (none connected today) and private visual sketches have separate sources/paint.
   map.addLayer({ id: "hazards-fill", type: "fill", source: "hazards", paint: { "fill-color": "#ef4444", "fill-opacity": 0.28 } });
   map.addLayer({ id: "hazards-line", type: "line", source: "hazards", paint: { "line-color": COLORS.hazard, "line-width": 2 } });
+  // Private sketches are neutral grey by policy: no red, and no colour that depends on how many marks exist.
+  const sketch = privateMarkPaint(theme);
   map.addLayer({ id: "private-mark-halos-fill", type: "fill", source: "private-mark-halos",
-    paint: { "fill-color": "#ef4444", "fill-opacity": 0.07 } });
+    paint: { "fill-color": sketch.fill, "fill-opacity": PRIVATE_MARK_STYLE.fillOpacity } });
   // Same dash rhythm and radius label as the /prepare defensible-space figure; a different unit and meaning.
   map.addLayer({ id: "private-mark-halos-outline", type: "line", source: "private-mark-halos",
-    paint: { "line-color": COLORS.hazard, "line-opacity": 0.65, "line-width": 2, "line-dasharray": [...RING_DASH] } });
+    paint: { "line-color": sketch.stroke, "line-opacity": PRIVATE_MARK_STYLE.strokeOpacity, "line-width": 2, "line-dasharray": [...RING_DASH] } });
   map.addLayer({ id: "private-mark-halos-label", type: "symbol", source: "private-mark-halos",
     layout: { "symbol-placement": "line", "text-field": ["get", "label"], "text-size": 11, "text-letter-spacing": 0.05,
       "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"], "text-rotation-alignment": "map", "text-pitch-alignment": "viewport" },
-    paint: { "text-color": COLORS.hazard, "text-opacity": 0.85, "text-halo-color": "#ffffff", "text-halo-width": 1.2 } });
+    paint: { "text-color": sketch.stroke, "text-opacity": 0.9, "text-halo-color": sketch.labelHalo, "text-halo-width": 1.2 } });
   map.addLayer({ id: "accuracy-fill", type: "fill", source: "accuracy", paint: { "fill-color": COLORS.you, "fill-opacity": 0.12 } });
   map.addLayer({ id: "accuracy-line", type: "line", source: "accuracy", paint: { "line-color": COLORS.you, "line-opacity": 0.4, "line-width": 1 } });
   const lineLayout = { "line-join": "round", "line-cap": "round" } as const;
@@ -179,7 +182,7 @@ function MapboxView({
     // A new style drops our sources and layers, so they are rebuilt (and refilled by the effects) after each one.
     map.on("style.load", () => {
       everLoaded = true;
-      addLayers(map);
+      addLayers(map, styleRef.current === MAPBOX_STYLES.dark ? "dark" : "light");
       setLoaded((count) => count + 1);
     });
     map.on("error", () => { if (!everLoaded) setFailed(true); });
