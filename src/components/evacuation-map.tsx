@@ -39,6 +39,8 @@ type EvacuationMapProps = {
   onReady: (map: MapHandle | null) => void;
   onMoveMark: (id: string, lat: number, lng: number) => void;
   onRemoveMark: (id: string) => void;
+  /** Accessible name of the map region; the public screen passes one without routes or shelters. */
+  ariaLabel?: string;
 };
 
 const COLORS = { shelterRoute: "#1d4ed8", escapeRoute: "#c2410c", hazard: "#b91c1c", you: "#007aff" };
@@ -136,6 +138,7 @@ function MapNotice({ text }: { text: string }) {
 
 function MapboxView({
   dark, origin, hazards, shelters, zones, plan, centerKey, fitKey, marks, onReady, onMoveMark, onRemoveMark,
+  ariaLabel = "Map of your location, routes, hazards, and shelters. The same information is listed below the map.",
 }: EvacuationMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
@@ -349,7 +352,7 @@ function MapboxView({
         ref={containerRef}
         className="ev-map"
         role="region"
-        aria-label="Map of your location, routes, hazards, and shelters. The same information is listed below the map."
+        aria-label={ariaLabel}
       />
       {failed && <MapNotice text="The map couldn’t load. Check your connection; routes below still work." />}
     </>

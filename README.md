@@ -18,6 +18,8 @@ This repository began as a Next.js 16 starter and is under active development. T
 
 Server-only adapters for NWS weather alerts, CAL FIRE incidents, NIFC/WFIGS perimeters, AirNow observations and dated Glendale GIS standing-hazard maps are installed. **Production UI and personalized POST routes are paused** while source rights, caching, rate limits and monitoring are reviewed. `FIREPOINT_DEMO_LIVE_SOURCES=enabled` permits explicit queries in local nonproduction development only; it is not a public coverage claim. None of these sources checks a City/County evacuation order or verified standing evacuation zone. An offline fallback keeps a separate local checklist, **not** live notices, maps or a safe route. The service worker also caches the homepage shell, so its bundled shelter list and straight-line compass guidance open offline without map tiles. There is no durable ingestion worker, report service or ElevenLabs endpoint.
 
+**Public release gate (homepage).** Production builds serve a public homepage with only the basemap, the visitor's private marks, the theme/language controls, the **Official sources & prep** link and one statement: *No verified incident, shelter or route loaded. Follow official sources. This is not an all-clear.* The routing prototype described under [Routes & shelters](#routes--shelters-location--routing) (hardcoded `open` shelters, invented evacuation points, Mapbox Directions, **Go** links and the automatic location prompt) is developer-only: it renders only on a nonproduction run with the server-side variable `FIREPOINT_PROTOTYPE_ROUTING=enabled`, and the prototype code is dropped from production bundles. `NODE_ENV=production` (Vercel Production and Preview) always gets the public screen, whatever the variable says; there is no `NEXT_PUBLIC_` override. Gate: [`src/server/release-gate.ts`](src/server/release-gate.ts); public screen: [`src/components/public-map-screen.tsx`](src/components/public-map-screen.tsx); browser smoke check against a production build: `node scripts/smoke-public-home.mjs`.
+
 ## Run locally
 
 Use Node.js and npm compatible with the checked-in `package-lock.json`:
@@ -53,6 +55,8 @@ The `Makefile` also has `make gis-fetch`/`make gis-local` developer-only MCP ste
 Implemented adapters include NWS point alerts, CAL FIRE incidents, NIFC/WFIGS current perimeters, AirNow observations and Glendale GIS dated hazard maps. All are request-time with no durable cache or polling; production queries are paused. NWS is inactive without a real identifying contact and AirNow without a key. None of them is an evacuation feed. Other documents describe future work. Before showing a source in the app, verify its publisher, jurisdiction, update behavior, access terms, and geographic coverage. Never substitute a map view, neighborhood name, or empty feed response for an evacuation status.
 
 ## Routes & shelters (location + routing)
+
+> **Developer prototype, not public.** Everything in this section renders only behind the [public release gate](#what-exists-now) (`FIREPOINT_PROTOTYPE_ROUTING=enabled` on a nonproduction run). Production and preview deployments show the public no-data homepage instead.
 
 The homepage (`/`) is one full-screen [Mapbox](https://www.mapbox.com/) map: the drag-a-fire panel on top, a light/dark toggle and the **Official sources & prep** link beside it, and a compact directions bar underneath. `/map` redirects here. When the page opens, it asks for the device's location (the browser's own prompt), centers on a blue dot, and computes two routes:
 
@@ -133,3 +137,5 @@ Shelter and evacuation-point data are bundled with the page. After one online vi
 | `src/components/fire-pins.ts`, `fire-panel.tsx` | Animated, draggable fire marks and the drag-a-fire panel |
 | `src/components/route-bar.tsx` | Compact bar: status, route rows, steps, compass fallback |
 | `src/components/map-screen.tsx` | The homepage: wires location, hazards, fire marks, and the planner to the map and bar |
+| `src/components/public-map-screen.tsx` | The public homepage: basemap, private marks and the no-data statement; no routing, shelters or location |
+| `src/server/release-gate.ts` | Server-only gate that keeps the prototype out of production builds |

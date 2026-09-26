@@ -1,6 +1,6 @@
 /* Firepoint offline fallback. No official notices, API responses, routes, map tiles, or live data are cached.
-   The homepage shell (map + directions) and its static assets are cached (network-first) so the bundled,
-   unverified shelter list and straight-line directions still open offline. */
+   The homepage shell and its static assets are cached (network-first) so the page opens offline. In production
+   that shell is the public no-data screen; it carries no shelters or routes. */
 const CACHE = "firepoint-shell-v4";
 const ASSETS = "firepoint-assets-v3";
 const SHELL = ["/offline.html", "/icon-192.png", "/icon-512.png"];
