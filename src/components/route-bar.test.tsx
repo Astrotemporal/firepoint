@@ -81,20 +81,25 @@ describe("RouteBar", () => {
     expect(html).not.toContain("destination=34.180800,-118.309000");
   });
 
-  it("asks for location on load, then offers an address after denial", () => {
-    expect(render({ location: { status: "locating", fix: null, attempt: 1 }, origin: null, plan: null }))
-      .toContain("Allow location access to see routes from where you are.");
-    const denied = render({ location: { status: "fallback", reason: "denied", fix: DEFAULT_FIX }, origin: DEFAULT_FIX });
-    expect(denied).toContain("Routes start from Glendale City Hall.");
-    expect(denied).toContain("Enter address");
+  it("offers one button that asks for location, and an address instead", () => {
+    const idle = render({ location: { status: "idle", fix: null }, origin: null, plan: null });
+    expect(idle).toMatch(/<button[^>]*class="ev-ask-button"[^>]*>.*Use my location<\/button>/);
+    expect(idle).toContain("Enter address");
+    const prompt = render({ location: { status: "fallback", reason: "prompt", fix: DEFAULT_FIX }, origin: DEFAULT_FIX });
+    expect(prompt).toContain("From Glendale City Hall");
+    expect(prompt).toContain("ev-ask-button");
   });
 
-  it("renders as a drawer: a handle for phones, a hide tab for the side card, starting at the peek", () => {
-    const html = render({ escapeRequested: false });
-    expect(html).toMatch(/class="ev-bar ev-sheet ev-sheet-peek ev-sheet-idle"/);
-    expect(html).toMatch(/<button[^>]*class="ev-sheet-handle"[^>]*aria-expanded="false"[^>]*aria-label="Expand directions"/);
-    expect(html).toMatch(/<button[^>]*class="ev-sheet-tab"[^>]*aria-label="Hide directions"/);
-    expect(html.indexOf("> Escape</button>")).toBeLessThan(html.indexOf('id="ev-sheet-body"'));
+  it("says where routes start when location is blocked, without a button that can't work", () => {
+    const denied = render({ location: { status: "fallback", reason: "denied", fix: DEFAULT_FIX }, origin: DEFAULT_FIX });
+    expect(denied).toContain("From Glendale City Hall · Location off");
+    expect(denied).toContain("Enter address");
+    expect(denied).not.toContain("ev-ask-button");
+  });
+
+  it("doesn't show the button while the browser's prompt is up", () => {
+    const html = render({ location: { status: "locating", fix: null, attempt: 1 }, origin: null, plan: null });
+    expect(html).not.toContain("ev-ask-button");
   });
 
   it("never treats an empty hazard list as an all-clear", () => {
@@ -104,7 +109,8 @@ describe("RouteBar", () => {
   it("labels private halos as sketches and never treats an empty incident feed as an all-clear", () => {
     const html = render({ hazards: [], threat: null, escapeFirst: false, escapeRequested: false,
       plan: { ...plan, escape: { kind: "not-requested" } } });
-    expect(html).toContain("Dashed grey mark halos are private sketches, not reports, fire extents or evacuation zones; they do not affect routes.");
+    expect(html).toContain('lang="en"');
+    expect(html).toContain("Dashed grey private mark halos are sketches, not reports, fire extents, evacuation zones or routing hazards.");
     expect(html).toContain("this is not an all-clear");
     expect(html).not.toContain("Take the escape route.");
   });

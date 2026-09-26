@@ -79,6 +79,11 @@ h1 em,h2 em { font-weight: 400; }
 .lang-select:hover { color: #df7548; }
 .lang-select option { color: #18312e; background: #fffdf8; }
 .lang-noscript { display: inline-flex; gap: 8px; font-size: 13px; font-weight: 700; }
+/* Round controls keep their size; only the prep link gives way (on one line) when a translation runs long. */
+.map-actions .lang-select, .map-actions .theme-toggle { flex-shrink: 0; }
+.map-actions { max-width: calc(100% - 32px); }
+.map-actions .map-brand { min-width: 0; white-space: nowrap; }
+.map-actions .map-brand > span:last-child { overflow: hidden; text-overflow: ellipsis; }
 .map-brand .brand-mark { width: 24px; height: 24px; background: var(--accent-ink); }
 .map-brand .brand-mark span { width: 10px; height: 10px; }
 .map-storage-warning { position: absolute; z-index: 1000; left: 16px; top: calc(16px + env(safe-area-inset-top, 0px)); max-width: min(430px, calc(100% - 96px)); padding: 11px 14px; background: #fff1dc; border-left: 4px solid #c87537; font-size: 12px; line-height: 1.45; }

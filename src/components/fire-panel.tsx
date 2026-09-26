@@ -5,6 +5,7 @@ import type { PrivateDisplayHalo } from "@/domain/ring-visual";
 import { PRIVATE_MARK_DISPLAY_RADIUS_METERS } from "@/evacuation/marks";
 import type { MapHandle } from "./evacuation-map";
 import { Flame } from "./flame";
+import { useMapText } from "./map-text";
 import { RingLegend } from "./ring-legend";
 
 /** Legend sample only: no position, no id, nothing stored. It describes how every halo is drawn. */
@@ -28,6 +29,7 @@ type Drag = { startX: number; startY: number; lastX: number; lastY: number; move
 
 /** A floating fire to drag onto the map (or press to drop one at the map centre). */
 export function FirePanel({ ready, count, hint, map, onPlace, onHint, onClear }: FirePanelProps) {
+  const t = useMapText();
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
   const drag = useRef<Drag | null>(null);
   const skipClick = useRef(false);
@@ -65,7 +67,7 @@ export function FirePanel({ ready, count, hint, map, onPlace, onHint, onClear }:
     const x = clientX - rect.left;
     const y = clientY - rect.top;
     if (x < 0 || y < 0 || x > rect.width || y > rect.height) {
-      onHint("Drop the fire inside the map to place it.");
+      onHint(t.dropInside);
       return;
     }
     const { lat, lng } = handle.pointToLatLng(x, y);
@@ -95,7 +97,7 @@ export function FirePanel({ ready, count, hint, map, onPlace, onHint, onClear }:
 
   return (
     <div className="map-panel">
-      {count > 0 && <button type="button" className="map-clear" onClick={onClear}>Clear</button>}
+      {count > 0 && <button type="button" className="map-clear" onClick={onClear}>{t.clear}</button>}
       <button
         type="button"
         className={`fire-token${ghost ? " is-dragging" : ""}`}
@@ -106,14 +108,14 @@ export function FirePanel({ ready, count, hint, map, onPlace, onHint, onClear }:
         onPointerCancel={onPointerCancel}
         onLostPointerCapture={onLostPointerCapture}
         onClick={onClick}
-        title="Drag onto the map to mark a fire"
-        aria-label="Add a fire mark. Drag onto the map, or press to place it at the map centre. Marks stay on this device and are not reports."
+        title={t.fireTitle}
+        aria-label={t.fireLabel}
       >
         <Flame className="fire-token-flame" />
       </button>
       {/* Status is announced, not shown: marks are private pins, never reports or routing hazards. */}
       <span className="sr-only" aria-live="polite">
-        {hint ?? (ready ? `${count} ${count === 1 ? "mark" : "marks"} on this device · private, not reports` : "Local to this device")}
+        {hint ?? (ready ? t.marksOnDevice(count) : t.localToDevice)}
       </span>
       {count > 0 && <RingLegend ring={LEGEND_HALO} dashed note="grey ring around each mark. Not a zone, perimeter or report; routes ignore it." />}
       {ghost && <Flame className="fire-ghost" style={{ left: ghost.x, top: ghost.y }} />}
