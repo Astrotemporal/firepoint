@@ -3,25 +3,30 @@ import type { LatLng } from "./types";
 const METERS_PER_MILE = 1609.344;
 const FEET_PER_METER = 3.28084;
 const DIRECTIONS = ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"] as const;
+export type CompassDirection = (typeof DIRECTIONS)[number];
 
-export function formatMiles(meters: number): string {
+/** Unit abbreviations for displayed distances and times; English unless a translation passes its own. */
+export type Units = { mi: string; ft: string; min: string; h: string };
+export const UNITS_EN: Units = { mi: "mi", ft: "ft", min: "min", h: "h" };
+
+export function formatMiles(meters: number, units: Units = UNITS_EN): string {
   const miles = meters / METERS_PER_MILE;
-  if (miles < 0.1) return "<0.1 mi";
-  return `${miles < 10 ? miles.toFixed(1) : Math.round(miles)} mi`;
+  if (miles < 0.1) return `<0.1 ${units.mi}`;
+  return `${miles < 10 ? miles.toFixed(1) : Math.round(miles)} ${units.mi}`;
 }
 
 /** Short distances in feet (rounded to 50), longer ones in miles. */
-export function formatShortDistance(meters: number): string {
-  if (meters / METERS_PER_MILE >= 0.1) return formatMiles(meters);
-  return `${Math.max(50, Math.round((meters * FEET_PER_METER) / 50) * 50).toLocaleString("en-US")} ft`;
+export function formatShortDistance(meters: number, units: Units = UNITS_EN): string {
+  if (meters / METERS_PER_MILE >= 0.1) return formatMiles(meters, units);
+  return `${Math.max(50, Math.round((meters * FEET_PER_METER) / 50) * 50).toLocaleString("en-US")} ${units.ft}`;
 }
 
-export function formatDuration(seconds: number): string {
+export function formatDuration(seconds: number, units: Units = UNITS_EN): string {
   const minutes = Math.max(1, Math.round(seconds / 60));
-  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 60) return `${minutes} ${units.min}`;
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
-  return rest ? `${hours} h ${rest} min` : `${hours} h`;
+  return rest ? `${hours} ${units.h} ${rest} ${units.min}` : `${hours} ${units.h}`;
 }
 
 /** Eight-point compass word for a bearing, e.g. 44° → "northeast". */
