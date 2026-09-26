@@ -120,7 +120,7 @@ export function MapScreen() {
   const centerKey = identity && `${identity}:${locateCount}`;
   const escapeReady = plan ? plan.escape.kind !== "not-requested" : false;
   const fitKey = identity && plan && startIdentity(plan.origin) === identity ? `${identity}:${escapeReady}` : null;
-  // Like tapping the arrow in a maps app: with no device location yet, the locate button asks for it.
+  // Like tapping the arrow in a maps app: with no device location yet, the locate and Escape buttons ask for it.
   const askLocation = location.status === "fallback" && location.reason !== "insecure" && location.reason !== "unsupported";
 
   return (
@@ -171,7 +171,7 @@ export function MapScreen() {
         onUseLocation={() => tracker.start()}
         onManualLocation={(place) => tracker.setManual(place, place.label)}
         onRetryRoutes={() => planner.refresh()}
-        onRequestEscape={() => { if (!origin) tracker.start(); planner.requestEscape(); }}
+        onRequestEscape={() => { if (!origin || askLocation) tracker.start(); planner.requestEscape(); }}
         onClearEscape={() => planner.clearEscape()}
       />
     </main>

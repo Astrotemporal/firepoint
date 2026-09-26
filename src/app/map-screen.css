@@ -99,7 +99,7 @@
   .ev-sheet-idle .ev-sheet-inner { padding-top: 10px; }
   .ev-sheet-idle .ev-escape-cta { pointer-events: auto; box-shadow: 0 4px 16px rgba(0, 0, 0, .3); }
   .ev-shell:has(.ev-sheet-idle) .ev-map-area { margin-bottom: 0; }
-  .ev-shell:has(.ev-sheet-idle) .map-panel { bottom: calc(var(--ev-peek, 90px) + 12px); }
+  .ev-shell:has(.ev-sheet-idle) .map-panel { bottom: calc(var(--ev-peek, 90px) + 44px); }
   .ev-shell:has(.ev-sheet-idle) .mapboxgl-ctrl-bottom-left, .ev-shell:has(.ev-sheet-idle) .mapboxgl-ctrl-bottom-right { bottom: var(--ev-peek, 90px); }
 }
 
