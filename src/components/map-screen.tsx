@@ -48,7 +48,7 @@ export function MapScreen() {
     getRoute, shelters: SHELTERS, zones: SAFE_ZONES, isOnline: () => navigator.onLine,
   }));
   const location = useSyncExternalStore(tracker.subscribe, tracker.getSnapshot, tracker.getSnapshot);
-  const { plan, pending } = useSyncExternalStore(planner.subscribe, planner.getSnapshot, planner.getSnapshot);
+  const { plan, pending, escapeRequested } = useSyncExternalStore(planner.subscribe, planner.getSnapshot, planner.getSnapshot);
   const stubHazards = useSyncExternalStore(subscribeToHazards, getActiveHazards, getActiveHazards);
   const online = useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true);
   const appleMaps = useSyncExternalStore(subscribeNever, () => isAppleMobile(navigator), () => false);
@@ -115,9 +115,11 @@ export function MapScreen() {
   }
 
   const identity = origin ? startIdentity(origin) : null;
-  // Center on each new start location (and on "my location"); fit once to its first routes.
+  // Center on each new start location (and on "my location"); fit once to its first routes, and
+  // again when the escape route is requested and resolves, so it lands on screen too.
   const centerKey = identity && `${identity}:${locateCount}`;
-  const fitKey = identity && plan && startIdentity(plan.origin) === identity ? identity : null;
+  const escapeReady = plan ? plan.escape.kind !== "not-requested" : false;
+  const fitKey = identity && plan && startIdentity(plan.origin) === identity ? `${identity}:${escapeReady}` : null;
 
   return (
     <main className="map-screen ev-shell">
@@ -162,9 +164,12 @@ export function MapScreen() {
         pending={pending}
         online={online}
         appleMaps={appleMaps}
+        escapeRequested={escapeRequested}
         onUseLocation={() => tracker.start()}
         onManualLocation={(place) => tracker.setManual(place, place.label)}
         onRetryRoutes={() => planner.refresh()}
+        onRequestEscape={() => { if (!origin) tracker.start(); planner.requestEscape(); }}
+        onClearEscape={() => planner.clearEscape()}
       />
     </main>
   );
