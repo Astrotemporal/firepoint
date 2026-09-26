@@ -6,7 +6,7 @@ export type PinHandlers = {
   onRemove: (id: string) => void;
 };
 
-export type PinView = { marker: Marker; fire: DotLottie; title: HTMLElement; coords: HTMLElement; pin: HTMLElement };
+export type PinView = { marker: Marker; fire: DotLottie; title: HTMLElement; pin: HTMLElement };
 
 /** A draggable fire mark. Listeners are attached once, so they read the latest callbacks through `handlers`. */
 export function createPin(id: string, map: MapboxMap, handlers: { current: PinHandlers }): PinView {
@@ -24,14 +24,13 @@ export function createPin(id: string, map: MapboxMap, handlers: { current: PinHa
   const content = document.createElement("div");
   content.className = "fire-popup";
   const title = document.createElement("strong");
-  const coords = document.createElement("span");
   const note = document.createElement("small");
-  note.textContent = "Private to this device. Not a report. Routes avoid it.";
+  note.textContent = "Private to this device, not a report.";
   const remove = document.createElement("button");
   remove.type = "button";
   remove.textContent = "Remove mark";
   remove.addEventListener("click", () => handlers.current.onRemove(id));
-  content.append(title, coords, note, remove);
+  content.append(title, note, remove);
 
   const popup = new Popup({ offset: 64, maxWidth: "240px", focusAfterOpen: true }).setDOMContent(content);
   const marker = new Marker({ element: pin, anchor: "bottom", draggable: true }).setLngLat(map.getCenter()).setPopup(popup).addTo(map);
@@ -39,7 +38,7 @@ export function createPin(id: string, map: MapboxMap, handlers: { current: PinHa
     const { lat, lng } = marker.getLngLat();
     handlers.current.onMove(id, lat, lng);
   });
-  return { marker, fire, title, coords, pin };
+  return { marker, fire, title, pin };
 }
 
 export function removePin({ fire, marker }: PinView) {
