@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MapScreen } from "./map-screen";
-import { FLAME_SVG, Flame } from "./flame";
+import { Flame } from "./flame";
 import { FirepointHome } from "./firepoint-home";
 import Home from "../app/page";
 
@@ -40,11 +40,7 @@ describe("map screen", () => {
 });
 
 describe("flame artwork", () => {
-  it("keeps the React and Leaflet HTML versions identical and hidden from screen readers", () => {
-    const html = renderToStaticMarkup(<Flame />);
-    const paths = (s: string) => s.match(/<path[^>]*>/g)?.map((p) => p.replace(/\s*\/?>$/, ""));
-    expect(paths(html)).toEqual(paths(FLAME_SVG));
-    expect(html).toContain('aria-hidden="true"');
-    expect(FLAME_SVG).toContain('aria-hidden="true"');
+  it("is hidden from screen readers", () => {
+    expect(renderToStaticMarkup(<Flame />)).toContain('aria-hidden="true"');
   });
 });

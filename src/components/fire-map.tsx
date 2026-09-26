@@ -2,9 +2,9 @@
 
 import "mapbox-gl/dist/mapbox-gl.css";
 import mapboxgl from "mapbox-gl";
+import { DotLottie } from "@lottiefiles/dotlottie-web";
 import { useEffect, useRef } from "react";
 import type { FireMark } from "@/domain/fire-marks";
-import { FLAME_SVG } from "./flame";
 
 // Glendale, CA as [lng, lat]. A display camera only, never a coverage or zone boundary.
 const GLENDALE: [number, number] = [-118.255, 34.165];
@@ -26,7 +26,7 @@ type FireMapProps = {
   onRemove: (id: string) => void;
 };
 
-type PinView = { marker: mapboxgl.Marker; title: HTMLElement; coords: HTMLElement; pin: HTMLElement };
+type PinView = { marker: mapboxgl.Marker; fire: DotLottie; title: HTMLElement; coords: HTMLElement; pin: HTMLElement };
 
 export function FireMap({ marks, onReady, onMove, onRemove }: FireMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -57,7 +57,7 @@ export function FireMap({ marks, onReady, onMove, onRemove }: FireMapProps) {
     });
     return () => {
       onReady(null);
-      views.forEach((view) => view.marker.remove());
+      views.forEach(removePin);
       views.clear();
       map.remove();
       mapRef.current = null;
@@ -71,7 +71,7 @@ export function FireMap({ marks, onReady, onMove, onRemove }: FireMapProps) {
     const views = pins.current;
     const live = new Set(marks.map((mark) => mark.id));
     views.forEach((view, id) => {
-      if (!live.has(id)) { view.marker.remove(); views.delete(id); }
+      if (!live.has(id)) { removePin(view); views.delete(id); }
     });
     marks.forEach((mark, index) => {
       const view = views.get(mark.id) ?? createPin(mark.id, map, handlers);
@@ -97,7 +97,13 @@ function createPin(id: string, map: mapboxgl.Map, handlers: { current: Pick<Fire
   const pin = document.createElement("button");
   pin.type = "button";
   pin.className = "fire-pin";
-  pin.innerHTML = `<span class="fire-pin-badge">${FLAME_SVG}</span>`;
+  // The same animated fire as the preloader marks the spot; its base sits on the location.
+  const canvas = document.createElement("canvas");
+  canvas.className = "fire-pin-fire";
+  canvas.setAttribute("aria-hidden", "true");
+  pin.append(canvas);
+  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const fire = new DotLottie({ canvas, src: "/animations/fire.lottie", loop: true, autoplay: !still });
 
   const content = document.createElement("div");
   content.className = "fire-popup";
@@ -111,11 +117,16 @@ function createPin(id: string, map: mapboxgl.Map, handlers: { current: Pick<Fire
   remove.addEventListener("click", () => handlers.current.onRemove(id));
   content.append(title, coords, note, remove);
 
-  const popup = new mapboxgl.Popup({ offset: 48, maxWidth: "240px", focusAfterOpen: true }).setDOMContent(content);
+  const popup = new mapboxgl.Popup({ offset: 64, maxWidth: "240px", focusAfterOpen: true }).setDOMContent(content);
   const marker = new mapboxgl.Marker({ element: pin, anchor: "bottom", draggable: true }).setLngLat(map.getCenter()).setPopup(popup).addTo(map);
   marker.on("dragend", () => {
     const { lat, lng } = marker.getLngLat();
     handlers.current.onMove(id, lat, lng);
   });
-  return { marker, title, coords, pin };
+  return { marker, fire, title, coords, pin };
+}
+
+function removePin(view: PinView) {
+  view.fire.destroy();
+  view.marker.remove();
 }
