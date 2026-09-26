@@ -77,8 +77,8 @@ function pinElement(className: string, glyph: string, label: string): HTMLButton
 
 function addLayers(map: MapboxMap): void {
   for (const id of ["hazards", "accuracy", "routes"]) map.addSource(id, { type: "geojson", data: EMPTY });
-  // A person's own fire marks are shaded lighter than hazards from the feed (or the simulated one).
-  map.addLayer({ id: "hazards-fill", type: "fill", source: "hazards", paint: { "fill-color": "#ef4444", "fill-opacity": ["case", ["get", "mark"], 0.16, 0.28] } });
+  // Only sourced hazards may use area fills; private marks are separate draggable pins.
+  map.addLayer({ id: "hazards-fill", type: "fill", source: "hazards", paint: { "fill-color": "#ef4444", "fill-opacity": 0.28 } });
   map.addLayer({ id: "hazards-line", type: "line", source: "hazards", paint: { "line-color": COLORS.hazard, "line-width": 2 } });
   map.addLayer({ id: "accuracy-fill", type: "fill", source: "accuracy", paint: { "fill-color": COLORS.you, "fill-opacity": 0.12 } });
   map.addLayer({ id: "accuracy-line", type: "line", source: "accuracy", paint: { "line-color": COLORS.you, "line-opacity": 0.4, "line-width": 1 } });
@@ -119,7 +119,7 @@ function planTargets(plan: RoutePlan | null): { shelter: Shelter | null; zone: S
 
 export function EvacuationMap(props: EvacuationMapProps) {
   if (!MAPBOX_TOKEN) {
-    return <MapNotice text="Map unavailable: no Mapbox token is configured. Routes below still work as straight-line directions." />;
+    return <MapNotice text="Map unavailable: no Mapbox token is configured. The route prototype below is unverified." />;
   }
   return <MapboxView {...props} />;
 }
@@ -179,10 +179,8 @@ function MapboxView({
       if (!hazard || (event.originalEvent.target as Element | null)?.closest?.(".mapboxgl-marker")) return;
       popupRef.current?.remove();
       popupRef.current = new Popup({ offset: 8, maxWidth: "260px" }).setLngLat(event.lngLat)
-        .setDOMContent(popupContent(hazard.mark
-          ? [String(hazard.label), "Your mark: private to this device, not a report.", "Routes avoid this area."]
-          : [String(hazard.label), `Severity ${hazard.severity} of 5`,
-            hazard.simulated ? "Simulated for testing. Not a real incident." : "From the hazard feed."]))
+        .setDOMContent(popupContent([String(hazard.label), `Severity ${hazard.severity} of 5`,
+          hazard.simulated ? "Simulated for testing. Not a real incident." : "From the hazard feed."]))
         .addTo(map);
     });
     mapRef.current = map;
@@ -220,7 +218,7 @@ function MapboxView({
     source.setData({
       type: "FeatureCollection",
       features: hazards.map((hazard) => circle(hazard.center, hazard.radiusMeters, {
-        label: hazard.label, severity: hazard.severity, simulated: hazard.simulated, mark: Boolean(hazard.userMark),
+        label: hazard.label, severity: hazard.severity, simulated: hazard.simulated,
       })),
     });
   }, [hazards, loaded]);

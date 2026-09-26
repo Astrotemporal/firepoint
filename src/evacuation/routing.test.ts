@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { GLENDALE_CITY_HALL, SAFE_ZONES, SHELTERS } from "./data/glendale";
-import { SIMULATED_HAZARDS } from "./hazards";
+import { SYNTHETIC_HAZARDS } from "../../tests/fixtures/synthetic-fire";
 import {
   angularDifference, bearing, destinationPoint, escapeHeading, haversine, pickEscapePoint, pickEscapeRoute,
   pickShelter, pointInHazard, rankShelters, routeIntersectsHazard,
@@ -183,20 +183,20 @@ describe("escapeHeading", () => {
 
 describe("Glendale stub data", () => {
   it("excludes the two foothill shelters near the simulated Verdugo fire", () => {
-    const ids = rankShelters(GLENDALE_CITY_HALL, SHELTERS, SIMULATED_HAZARDS).map(({ shelter: s }) => s.id);
+    const ids = rankShelters(GLENDALE_CITY_HALL, SHELTERS, SYNTHETIC_HAZARDS).map(({ shelter: s }) => s.id);
     expect(ids).toEqual(["pacific-community-center"]);
     expect(rankShelters(GLENDALE_CITY_HALL, SHELTERS, [])).toHaveLength(3);
   });
 
   it("escapes Sparr Heights toward Burbank, away from the fire to its south-southwest", () => {
     const sparrHeights = SHELTERS.find((s) => s.id === "sparr-heights-community-center")!;
-    expect(pickEscapePoint(sparrHeights, SAFE_ZONES, SIMULATED_HAZARDS)?.id).toBe("burbank-sr134");
+    expect(pickEscapePoint(sparrHeights, SAFE_ZONES, SYNTHETIC_HAZARDS)?.id).toBe("burbank-sr134");
   });
 
   it("never sends Sparr Heights west across the fire's flank by straight line", () => {
     const sparrHeights = SHELTERS.find((s) => s.id === "sparr-heights-community-center")!;
     const burbank = SAFE_ZONES.find((z) => z.id === "burbank-sr134")!;
-    const heading = escapeHeading(sparrHeights, burbank, SIMULATED_HAZARDS);
+    const heading = escapeHeading(sparrHeights, burbank, SYNTHETIC_HAZARDS);
     expect(heading.toward).toBe("away-from-hazard");
     expect(angularDifference(heading.bearing, 0)).toBeLessThan(30); // roughly north, away from the fire
   });

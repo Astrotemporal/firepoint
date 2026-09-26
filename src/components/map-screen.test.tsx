@@ -14,6 +14,8 @@ describe("map screen", () => {
     expect(html).toMatch(/<button[^>]*class="fire-token"[^>]*disabled=""/);
     expect(html).toContain("Local to this device");
     expect(html).not.toContain("Clear all");
+    expect(html).not.toContain("Simulated fire");
+    expect(html).not.toContain("Show simulated fire");
   });
 
   it("frames marks as private orientation, never reports or live fire data", () => {

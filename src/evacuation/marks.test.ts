@@ -1,29 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { createMark } from "@/domain/fire-marks";
-import { GLENDALE_CITY_HALL, SHELTERS } from "./data/glendale";
-import { MARK_RADIUS_METERS, markHazards } from "./marks";
-import { haversine, pickShelter } from "./routing";
-import type { GetRoute } from "./types";
+import { getActiveHazards } from "./hazards";
+import { markLabel, selectRoutingHazards } from "./marks";
+import { SYNTHETIC_HAZARDS } from "../../tests/fixtures/synthetic-fire";
 
-/** Straight-line route; duration proportional to distance. Test-only. */
-const directRoutes: GetRoute = async (from, to) => ({ path: [from, to], distanceMeters: haversine(from, to), durationSeconds: haversine(from, to) / 10, steps: [] });
-
-describe("fire marks as hazards", () => {
-  it("turns each mark into a private, non-simulated fire with a stable id", () => {
-    const marks = [createMark(34.15, -118.25), createMark(34.16, -118.24)];
-    const [first, second] = markHazards(marks);
-    expect(first).toMatchObject({
-      id: `mark-${marks[0].id}`, type: "fire", center: { lat: 34.15, lng: -118.25 },
-      radiusMeters: MARK_RADIUS_METERS, label: "Fire mark 1", simulated: false, userMark: true,
-    });
-    expect(second.label).toBe("Fire mark 2");
+describe("private marks remain visual bookmarks", () => {
+  it("uses a stable empty hazard snapshot with no incident source connected", () => {
+    expect(getActiveHazards()).toEqual([]);
+    expect(getActiveHazards()).toBe(getActiveHazards());
   });
 
-  it("steers the shelter pick away from a marked fire", async () => {
-    const [civic, pacific] = SHELTERS;
-    const clear = await pickShelter(GLENDALE_CITY_HALL, SHELTERS, [], directRoutes);
-    expect(clear.kind === "route" && clear.shelter.id).toBe(pacific.id);
-    const marked = await pickShelter(GLENDALE_CITY_HALL, SHELTERS, markHazards([createMark(pacific.lat, pacific.lng)]), directRoutes);
-    expect(marked.kind === "route" && marked.shelter.id).toBe(civic.id);
+  it("never turns a placed, moved or multiple private marks into a routing hazard", () => {
+    const marks = [createMark(34.15, -118.25), createMark(34.16, -118.24)];
+    expect(markLabel(0)).toBe("Fire mark 1");
+    const noFeed = getActiveHazards();
+    expect(selectRoutingHazards({ sourceHazards: noFeed, privateMarks: marks })).toBe(noFeed);
+    expect(selectRoutingHazards({ sourceHazards: noFeed, privateMarks: [] })).toBe(noFeed);
+    // Even a test-only, explicit hazard list is unchanged by the marks: no 500 m circles are invented.
+    expect(selectRoutingHazards({ sourceHazards: SYNTHETIC_HAZARDS, privateMarks: marks }))
+      .toBe(SYNTHETIC_HAZARDS);
   });
 });

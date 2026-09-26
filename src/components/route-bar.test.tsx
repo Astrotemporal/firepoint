@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { SAFE_ZONES, SHELTERS } from "@/evacuation/data/glendale";
-import { SIMULATED_HAZARDS } from "@/evacuation/hazards";
+import { SYNTHETIC_HAZARDS } from "../../tests/fixtures/synthetic-fire";
 import { DEFAULT_FIX, type LocationFix } from "@/evacuation/location";
 import type { RoutePlan } from "@/evacuation/route-planner";
 import type { Route } from "@/evacuation/types";
@@ -23,9 +23,9 @@ const noop = () => {};
 function render(overrides: Partial<RouteBarProps> = {}) {
   return renderToStaticMarkup(
     <RouteBar
-      location={{ status: "tracking", fix: gps }} origin={gps} outsideAreaMeters={null} hazards={SIMULATED_HAZARDS}
+      location={{ status: "tracking", fix: gps }} origin={gps} outsideAreaMeters={null} hazards={SYNTHETIC_HAZARDS}
       threat={null} escapeFirst={false} plan={plan} pending={false} online appleMaps={false}
-      onUseLocation={noop} onManualLocation={noop} onRetryRoutes={noop} onToggleSimulated={noop}
+      onUseLocation={noop} onManualLocation={noop} onRetryRoutes={noop}
       {...overrides}
     />,
   );
@@ -41,13 +41,14 @@ describe("RouteBar", () => {
     expect(html).toMatch(/aria-expanded="false"/);
     expect(html).toContain("Location approximate");
     expect(html).toContain("Unverified: confirm it’s open");
-    expect(html).toContain("Demo: simulated fire, unverified shelters.");
+    expect(html).toContain("Shelters are unverified.");
+    expect(html).not.toContain("Show simulated fire");
   });
 
   it("lists the escape route first near a hazard, the shelter first otherwise", () => {
     const order = (html: string) => html.indexOf("Escape route") < html.indexOf("Nearest shelter") ? "escape" : "shelter";
     expect(order(render())).toBe("shelter");
-    const near = render({ escapeFirst: true, threat: { hazard: SIMULATED_HAZARDS[0], edgeMeters: 1200 } });
+    const near = render({ escapeFirst: true, threat: { hazard: SYNTHETIC_HAZARDS[0], edgeMeters: 1200 } });
     expect(order(near)).toBe("escape");
     expect(near).toContain("Take the escape route.");
   });
@@ -72,11 +73,11 @@ describe("RouteBar", () => {
     const sparrHeights: LocationFix = { ...SHELTERS[2], accuracyMeters: null, source: "manual", label: "Sparr Heights" };
     const html = render({
       location: { status: "manual", fix: sparrHeights }, origin: sparrHeights,
-      threat: { hazard: SIMULATED_HAZARDS[0], edgeMeters: 86 }, escapeFirst: true,
+      threat: { hazard: SYNTHETIC_HAZARDS[0], edgeMeters: 86 }, escapeFirst: true,
       plan: { ...plan, origin: sparrHeights, escape: { kind: "no-safe-route", zone: SAFE_ZONES[1] } },
     });
     expect(html).toContain("less than 0.1 mi away");
-    expect(html).toContain("Head north, away from Simulated fire · Verdugo Mountains");
+    expect(html).toContain("Head north, away from SYNTHETIC TEST fire · Verdugo Mountains");
     expect(html).not.toContain("destination=34.180800,-118.309000");
   });
 
@@ -92,10 +93,10 @@ describe("RouteBar", () => {
     expect(render({ hazards: [] })).toContain("this is not an all-clear");
   });
 
-  it("says fire marks are private, not reports, and that routes avoid them", () => {
-    const mark = { ...SIMULATED_HAZARDS[0], id: "mark-1", label: "Fire mark 1", simulated: false, userMark: true };
-    const html = render({ hazards: [mark], threat: { hazard: mark, edgeMeters: 400 }, escapeFirst: true });
-    expect(html).toContain("Fire marks stay on this device and are not reports; routes avoid them.");
-    expect(html).toContain("Fire mark 1 is 0.2 mi away. Take the escape route.");
+  it("says private marks are not reports, do not affect routes, and empty feeds are not all-clears", () => {
+    const html = render({ hazards: [], threat: null, escapeFirst: false });
+    expect(html).toContain("Fire marks stay on this device; they are not reports and do not affect routes.");
+    expect(html).toContain("this is not an all-clear");
+    expect(html).not.toContain("Take the escape route.");
   });
 });

@@ -28,7 +28,6 @@ export type RouteBarProps = {
   onUseLocation: () => void;
   onManualLocation: (place: GeocodeResult) => void;
   onRetryRoutes: () => void;
-  onToggleSimulated: () => void;
 };
 
 type RowView = {
@@ -42,9 +41,8 @@ type RowView = {
 
 /** Compact bar under the map: one status line and two tappable route rows. */
 export function RouteBar(props: RouteBarProps) {
-  const { location, origin, hazards, threat, escapeFirst, online } = props;
+  const { location, origin, threat, escapeFirst, online } = props;
   const [open, setOpen] = useState<"escape" | "shelter" | null>(null);
-  const simulated = hazards.some((hazard) => hazard.simulated);
   const rows = { escape: escapeRow(props), shelter: shelterRow(props) };
   const order = escapeFirst ? (["escape", "shelter"] as const) : (["shelter", "escape"] as const);
 
@@ -72,12 +70,8 @@ export function RouteBar(props: RouteBarProps) {
         </ul>
       )}
       <p className="ev-note">
-        {simulated ? "Demo: simulated fire, unverified shelters. " : "Shelters are unverified. "}
-        Fire marks stay on this device and are not reports; routes avoid them. Live fire data isn’t connected, so this
-        is not an all-clear. Follow official orders; to report a fire, call 911.{" "}
-        <button type="button" className="ev-link-button" onClick={props.onToggleSimulated}>
-          {simulated ? "Hide simulated fire" : "Show simulated fire"}
-        </button>
+        Shelters are unverified. Fire marks stay on this device; they are not reports and do not affect routes.
+        Live fire data isn’t connected, so this is not an all-clear. Follow official orders; to report a fire, call 911.
       </p>
       {!online && <span className="ev-sr-only" role="status">You are offline.</span>}
     </section>

@@ -102,7 +102,7 @@ export function FirePanel({ ready, count, hint, map, onPlace, onHint, onClear }:
       </button>
       <div className="map-panel-copy">
         <strong>Drag the fire onto the map</strong>
-        <span aria-live="polite">{hint ?? (ready ? `${count} ${count === 1 ? "mark" : "marks"} on this device · routes avoid them` : "Local to this device")}</span>
+        <span aria-live="polite">{hint ?? (ready ? `${count} ${count === 1 ? "mark" : "marks"} on this device · private, not reports` : "Local to this device")}</span>
       </div>
       {count > 0 && <button type="button" className="map-clear" onClick={onClear}>Clear all</button>}
       {ghost && <Flame className="fire-ghost" style={{ left: ghost.x, top: ghost.y }} />}

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SAFE_ZONES, SHELTERS } from "./data/glendale";
-import { SIMULATED_HAZARDS } from "./hazards";
+import { SYNTHETIC_HAZARDS } from "../../tests/fixtures/synthetic-fire";
 import { RoutePlanner } from "./route-planner";
 import type { GetRoute, LatLng } from "./types";
 
@@ -55,15 +55,15 @@ describe("RoutePlanner recalculation", () => {
     planner.update(north(0), []);
     await vi.advanceTimersByTimeAsync(1000);
     expect(planner.getSnapshot().plan?.shelter.kind).toBe("route");
-    planner.update(north(0), SIMULATED_HAZARDS);
+    planner.update(north(0), SYNTHETIC_HAZARDS);
     await vi.advanceTimersByTimeAsync(1000);
     expect(runs()).toBe(1); // same origin
-    expect(planner.getSnapshot().plan?.hazardsKey).toContain("simulated-verdugo-fire");
+    expect(planner.getSnapshot().plan?.hazardsKey).toContain("SYNTHETIC-TEST-FIRE");
   });
 
   it("offline, gives straight-line targets without calling the routing API", async () => {
     const { planner, getRoute } = setup(false);
-    planner.update(cityHall, SIMULATED_HAZARDS);
+    planner.update(cityHall, SYNTHETIC_HAZARDS);
     await vi.advanceTimersByTimeAsync(1000);
     const plan = planner.getSnapshot().plan;
     expect(getRoute).not.toHaveBeenCalled();
