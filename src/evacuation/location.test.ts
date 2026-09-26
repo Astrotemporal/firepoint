@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_FIX, isApproximate, LocationTracker, type LocationEnvironment } from "./location";
 
 type Callbacks = { success: PositionCallback; error: PositionErrorCallback; options?: PositionOptions };
@@ -24,6 +24,26 @@ function fakeGeolocation() {
     fail(code: 1 | 2 | 3) { latest().error({ code } as GeolocationPositionError); },
   };
 }
+
+/** Controllable stand-in for the Permissions API's geolocation status. */
+function fakePermission(state: PermissionState) {
+  const listeners = new Set<() => void>();
+  const status = {
+    state,
+    addEventListener: (_type: string, listener: () => void) => { listeners.add(listener); },
+    removeEventListener: (_type: string, listener: () => void) => { listeners.delete(listener); },
+  };
+  return {
+    listeners,
+    queryPermission: () => Promise.resolve(status as unknown as PermissionStatus),
+    change(next: PermissionState) {
+      status.state = next;
+      listeners.forEach((listener) => listener());
+    },
+  };
+}
+
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 function tracker(fake: ReturnType<typeof fakeGeolocation>, overrides: Partial<LocationEnvironment> = {}) {
   return new LocationTracker(() => ({ geolocation: fake.geolocation, secureContext: true, ...overrides }));
@@ -52,6 +72,84 @@ describe("LocationTracker", () => {
     fake.fail(1);
     expect(location.getSnapshot()).toEqual({ status: "fallback", reason: "denied", fix: DEFAULT_FIX });
     expect(fake.watches.size).toBe(0);
+  });
+
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it("waits for a tap instead of asking on load, so the browser shows its prompt", async () => {
+    const fake = fakeGeolocation();
+    const permission = fakePermission("prompt");
+    const location = tracker(fake, { queryPermission: permission.queryPermission });
+    location.activate();
+    await settle();
+    expect(location.getSnapshot()).toEqual({ status: "fallback", reason: "prompt", fix: DEFAULT_FIX });
+    expect(fake.watches.size).toBe(0);
+    location.start();
+    expect(location.getSnapshot()).toMatchObject({ status: "locating" });
+    expect(fake.watches.size).toBe(1);
+  });
+
+  it("offers the prompt again after it is closed, but not once location is blocked", async () => {
+    const now = vi.spyOn(Date, "now").mockReturnValue(0);
+    const fake = fakeGeolocation();
+    const permission = fakePermission("prompt");
+    const location = tracker(fake, { queryPermission: permission.queryPermission });
+    location.activate();
+    await settle();
+    location.start();
+    now.mockReturnValue(3_000); // The person took a moment, then closed the prompt.
+    fake.fail(1);
+    expect(location.getSnapshot()).toMatchObject({ status: "fallback", reason: "prompt" });
+    permission.change("denied");
+    expect(location.getSnapshot()).toMatchObject({ status: "fallback", reason: "denied" });
+    permission.change("prompt");
+    expect(location.getSnapshot()).toMatchObject({ status: "fallback", reason: "prompt" });
+  });
+
+  it("treats an instant denial as blocked, since no prompt could have been shown", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(0);
+    const fake = fakeGeolocation();
+    const permission = fakePermission("prompt");
+    const location = tracker(fake, { queryPermission: permission.queryPermission });
+    location.activate();
+    await settle();
+    location.start();
+    fake.fail(1);
+    expect(location.getSnapshot()).toMatchObject({ status: "fallback", reason: "denied" });
+  });
+
+  it("starts by itself when location is allowed in browser settings", async () => {
+    const fake = fakeGeolocation();
+    const permission = fakePermission("denied");
+    const location = tracker(fake, { queryPermission: permission.queryPermission });
+    location.activate();
+    await settle();
+    expect(location.getSnapshot()).toMatchObject({ status: "fallback", reason: "denied" });
+    expect(fake.watches.size).toBe(0);
+    permission.change("granted");
+    expect(location.getSnapshot()).toMatchObject({ status: "locating" });
+    fake.fix(34.15, -118.25, 20);
+    expect(location.getSnapshot()).toMatchObject({ status: "tracking", fix: { source: "gps" } });
+  });
+
+  it("watches right away when location is already allowed", async () => {
+    const fake = fakeGeolocation();
+    const permission = fakePermission("granted");
+    const location = tracker(fake, { queryPermission: permission.queryPermission });
+    location.activate();
+    await settle();
+    expect(location.getSnapshot()).toMatchObject({ status: "locating" });
+    expect(fake.watches.size).toBe(1);
+    location.stop();
+    expect(permission.listeners.size).toBe(0);
+  });
+
+  it("treats a denial as blocked when the browser can't report the permission", () => {
+    const fake = fakeGeolocation();
+    const location = tracker(fake);
+    location.activate();
+    fake.fail(1);
+    expect(location.getSnapshot()).toMatchObject({ status: "fallback", reason: "denied" });
   });
 
   it("retries once on timeout, then falls back, and upgrades if a fix arrives later", () => {

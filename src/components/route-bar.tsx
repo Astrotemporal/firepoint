@@ -10,6 +10,8 @@ import { isApproximate, type LocationFix, type LocationState } from "@/evacuatio
 import type { RoutePlan } from "@/evacuation/route-planner";
 import { bearing, escapeHeading, haversine, routeIntersectsHazard } from "@/evacuation/routing";
 import type { Hazard, Route, SafeZone, Shelter } from "@/evacuation/types";
+import type { MapText } from "@/i18n/map";
+import { hazardName, useMapText } from "./map-text";
 
 export type Threat = { hazard: Hazard; edgeMeters: number };
 
@@ -50,6 +52,7 @@ type RowView = {
  */
 export function RouteBar(props: RouteBarProps) {
   const { location, origin, threat, escapeFirst, escapeRequested, online } = props;
+  const t = useMapText();
   const [open, setOpen] = useState<"escape" | "shelter" | null>(null);
   const [hidden, setHidden] = useState(false);
   // On phones, sliding the drawer all the way down closes the escape route and brings the button back.
@@ -62,9 +65,9 @@ export function RouteBar(props: RouteBarProps) {
     <p className="ev-danger" role="status">
       <span aria-hidden="true">🔥 </span>
       {threat.edgeMeters <= 0
-        ? `You appear to be inside the hazard area (${threat.hazard.label}). `
-        : `${threat.hazard.label} is ${threat.edgeMeters < 161 ? "less than 0.1 mi" : formatMiles(threat.edgeMeters)} away. `}
-      {escapeRequested ? "Take the escape route." : "Tap Escape."}
+        ? t.insideHazard(hazardName(threat.hazard, t))
+        : t.hazardAway(hazardName(threat.hazard, t), threat.edgeMeters < 161 ? t.lessThanTenthMile : formatMiles(threat.edgeMeters, t.units))}
+      {escapeRequested ? t.takeEscapeRoute : t.tapEscape}
     </p>
   ) : null;
   const status = <StatusLine {...props} onEditing={(editing) => editing && setSnap("half")} />;
@@ -79,30 +82,30 @@ export function RouteBar(props: RouteBarProps) {
     >
       <button
         type="button" className="ev-sheet-handle" aria-expanded={snap !== "peek"} aria-controls="ev-sheet-body"
-        aria-label={snap === "full" ? "Collapse directions" : "Expand directions"} {...handleProps}
+        aria-label={snap === "full" ? t.collapseDirections : t.expandDirections} {...handleProps}
       >
         <span aria-hidden="true" />
       </button>
       <button
         type="button" className="ev-sheet-tab" aria-expanded={!hidden} aria-controls="ev-sheet-body"
-        aria-label={hidden ? "Show directions" : "Hide directions"} onClick={() => setHidden(!hidden)}
+        aria-label={hidden ? t.showDirections : t.hideDirections} onClick={() => setHidden(!hidden)}
       >
         <span aria-hidden="true">{hidden ? "›" : "‹"}</span>
       </button>
       <div className="ev-sheet-scroll">
         <div className="ev-sheet-inner" ref={innerRef}>
-          <h2 id="ev-bar-title" className="ev-sr-only">Directions</h2>
+          <h2 id="ev-bar-title" className="ev-sr-only">{t.directions}</h2>
           <div className="ev-sheet-peek" ref={peekRef}>
             {escapeRequested ? (
               <ul className="ev-rows">
                 <EscapeRow
-                  view={escapeRow(props)} appleMaps={props.appleMaps} expanded={open === "escape"}
+                  view={escapeRow(props, t)} appleMaps={props.appleMaps} expanded={open === "escape"}
                   onToggle={() => setOpen(open === "escape" ? null : "escape")} onClear={clearEscape}
                 />
               </ul>
             ) : (
-              <button type="button" className="ev-escape-cta" onClick={requestEscape} aria-label="Escape: get an escape route">
-                <span aria-hidden="true">🚗</span> Escape
+              <button type="button" className="ev-escape-cta" onClick={requestEscape} aria-label={t.escapeLabel}>
+                <span aria-hidden="true">🚗</span> {t.escape}
               </button>
             )}
             {danger ?? status}
@@ -112,67 +115,65 @@ export function RouteBar(props: RouteBarProps) {
             {location.status !== "idle" && (
               <ul className="ev-rows">
                 <RouteRow
-                  kind="shelter" view={shelterRow(props)} appleMaps={props.appleMaps}
+                  kind="shelter" view={shelterRow(props, t)} appleMaps={props.appleMaps}
                   expanded={open === "shelter"} onToggle={() => setOpen(open === "shelter" ? null : "shelter")}
                 />
               </ul>
             )}
-            <p className="ev-note">
-              Shelters are unverified. Dashed red mark halos are private sketches, not reports, fire extents or evacuation zones; they do not affect routes. Live fire data isn’t connected, so this is not an all-clear. Follow official orders; to report a fire, call 911.
-            </p>
+            <p className="ev-note">{t.notAllClear}</p>
+            <p className="ev-note" lang="en">Dashed private mark halos are sketches, not reports, fire extents, evacuation zones or routing hazards. Shelters and escape targets remain unverified.</p>
           </div>
         </div>
       </div>
-      {!online && <span className="ev-sr-only" role="status">You are offline.</span>}
+      {!online && <span className="ev-sr-only" role="status">{t.youAreOffline}</span>}
     </section>
   );
 }
 
-const FALLBACK_COPY = {
-  denied: "Location is off for this site. Routes start from Glendale City Hall.",
-  unavailable: "Couldn’t find your location. Routes start from Glendale City Hall for now.",
-  insecure: "Location needs a secure (https://) page. Routes start from Glendale City Hall.",
-  unsupported: "This browser can’t share location. Routes start from Glendale City Hall.",
-} as const;
-
 function StatusLine({ location, outsideAreaMeters, online, pending, onUseLocation, onManualLocation, onEditing }: RouteBarProps & {
   onEditing: (editing: boolean) => void;
 }) {
+  const t = useMapText();
   const [editing, setEditingState] = useState(false);
   const setEditing = (next: boolean) => { setEditingState(next); onEditing(next); };
   const choose = (place: GeocodeResult) => { setEditing(false); onManualLocation(place); };
   const enterAddress = (
     <button type="button" className="ev-link-button" onClick={() => setEditing(!editing)} aria-expanded={editing}>
-      {editing ? "Cancel" : "Enter address"}
+      {editing ? t.cancel : t.enterAddress}
     </button>
   );
+  const useLocation = (
+    <button type="button" className="ev-ask-button" onClick={onUseLocation}><LocationArrow />{t.useMyLocation}</button>
+  );
 
-  let message: ReactNode;
+  let message: ReactNode = null;
   let actions: ReactNode = null;
   let warn = false;
   switch (location.status) {
     case "idle":
+      actions = <>{useLocation}{enterAddress}</>;
+      break;
     case "locating":
-      message = location.status === "locating" && location.attempt === 2
-        ? "Still looking for your location…"
-        : "Allow location access to see routes from where you are.";
+      // The browser's own prompt is up, or location is on its way.
+      if (location.attempt === 2) message = t.locating;
       actions = enterAddress;
       break;
     case "fallback":
-      warn = true;
-      message = FALLBACK_COPY[location.reason];
+      warn = location.reason !== "prompt";
+      message = t.fallback[location.reason];
       actions = (
         <>
-          {location.reason === "unavailable" && <button type="button" className="ev-link-button" onClick={onUseLocation}>Try again</button>}
+          {location.reason === "prompt" && useLocation}
+          {location.reason === "unavailable" && <button type="button" className="ev-link-button" onClick={onUseLocation}>{t.tryAgain}</button>}
           {enterAddress}
         </>
       );
       break;
     case "manual":
-      message = `From ${location.fix.label}`;
+      message = t.fromPlace(location.fix.label ?? t.chosenLocation);
       actions = (
         <>
-          <button type="button" className="ev-link-button" onClick={onUseLocation}>Use my location</button>
+          <button type="button" className="ev-link-button" onClick={onUseLocation}>{t.useMyLocation}</button>
           {enterAddress}
         </>
       );
@@ -180,31 +181,40 @@ function StatusLine({ location, outsideAreaMeters, online, pending, onUseLocatio
     case "tracking":
       if (outsideAreaMeters !== null) {
         warn = true;
-        message = `You’re ${formatMiles(outsideAreaMeters)} from Glendale; routes start from Glendale City Hall.`;
+        message = t.outsideGlendale(formatMiles(outsideAreaMeters, t.units));
         actions = enterAddress;
       } else if (isApproximate(location.fix)) {
-        message = `Location approximate (±${formatShortDistance(location.fix.accuracyMeters ?? 0)})`;
+        message = t.approximate(formatShortDistance(location.fix.accuracyMeters ?? 0, t.units));
       }
       break;
   }
   if (!online) {
     warn = true;
-    message = <>Offline: straight-line directions only. {message}</>;
+    message = <>{t.offlineStraightOnly} {message}</>;
   }
-  if (!message && !pending) return null;
+  if (!message && !actions && !pending) return null;
   return (
     <div className={`ev-status${warn ? " ev-status-warn" : ""}`}>
-      <p role="status">
-        {message}
-        {pending && <span className="ev-updating">{message ? " · " : ""}Updating routes…</span>}
-      </p>
+      {(message || pending) && (
+        <p role="status">
+          {message}
+          {pending && <span className="ev-updating">{message ? " · " : ""}{t.updatingRoutes}</span>}
+        </p>
+      )}
       {actions && <div className="ev-status-actions">{actions}</div>}
       {editing && <AddressForm onLocated={choose} />}
     </div>
   );
 }
 
+function LocationArrow() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21 3 3 10.5l7.5 3 3 7.5L21 3z" fill="currentColor" /></svg>
+  );
+}
+
 function AddressForm({ onLocated }: { onLocated: (place: GeocodeResult) => void }) {
+  const t = useMapText();
   const inputId = useId();
   const [query, setQuery] = useState("");
   const [state, setState] = useState<"idle" | "searching" | "not-found" | "error">("idle");
@@ -224,16 +234,16 @@ function AddressForm({ onLocated }: { onLocated: (place: GeocodeResult) => void 
 
   return (
     <form className="ev-form" onSubmit={submit}>
-      <label htmlFor={inputId} className="ev-sr-only">Address or ZIP code</label>
+      <label htmlFor={inputId} className="ev-sr-only">{t.addressLabel}</label>
       <input
         id={inputId} value={query} onChange={(event) => setQuery(event.target.value)} required autoFocus
-        autoComplete="street-address" enterKeyHint="search" placeholder="Address or ZIP, e.g. 91208"
+        autoComplete="street-address" enterKeyHint="search" placeholder={t.addressPlaceholder}
       />
       <button type="submit" className="ev-button" disabled={state === "searching"}>
-        {state === "searching" ? "Finding…" : "Go"}
+        {state === "searching" ? t.finding : t.go}
       </button>
-      {state === "not-found" && <p className="ev-form-error" role="status">No match near Glendale. Try a street address or ZIP.</p>}
-      {state === "error" && <p className="ev-form-error" role="status">Address search isn’t available right now. Check your connection.</p>}
+      {state === "not-found" && <p className="ev-form-error" role="status">{t.noAddressMatch}</p>}
+      {state === "error" && <p className="ev-form-error" role="status">{t.addressSearchDown}</p>}
     </form>
   );
 }
@@ -242,11 +252,12 @@ function AddressForm({ onLocated }: { onLocated: (place: GeocodeResult) => void 
 function EscapeRow({ view, appleMaps, expanded, onToggle, onClear }: {
   view: RowView; appleMaps: boolean; expanded: boolean; onToggle: () => void; onClear: () => void;
 }) {
+  const t = useMapText();
   return (
     <RouteRow
       kind="escape" view={view} appleMaps={appleMaps} expanded={expanded} onToggle={onToggle}
       action={
-        <button type="button" className="ev-escape-close" aria-label="Hide escape route" onClick={onClear}>
+        <button type="button" className="ev-escape-close" aria-label={t.hideEscapeRoute} onClick={onClear}>
           <span aria-hidden="true">✕</span>
         </button>
       }
@@ -257,6 +268,7 @@ function EscapeRow({ view, appleMaps, expanded, onToggle, onClear }: {
 function RouteRow({ kind, view, appleMaps, expanded, onToggle, action }: {
   kind: "escape" | "shelter"; view: RowView; appleMaps: boolean; expanded: boolean; onToggle: () => void; action?: ReactNode;
 }) {
+  const t = useMapText();
   const detailsId = useId();
   return (
     <li className={`ev-row ev-row-${kind}`}>
@@ -270,7 +282,7 @@ function RouteRow({ kind, view, appleMaps, expanded, onToggle, action }: {
       </button>
       {view.goTo && (
         <a className={`ev-go ev-go-${kind}`} href={directionsUrl(view.goTo, appleMaps)} target="_blank" rel="noopener noreferrer">
-          Go<span className="ev-sr-only"> to {view.goTo.name} in {appleMaps ? "Apple Maps" : "Google Maps"}</span>
+          {t.go}<span className="ev-sr-only">{t.goTo(view.goTo.name, appleMaps ? "Apple Maps" : "Google Maps")}</span>
         </a>
       )}
       {action}
@@ -279,47 +291,45 @@ function RouteRow({ kind, view, appleMaps, expanded, onToggle, action }: {
   );
 }
 
-function waiting(pending: boolean, text: string): RowView {
-  return { title: "", summary: pending ? text : "Waiting for a start location…", details: null };
+function waiting(pending: boolean, text: string, t: MapText): RowView {
+  return { title: "", summary: pending ? text : t.waitingForStart, details: null };
 }
 
-function escapeRow({ plan, origin, hazards, online, onRetryRoutes }: RouteBarProps): RowView {
-  const title = "Escape route";
+function escapeRow({ plan, origin, hazards, online, onRetryRoutes }: RouteBarProps, t: MapText): RowView {
+  const title = t.escapeRoute;
   const pick = plan?.escape;
   // Requested but not yet resolved (no origin yet, or the request is still in flight).
   if (!pick || pick.kind === "not-requested" || !origin) {
-    return { title, summary: "Finding the fastest way out…", details: null };
+    return { title, summary: t.findingWayOut, details: null };
   }
-  if (pick.kind === "no-zone") return { title, summary: "No evacuation point configured", details: null };
+  if (pick.kind === "no-zone") return { title, summary: t.noEvacuationPoint, details: null };
   if (pick.kind === "route") {
     return {
       title,
-      summary: `Head ${compassDirection(bearing(origin, pick.zone))} toward ${pick.zone.name} · ${formatDuration(pick.route.durationSeconds)}`,
+      summary: t.headToward(t.compass[compassDirection(bearing(origin, pick.zone))], pick.zone.name, formatDuration(pick.route.durationSeconds, t.units)),
       goTo: pick.zone,
       details: (
         <>
-          <p className="ev-meta">{formatMiles(pick.route.distanceMeters)} · {pick.zone.description}</p>
+          <p className="ev-meta">{formatMiles(pick.route.distanceMeters, t.units)} · {pick.zone.description}</p>
           <Steps route={pick.route} />
         </>
       ),
     };
   }
   const heading = escapeHeading(origin, pick.zone, hazards);
-  const direction = compassDirection(heading.bearing);
+  const direction = t.compass[compassDirection(heading.bearing)];
   return {
     title,
     danger: pick.kind === "no-safe-route",
     summary: heading.toward === "target"
-      ? `Head ${direction} toward ${pick.zone.name} · ${formatMiles(haversine(origin, pick.zone))} straight-line`
-      : `Head ${direction}, away from ${heading.hazard.label}`,
+      ? t.headTowardStraight(direction, pick.zone.name, formatMiles(haversine(origin, pick.zone), t.units))
+      : t.headAway(direction, hazardName(heading.hazard, t)),
     // A maps app would take the same road through the hazard, so only link when routing itself failed.
     goTo: pick.kind === "routing-unavailable" ? pick.zone : undefined,
     details: (
       <>
         {pick.kind === "no-safe-route" && (
-          <p className="ev-meta ev-danger-text">
-            Every driving route to an evacuation point passes close to a hazard. Follow official evacuation instructions.
-          </p>
+          <p className="ev-meta ev-danger-text">{t.everyEscapeNearHazard}</p>
         )}
         <Compass heading={heading.bearing} meters={heading.toward === "target" ? haversine(origin, pick.zone) : null}
           reason={pick.kind === "routing-unavailable" ? pick.reason : null} />
@@ -329,24 +339,24 @@ function escapeRow({ plan, origin, hazards, online, onRetryRoutes }: RouteBarPro
   };
 }
 
-function shelterRow({ plan, origin, hazards, pending, online, onRetryRoutes }: RouteBarProps): RowView {
-  const title = "Nearest shelter";
+function shelterRow({ plan, origin, hazards, pending, online, onRetryRoutes }: RouteBarProps, t: MapText): RowView {
+  const title = t.nearestShelter;
   const pick = plan?.shelter;
-  if (!pick || !origin) return { ...waiting(pending, "Finding the nearest open shelter…"), title };
+  if (!pick || !origin) return { ...waiting(pending, t.findingShelter, t), title };
   if (pick.kind === "no-safe-route") {
     return {
-      title, danger: true, summary: "No safe shelter route — follow evacuation route.",
-      details: <p className="ev-meta">Every driving route to an open shelter passed close to a hazard.</p>,
+      title, danger: true, summary: t.noSafeShelterRoute,
+      details: <p className="ev-meta">{t.everyShelterNearHazard}</p>,
     };
   }
   if (pick.kind === "no-shelter") {
-    return { title, danger: true, summary: "No open shelter away from active hazards.", details: null };
+    return { title, danger: true, summary: t.noOpenShelter, details: null };
   }
   const { shelter } = pick;
   if (pick.kind === "route") {
     return {
       title,
-      summary: `${shelter.name} · ${formatMiles(pick.route.distanceMeters)} · ${formatDuration(pick.route.durationSeconds)}`,
+      summary: `${shelter.name} · ${formatMiles(pick.route.distanceMeters, t.units)} · ${formatDuration(pick.route.durationSeconds, t.units)}`,
       goTo: shelter,
       details: (
         <>
@@ -360,13 +370,13 @@ function shelterRow({ plan, origin, hazards, pending, online, onRetryRoutes }: R
   const heading = bearing(origin, shelter);
   return {
     title,
-    summary: `${shelter.name} · ${compassDirection(heading)} ${formatMiles(haversine(origin, shelter))} straight-line`,
+    summary: t.shelterStraight(shelter.name, t.compass[compassDirection(heading)], formatMiles(haversine(origin, shelter), t.units)),
     goTo: shelter,
     details: (
       <>
         <Compass heading={heading} meters={haversine(origin, shelter)} reason={pick.reason} />
         {routeIntersectsHazard([origin, shelter], hazards, { origin }) && (
-          <p className="ev-meta ev-danger-text">The straight line passes near a hazard. Use roads that keep away from it.</p>
+          <p className="ev-meta ev-danger-text">{t.straightNearHazard}</p>
         )}
         <p className="ev-meta">{shelter.address}</p>
         <ShelterFacts shelter={shelter} />
@@ -377,38 +387,41 @@ function shelterRow({ plan, origin, hazards, pending, online, onRetryRoutes }: R
 }
 
 function ShelterFacts({ shelter }: { shelter: Shelter }) {
-  const known = (value: boolean | null) => (value === null ? "unknown" : value ? "yes" : "no");
+  const t = useMapText();
+  const known = (value: boolean | null) => (value === null ? t.unknown : value ? t.yes : t.no);
   return (
     <p className="ev-facts">
-      {!shelter.verified && <span className="ev-badge">Unverified: confirm it’s open</span>}
-      <span>Pets: {known(shelter.petsAllowed)}</span>
-      <span>ADA accessible: {known(shelter.adaCompliant)}</span>
+      {!shelter.verified && <span className="ev-badge">{t.unverifiedShelter}</span>}
+      <span>{t.pets}: {known(shelter.petsAllowed)}</span>
+      <span>{t.adaAccessible}: {known(shelter.adaCompliant)}</span>
     </p>
   );
 }
 
 function RetryButton({ onRetry }: { onRetry: () => void }) {
-  return <button type="button" className="ev-button ev-button-quiet" onClick={onRetry}>Retry road directions</button>;
+  const t = useMapText();
+  return <button type="button" className="ev-button ev-button-quiet" onClick={onRetry}>{t.retryDirections}</button>;
 }
 
 /** Offline / routing-failure guidance: north-up compass arrow plus straight-line distance. */
 function Compass({ heading, meters, reason }: { heading: number; meters: number | null; reason: "offline" | "provider-error" | null }) {
-  const direction = compassDirection(heading);
+  const t = useMapText();
+  const direction = t.compass[compassDirection(heading)];
   return (
     <div className="ev-straight">
-      <div className="ev-compass" role="img" aria-label={`Arrow pointing ${direction}, ${Math.round(heading)} degrees from north`}>
-        <span className="ev-compass-north" aria-hidden="true">N</span>
+      <div className="ev-compass" role="img" aria-label={t.arrowLabel(direction, Math.round(heading))}>
+        <span className="ev-compass-north" aria-hidden="true">{t.northLetter}</span>
         <svg viewBox="0 0 48 48" aria-hidden="true" style={{ transform: `rotate(${heading}deg)` }}>
           <path d="M24 3 L35 41 L24 33 L13 41 Z" fill="currentColor" />
         </svg>
       </div>
       <div>
         <p className="ev-strong">
-          {direction[0].toUpperCase() + direction.slice(1)}{meters !== null && `, ${formatMiles(meters)} straight-line`}
+          {direction[0].toUpperCase() + direction.slice(1)}{meters !== null && t.straightLine(formatMiles(meters, t.units))}
         </p>
         <p className="ev-meta">
-          {reason === "offline" ? "Offline: road directions unavailable. " : reason === "provider-error" ? "Road directions unavailable right now. " : ""}
-          Arrow is relative to north, not your phone’s heading.
+          {reason === "offline" ? t.offlineNoRoads : reason === "provider-error" ? t.roadsUnavailable : ""}
+          {t.arrowNote}
         </p>
       </div>
     </div>
@@ -416,13 +429,14 @@ function Compass({ heading, meters, reason }: { heading: number; meters: number 
 }
 
 function Steps({ route }: { route: Route }) {
+  const t = useMapText();
   if (route.steps.length === 0) return null;
   return (
     <ol className="ev-steps">
       {route.steps.map((step, index) => (
         <li key={index}>
           <span>{step.instruction}</span>
-          {step.distanceMeters > 0 && <span className="ev-step-distance">{formatShortDistance(step.distanceMeters)}</span>}
+          {step.distanceMeters > 0 && <span className="ev-step-distance">{formatShortDistance(step.distanceMeters, t.units)}</span>}
         </li>
       ))}
     </ol>

@@ -9,7 +9,10 @@ export type PinHandlers = {
 export type PinView = { marker: Marker; fire: DotLottie; title: HTMLElement; pin: HTMLElement };
 
 /** A draggable fire mark. Listeners are attached once, so they read the latest callbacks through `handlers`. */
-export function createPin(id: string, map: MapboxMap, handlers: { current: PinHandlers }): PinView {
+export type PinText = { note: string; remove: string };
+const PIN_TEXT_EN: PinText = { note: "Private to this device, not a report.", remove: "Remove mark" };
+
+export function createPin(id: string, map: MapboxMap, handlers: { current: PinHandlers }, text: PinText = PIN_TEXT_EN): PinView {
   const pin = document.createElement("button");
   pin.type = "button";
   pin.className = "fire-pin";
@@ -25,12 +28,15 @@ export function createPin(id: string, map: MapboxMap, handlers: { current: PinHa
   content.className = "fire-popup";
   const title = document.createElement("strong");
   const note = document.createElement("small");
-  note.textContent = "Private to this device, not a report. The dashed 500 m halo is only a display sketch, not a fire perimeter or evacuation zone. It does not affect routes.";
+  note.textContent = text.note;
+  const haloNote = document.createElement("small");
+  haloNote.lang = "en";
+  haloNote.textContent = "The dashed 500 m halo is a private display sketch, not a fire perimeter or evacuation zone. It does not affect routes.";
   const remove = document.createElement("button");
   remove.type = "button";
-  remove.textContent = "Remove mark";
+  remove.textContent = text.remove;
   remove.addEventListener("click", () => handlers.current.onRemove(id));
-  content.append(title, note, remove);
+  content.append(title, note, haloNote, remove);
 
   const popup = new Popup({ offset: 64, maxWidth: "240px", focusAfterOpen: true }).setDOMContent(content);
   const marker = new Marker({ element: pin, anchor: "bottom", draggable: true }).setLngLat(map.getCenter()).setPopup(popup).addTo(map);
