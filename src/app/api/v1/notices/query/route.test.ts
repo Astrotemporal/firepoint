@@ -37,7 +37,7 @@ describe("Firepoint point-query boundary", () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ type: "FeatureCollection", features: [{
       type: "Feature", properties: { id: "synthetic-only", "@id": "https://api.weather.gov/alerts/synthetic-only",
         sent: stamp, updated: stamp, effective: stamp, expires: "2026-09-26T12:00:00-07:00",
-        event: "SYNTHETIC TEST ONLY", headline: "SYNTHETIC TEST ONLY", description: "SYNTHETIC TEST ONLY",
+        ends: "2026-09-26T13:00:00-07:00", event: "SYNTHETIC TEST ONLY", headline: "SYNTHETIC TEST ONLY", description: "SYNTHETIC TEST ONLY",
         instruction: null, areaDesc: "SYNTHETIC TEST ONLY", status: "Actual" },
     }] }))));
     const response = await POST(request());
@@ -45,6 +45,7 @@ describe("Firepoint point-query boundary", () => {
     const data = NoticeFeedSchema.parse(await response.json());
     expect(data.notices).toHaveLength(1);
     expect(data.notices[0]?.category).toBe("weather");
+    expect(data.notices[0]?.endsAt).toBe("2026-09-26T13:00:00-07:00");
     expect(data.notices[0]?.origin.recordUrl).toBe("https://api.weather.gov/alerts/synthetic-only");
     expect(data.sourceChecks[0]?.endpoint).not.toContain("point=");
     expect(data.allClear).toBe(false);

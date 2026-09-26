@@ -18,6 +18,7 @@ const sample = {
       effective: "2026-09-26T10:01:00-07:00",
       status: "Actual",
       expires: "2026-09-26T12:00:00-07:00",
+      ends: "2026-09-26T13:00:00-07:00",
       event: "Test warning",
       headline: "Synthetic alert headline",
       description: "Synthetic description",
@@ -42,7 +43,7 @@ describe("fetchNwsActiveAlerts", () => {
         return new Response(JSON.stringify(sample));
       },
     });
-    expect(requestedUrl).toBe("https://api.weather.gov/alerts/active?point=34.1425%2C-118.2551");
+    expect(requestedUrl).toBe("https://api.weather.gov/alerts/active?point=34.1425%2C-118.2551&status=actual");
     expect(requestedInit?.headers).toEqual({ Accept: "application/geo+json", "User-Agent": userAgent });
     expect(requestedInit?.cache).toBe("no-store");
     expect(result).toEqual({
@@ -56,6 +57,7 @@ describe("fetchNwsActiveAlerts", () => {
         effective: "2026-09-26T10:01:00-07:00",
         status: "Actual",
         expires: "2026-09-26T12:00:00-07:00",
+        ends: "2026-09-26T13:00:00-07:00",
         event: "Test warning",
         headline: "Synthetic alert headline",
         description: "Synthetic description",

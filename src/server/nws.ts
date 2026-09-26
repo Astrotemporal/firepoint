@@ -21,7 +21,9 @@ const nwsAlertSchema = z.object({
     updated: timestamp,
     effective: timestamp.nullable().optional(),
     expires: timestamp,
-    status: z.string().optional(),
+    // CAP message validity is separate from the event's end time.
+    ends: timestamp.nullable().optional(),
+    status: z.enum(["Actual", "Exercise", "System", "Test", "Draft"]),
     event: z.string(),
     headline: z.string().nullable(),
     description: z.string(),
@@ -41,7 +43,8 @@ export type NwsAlert = {
   updated: string;
   effective?: string | null;
   expires: string;
-  status?: string;
+  ends?: string | null;
+  status: "Actual" | "Exercise" | "System" | "Test" | "Draft";
   event: string;
   headline: string | null;
   description: string;
@@ -103,6 +106,7 @@ export async function fetchNwsActiveAlerts({
 
   const sourceUrl = new URL("https://api.weather.gov/alerts/active");
   sourceUrl.searchParams.set("point", `${latitude},${longitude}`);
+  sourceUrl.searchParams.set("status", "actual");
   const url = sourceUrl.toString();
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -148,7 +152,8 @@ export async function fetchNwsActiveAlerts({
         updated: alert.updated,
         ...(alert.effective !== undefined ? { effective: alert.effective } : {}),
         expires: alert.expires,
-        ...(alert.status !== undefined ? { status: alert.status } : {}),
+        ...(alert.ends !== undefined ? { ends: alert.ends } : {}),
+        status: alert.status,
         event: alert.event,
         headline: alert.headline,
         description: alert.description,
