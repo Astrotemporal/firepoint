@@ -10,4 +10,5 @@ await mkdir(target, { recursive: true });
 for (const file of ["maplibre-gl-worker.mjs", "maplibre-gl-shared.mjs"]) {
   await copyFile(join(dist, file), join(target, file));
 }
+await copyFile(join(dist, "..", "LICENSE.txt"), join(target, "LICENSE.txt"));
 console.log("Copied MapLibre worker modules from the installed package");

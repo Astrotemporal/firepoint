@@ -14,7 +14,7 @@ Firepoint is a planned, account-optional mobile web app for emergency awareness 
 
 </details>
 
-[The preview workflow](.github/workflows/preview.yml) captures the **static page** on pull requests and refreshes these images after `main` pushes (if GitHub Actions has permission to write to `main`). It deliberately does not load map tiles, query live notices, or display private location data. The interactive map can be opened in the running app while online.
+[The preview workflow](.github/workflows/preview.yml) captures the **static page** on pull requests and refreshes these images after `main` pushes (or a manual workflow run), if GitHub Actions has permission to write to `main`. It deliberately does not load map tiles, query live notices, or display private location data. The interactive map can be opened in the running app while online.
 
 ## What exists now
 

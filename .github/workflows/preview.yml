@@ -4,6 +4,12 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
+
+# Newer main pushes must cancel older captures before an older image can publish last.
+concurrency:
+  group: firepoint-preview-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -33,13 +39,15 @@ jobs:
 
   publish:
     # PR code runs with read-only permissions. Only trusted main pushes may commit an image.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
     needs: screenshot
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
           name: firepoint-preview
@@ -51,5 +59,6 @@ jobs:
           git add docs/preview/mobile.png docs/preview/desktop.png
           if git diff --cached --quiet; then exit 0; fi
           git commit -m 'docs: refresh app preview [skip ci]'
-          git pull --rebase origin main
+          git fetch origin main
+          git rebase origin/main
           git push origin HEAD:main

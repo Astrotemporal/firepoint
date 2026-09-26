@@ -18,7 +18,9 @@ try {
       await page.getByRole("heading", { name: /A calmer place/ }).waitFor();
       await page.getByRole("button", { name: "Load street map (uses internet)" }).waitFor();
       // The merged main branch includes a first-load animation. Preview the useful page, not its transient overlay.
-      await page.locator(".preloader").waitFor({ state: "hidden", timeout: 10000 });
+      if (await page.locator(".preloader").count()) {
+        await page.locator(".preloader").waitFor({ state: "hidden", timeout: 10000 });
+      }
       await page.screenshot({ path: `docs/preview/${name}.png`, fullPage: true, animations: "disabled" });
       console.log(`Captured ${name} preview (map not loaded; no live notice query)`);
     } finally { await page.close(); }
