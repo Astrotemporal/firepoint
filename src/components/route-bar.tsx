@@ -141,23 +141,28 @@ function StatusLine({ location, outsideAreaMeters, online, pending, onUseLocatio
       {editing ? t.cancel : t.enterAddress}
     </button>
   );
+  const useLocation = (
+    <button type="button" className="ev-ask-button" onClick={onUseLocation}><LocationArrow />{t.useMyLocation}</button>
+  );
 
-  let message: ReactNode;
+  let message: ReactNode = null;
   let actions: ReactNode = null;
   let warn = false;
   switch (location.status) {
     case "idle":
+      actions = <>{useLocation}{enterAddress}</>;
+      break;
     case "locating":
-      message = location.status === "locating" && location.attempt === 2
-        ? t.stillLooking
-        : t.allowLocation;
+      // The browser's own prompt is up, or location is on its way.
+      if (location.attempt === 2) message = t.locating;
       actions = enterAddress;
       break;
     case "fallback":
-      warn = true;
+      warn = location.reason !== "prompt";
       message = t.fallback[location.reason];
       actions = (
         <>
+          {location.reason === "prompt" && useLocation}
           {location.reason === "unavailable" && <button type="button" className="ev-link-button" onClick={onUseLocation}>{t.tryAgain}</button>}
           {enterAddress}
         </>
@@ -186,16 +191,24 @@ function StatusLine({ location, outsideAreaMeters, online, pending, onUseLocatio
     warn = true;
     message = <>{t.offlineStraightOnly} {message}</>;
   }
-  if (!message && !pending) return null;
+  if (!message && !actions && !pending) return null;
   return (
     <div className={`ev-status${warn ? " ev-status-warn" : ""}`}>
-      <p role="status">
-        {message}
-        {pending && <span className="ev-updating">{message ? " · " : ""}{t.updatingRoutes}</span>}
-      </p>
+      {(message || pending) && (
+        <p role="status">
+          {message}
+          {pending && <span className="ev-updating">{message ? " · " : ""}{t.updatingRoutes}</span>}
+        </p>
+      )}
       {actions && <div className="ev-status-actions">{actions}</div>}
       {editing && <AddressForm onLocated={choose} />}
     </div>
+  );
+}
+
+function LocationArrow() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21 3 3 10.5l7.5 3 3 7.5L21 3z" fill="currentColor" /></svg>
   );
 }
 

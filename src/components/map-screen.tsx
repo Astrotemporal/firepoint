@@ -123,6 +123,8 @@ export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
   const centerKey = identity && `${identity}:${locateCount}`;
   const escapeReady = plan ? plan.escape.kind !== "not-requested" : false;
   const fitKey = identity && plan && startIdentity(plan.origin) === identity ? `${identity}:${escapeReady}` : null;
+  // Like tapping the arrow in a maps app: with no device location yet, the locate and Escape buttons ask for it.
+  const askLocation = location.status === "fallback" && (location.reason === "prompt" || location.reason === "unavailable");
 
   return (
     <MapTextProvider locale={locale}>
@@ -151,8 +153,9 @@ export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
           </Link>
         </div>
         {origin && (
-          <button type="button" className="ev-float-button ev-round ev-locate" onClick={() => setLocateCount((n) => n + 1)}
-            aria-label={origin.source === "gps" ? t.centerOnMe : t.centerOnStart}>
+          <button type="button" className="ev-float-button ev-round ev-locate"
+            onClick={() => (askLocation ? tracker.start() : setLocateCount((n) => n + 1))}
+            aria-label={askLocation ? t.shareMyLocation : origin.source === "gps" ? t.centerOnMe : t.centerOnStart}>
             <span className="ev-locate-icon" aria-hidden="true" />
           </button>
         )}
@@ -173,7 +176,7 @@ export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
         onUseLocation={() => tracker.start()}
         onManualLocation={(place) => tracker.setManual(place, place.label)}
         onRetryRoutes={() => planner.refresh()}
-        onRequestEscape={() => { if (!origin) tracker.start(); planner.requestEscape(); }}
+        onRequestEscape={() => { if (!origin || askLocation) tracker.start(); planner.requestEscape(); }}
         onClearEscape={() => planner.clearEscape()}
       />
     </main>
