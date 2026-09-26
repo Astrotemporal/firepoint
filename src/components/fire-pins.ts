@@ -9,7 +9,10 @@ export type PinHandlers = {
 export type PinView = { marker: Marker; fire: DotLottie; title: HTMLElement; pin: HTMLElement };
 
 /** A draggable fire mark. Listeners are attached once, so they read the latest callbacks through `handlers`. */
-export function createPin(id: string, map: MapboxMap, handlers: { current: PinHandlers }): PinView {
+export type PinText = { note: string; remove: string };
+const PIN_TEXT_EN: PinText = { note: "Private to this device, not a report.", remove: "Remove mark" };
+
+export function createPin(id: string, map: MapboxMap, handlers: { current: PinHandlers }, text: PinText = PIN_TEXT_EN): PinView {
   const pin = document.createElement("button");
   pin.type = "button";
   pin.className = "fire-pin";
@@ -25,10 +28,10 @@ export function createPin(id: string, map: MapboxMap, handlers: { current: PinHa
   content.className = "fire-popup";
   const title = document.createElement("strong");
   const note = document.createElement("small");
-  note.textContent = "Private to this device, not a report.";
+  note.textContent = text.note;
   const remove = document.createElement("button");
   remove.type = "button";
-  remove.textContent = "Remove mark";
+  remove.textContent = text.remove;
   remove.addEventListener("click", () => handlers.current.onRemove(id));
   content.append(title, note, remove);
 

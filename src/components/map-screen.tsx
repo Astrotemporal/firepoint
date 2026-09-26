@@ -10,7 +10,7 @@ import { getActiveHazards, subscribeToHazards } from "@/evacuation/hazards";
 import { DEFAULT_FIX, LocationTracker, type LocationFix } from "@/evacuation/location";
 import { markHazards } from "@/evacuation/marks";
 import { RoutePlanner } from "@/evacuation/route-planner";
-import { getRoute } from "@/evacuation/route-provider";
+import { getRouteIn } from "@/evacuation/route-provider";
 import { haversine, nearestHazard } from "@/evacuation/routing";
 import { registerServiceWorker } from "@/lib/service-worker";
 import type { MapHandle } from "./evacuation-map";
@@ -20,11 +20,13 @@ import { applyTheme, currentTheme, subscribeTheme, type Theme } from "./theme";
 import { MoonIcon, SunIcon } from "./theme-icons";
 import { LanguageSelect } from "./language-select";
 import { LANGUAGE_LABEL, type Locale } from "@/i18n/locales";
+import { DIRECTIONS_LANGUAGE, mapText } from "@/i18n/map";
+import { MapTextProvider, useMapText } from "./map-text";
 
 // Mapbox GL touches `window` and WebGL on import, so the map only ever renders in the browser.
 const EvacuationMap = dynamic(() => import("./evacuation-map").then((mod) => mod.EvacuationMap), {
   ssr: false,
-  loading: () => <div className="ev-map map-loading" role="status">Loading map…</div>,
+  loading: function MapLoading() { return <div className="ev-map map-loading" role="status">{useMapText().loadingMap}</div>; },
 });
 
 /** Within this distance of a hazard's edge, the escape route is listed first. */
@@ -45,9 +47,10 @@ const startIdentity = (fix: LocationFix) => (fix.source === "gps" ? "gps" : `${f
 
 /** The homepage: fire marks and directions on one full-screen map, with the route bar underneath. */
 export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
+  const t = mapText(locale);
   const [tracker] = useState(() => new LocationTracker());
   const [planner] = useState(() => new RoutePlanner<LocationFix>({
-    getRoute, shelters: SHELTERS, zones: SAFE_ZONES, isOnline: () => navigator.onLine,
+    getRoute: getRouteIn(DIRECTIONS_LANGUAGE[locale]), shelters: SHELTERS, zones: SAFE_ZONES, isOnline: () => navigator.onLine,
   }));
   const location = useSyncExternalStore(tracker.subscribe, tracker.getSnapshot, tracker.getSnapshot);
   const { plan, pending, escapeRequested } = useSyncExternalStore(planner.subscribe, planner.getSnapshot, planner.getSnapshot);
@@ -111,9 +114,7 @@ export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
 
   function place(lat: number, lng: number) {
     save(addMark(marks, createMark(lat, lng)));
-    setHint(marks.length >= MAX_MARKS
-      ? `Placed. Only the newest ${MAX_MARKS} marks are kept.`
-      : "Placed. Routes now avoid it. Drag to adjust, or select it to remove.");
+    setHint(marks.length >= MAX_MARKS ? t.placedAtLimit(MAX_MARKS) : t.placed);
   }
 
   const identity = origin ? startIdentity(origin) : null;
@@ -126,38 +127,39 @@ export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
   const askLocation = location.status === "fallback" && (location.reason === "prompt" || location.reason === "unavailable");
 
   return (
+    <MapTextProvider locale={locale}>
     <main className="map-screen ev-shell">
-      <h1 className="sr-only">Firepoint map</h1>
+      <h1 className="sr-only">{t.screenTitle}</h1>
       <div className="ev-map-area">
         <EvacuationMap
           dark={theme === "dark"} origin={origin} hazards={hazards} shelters={SHELTERS} zones={SAFE_ZONES} plan={plan}
           centerKey={centerKey} fitKey={fitKey} marks={marks} onReady={onReady}
           onMoveMark={(id, lat, lng) => save(moveMark(marks, id, lat, lng))}
-          onRemoveMark={(id) => { save(marks.filter((mark) => mark.id !== id)); setHint("Mark removed."); }}
+          onRemoveMark={(id) => { save(marks.filter((mark) => mark.id !== id)); setHint(t.markRemoved); }}
         />
         <FirePanel
           ready={ready} count={marks.length} hint={hint} map={mapRef} onPlace={place} onHint={setHint}
-          onClear={() => { save([]); setHint("All marks cleared."); }}
+          onClear={() => { save([]); setHint(t.marksCleared); }}
         />
         <div className="map-actions">
           <LanguageSelect current={locale} label={LANGUAGE_LABEL[locale]} returnTo="/" className="map-lang-select" />
           <button type="button" className="theme-toggle" onClick={() => applyTheme(theme === "dark" ? "light" : "dark", true)}
-            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"} title={theme === "dark" ? "Light mode" : "Dark mode"}>
+            aria-label={theme === "dark" ? t.switchToLight : t.switchToDark} title={theme === "dark" ? t.lightMode : t.darkMode}>
             {theme === "dark" ? <SunIcon /> : <MoonIcon />}
           </button>
-          <Link className="map-brand" href="/prepare" aria-label="Firepoint: official sources and prep list">
+          <Link className="map-brand" href="/prepare" aria-label={t.prepLinkLabel}>
             <span className="brand-mark" aria-hidden="true"><span /></span>
-            <span>Official sources &amp; prep <span aria-hidden="true">↗</span></span>
+            <span>{t.prepLink} <span aria-hidden="true">↗</span></span>
           </Link>
         </div>
         {origin && (
           <button type="button" className="ev-float-button ev-round ev-locate"
             onClick={() => (askLocation ? tracker.start() : setLocateCount((n) => n + 1))}
-            aria-label={askLocation ? "Share my location" : origin.source === "gps" ? "Center on my location" : "Center on the route start"}>
+            aria-label={askLocation ? t.shareMyLocation : origin.source === "gps" ? t.centerOnMe : t.centerOnStart}>
             <span className="ev-locate-icon" aria-hidden="true" />
           </button>
         )}
-        {!canStore && <p className="map-storage-warning" role="status">Browser storage is unavailable. Marks may be lost when you leave this page.</p>}
+        {!canStore && <p className="map-storage-warning" role="status">{t.storageWarning}</p>}
       </div>
       <RouteBar
         location={location}
@@ -178,5 +180,6 @@ export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
         onClearEscape={() => planner.clearEscape()}
       />
     </main>
+    </MapTextProvider>
   );
 }
