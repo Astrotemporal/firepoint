@@ -9,8 +9,10 @@ Firepoint offers **English, Spanish and Eastern Armenian**, reflecting Glendale'
 | Surface | Status |
 | --- | --- |
 | `/prepare` wildfire guide | Translated: [`wildfire-guide.es.ts`](../src/domain/wildfire-guide.es.ts), [`wildfire-guide.hy.ts`](../src/domain/wildfire-guide.hy.ts) |
-| Public map screen (`/`, production) | English only. On Spanish/Armenian visits the status card is marked `lang="en"`, says "Map status is available in English only." and repeats only the guide's existing 911 line and guide name in that language; see `src/domain/public-screen-copy.ts`. No new safety text is translated |
-| Routing prototype and route bar (`/` with `FIREPOINT_PROTOTYPE_ROUTING`) | Language select only; the text is still English. Translating it waits for the open map PR #19 to land |
+| Map screen, directions drawer, fire marks and map popups (`/`) | Translated: [`src/i18n/map.ts`](../src/i18n/map.ts), shared through `MapTextProvider` / `useMapText` ([`map-text.tsx`](../src/components/map-text.tsx)) |
+| Turn-by-turn road steps | From Mapbox: Spanish when ES is chosen; English for Armenian, which Mapbox Directions doesn't support |
+| Shelter names, addresses, evacuation-point descriptions, feed hazard labels | Never translated: data shown as published |
+| Public map screen (`/`, production) | Controls, fire marks and pins use the `src/i18n/map.ts` translations through `MapTextProvider`. The status card is English only: on Spanish/Armenian visits it is marked `lang="en"`, says "Map status is available in English only." and repeats only the guide's existing 911 line and guide name in that language (`src/domain/public-screen-copy.ts`). Route-related map strings (`mapLabel`, `mapFailed`, `noMapToken`, `placed`, `marksOnDevice`) are not used there; no new safety text is translated |
 | `public/offline.html` | English only (a static fallback; tests keep it in sync with the English guide) |
 | Official notices, agency names, photo credits | Never translated: shown as published |
 
@@ -30,4 +32,4 @@ Firepoint offers **English, Spanish and Eastern Armenian**, reflecting Glendale'
 
 ## Reviewing a translation
 
-Edit the `.es.ts` or `.hy.ts` file directly; each entry sits in the same order as the English file. Run `npm test` afterwards. Once a native speaker has reviewed a language, note who reviewed it and when here, and consider softening the on-page "unofficial" notice.
+For the guide, edit the `.es.ts` or `.hy.ts` file directly. For the map, edit the `MAP_ES` or `MAP_HY` block in `src/i18n/map.ts`. Each entry sits in the same order as English, and [`map.test.tsx`](../src/i18n/map.test.tsx) checks that every entry exists and keeps its inserted values and 911. Run `npm test` afterwards. Once a native speaker has reviewed a language, note who reviewed it and when here, and consider softening the on-page "unofficial" notice.
