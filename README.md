@@ -47,6 +47,7 @@ The `Makefile` also has `make gis-fetch`/`make gis-local` developer-only MCP ste
 - [Data contracts](docs/contracts.md): proposed and implemented schemas; check its status notes before claiming a route or UI integration exists.
 - [Map decisions](docs/maps.md): current Mapbox home, secondary OpenFreeMap map, attribution, cost, privacy and limits.
 - [PWA storage, systems, audio and route handoff](docs/pwa-storage-and-systems.md): shipped versus proposed behavior and provenance gates.
+- [Crowd reports and tiered map research](docs/crowd-report-zones.md): unverified report-density concept, not a fire perimeter or safe zone.
 - [Resident stories](docs/user-stories.md), [four-person scope](docs/hackathon-roles.md), and [source/storage roadmap](docs/source-roadmap.md): proposals and ownership boundaries, not shipped services.
 - [Product vision](docs/vision.md) and [broader API roadmap](docs/roadmap.md): teammate proposals for later phases. Check their assumptions against the source policy and current status before promising a live feature.
 

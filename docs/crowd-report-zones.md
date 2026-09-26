@@ -1,0 +1,28 @@
+# Crowdsourced reports and tiered map concept (research, not shipped)
+
+**Status:** this is a proposal for the frontend, map and API owners, not a fire map, incident feed or risk model. Firepoint has **no report submission, moderation service, public report feed, verified evacuation orders, active evacuation-zone lookup, fire-spread model or resident routing authority**. Production source queries remain paused. Private `firepoint.marks.v1` flame marks in `localStorage` are personal bookmarks; they are not reports and must never enter an aggregate or a fire estimate. The current [three-mark fire-circle PR #11](https://github.com/Astrotemporal/firepoint/pull/11) is not evidence of a perimeter. Do not wire an example into the resident UI.
+
+## What "tiers" can mean without a fake safety zone
+
+A battle-royale shrinking ring would imply that the circle covers the fire and that the area outside it is safe. Neither follows from report counts or WindNinja output. **Tier by provenance and status, not by concentric geography:**
+
+1. **Issuing agency order/warning:** render only the exact agency-published notice/zone geometry, if rights, jurisdiction, IDs, status, issue/retraction times and coverage are verified. Keep original wording and URL. This feed does not exist here yet.
+2. **Published incident perimeter:** render only the actual [NIFC/WFIGS](https://wfigs-nifc.hub.arcgis.com/pages/wfigs-public-data) polygon with its polygon capture time, fetch time, extent and caveat. It is a historical mapped boundary, **not** a current fire front or evacuation boundary. Production querying is paused and no perimeter is currently drawn.
+3. **Community observations (future):** show moderated, explicitly **unverified report counts** as coarse, separated grid cells with a distinct dotted/hatched legend. Cells are not filled "fire area" polygons. Empty cells are unknown, not safe. Never blend their colors into official order or perimeter styling.
+4. **Planning model (much later):** a separate, opt-in hypothetical mode only after calibration, source rights and traceable scenarios. It must never silently blend into the live-source view.
+
+Each visible layer needs a persistent label, issuer/operator (or "unverified community reports"), original URL when official, publisher-as-of and fetch times, geographic coverage and stale/down states. Higher report counts **never** promote a cell to a verified incident, create a zone boundary, trigger an evacuation instruction or indicate a safe exit. No countdown, moving ring, unsourced heat forecast or all-clear.
+
+## Possible report-density contract, behind moderation
+
+Firepoint's [`PublishedObservationSchema`](../src/domain/contracts.ts) already requires `verification: "unverified"`, redacted text, and a paired approximate point/precision; [`SubmissionReceiptSchema`](../src/domain/contracts.ts) never claims emergency dispatch. A future aggregator may accept **only moderated published observations**, not raw submissions or private map marks. A future cell DTO can contain a coarse grid ID, count **bin** (not probability), newest published time, expiry and literal `verification: "unverified"`; it should not contain exact points or a crowd-derived polygon. The API should carry `allClear: false` and independent moderation/source-health status. Do not add a resident route until there is an operational moderation queue, staff ownership, abuse limits, consent, retention/deletion and takedown path. A report receipt must say it is **not a 911 call**.
+
+Proposed, **not validated** aggregation rules: group into a privacy-reviewed grid; collapse repeat reports per anonymous token/cell/topic in a time window; cap public count bins so brigading cannot visually escalate authority; expire old reports and say that absent reports do not mean absent fire. Never expose exact reporter locations or raw text without redaction. Anti-Sybil defenses cannot be complete without accounts, so the core safety property is that votes and volume confer **zero official authority**. Use synthetic-only tests for bin saturation, expiry, repeat suppression, unknown/empty states and absence of raw coordinates; do not publish plausible fake incident fixtures.
+
+## Wind is not spread
+
+[WindNinja](https://github.com/firelab/windninja) is a batch terrain-adjusted **wind field**, not a hosted live fire API. Wind arrows plus reports cannot derive a fire footprint. Conditional fire arrival would need a separately validated spread model (for example ELMFIRE), sourced fuels and DEM, an ignition/scenario, wind initialization, model version, run and valid times, uncertainty, and published method. Glendale lee-canyon winds can be underpredicted; ember spotting and recent fuel changes can make arrival sooner. See the [deferred model queue](source-roadmap.md#deferred-model-source-windninja-research-queue-not-an-alert-api). No such output is in Firepoint today.
+
+## Team decision before UI work
+
+Keep the original source-first safety message easy to reach from the map. The frontend/map owners can prototype the visual language with **empty/unavailable states only** until sources and moderation are real; use synthetic report cells only inside unit tests or a clearly isolated developer test, never a plausible public demo. The API owner defines publisher geometry/status and the systems owner defines publication, provenance and abuse gates. A navigation app route is not checked for fire safety; official published route/destination handoff remains a separate future feature.
