@@ -62,6 +62,7 @@ h1 em,h2 em { font-weight: 400; }
 .map-panel-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .map-panel-copy strong { font-size: 15px; }
 .map-panel-copy span { font-size: 12px; line-height: 1.4; color: var(--surface-muted); }
+.fire-estimate { margin-top: 2px; font-size: 12px; line-height: 1.4; color: var(--surface-ink); font-variant-numeric: tabular-nums; }
 .map-clear { margin-left: auto; flex: 0 0 auto; background: none; border: 0; text-decoration: underline; font-size: 12px; color: var(--surface-ink); min-height: 44px; }
 .map-actions { position: absolute; z-index: 1000; top: calc(16px + env(safe-area-inset-top, 0px)); right: 16px; display: flex; gap: 10px; align-items: center; }
 .theme-toggle { width: 48px; height: 48px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: var(--surface); color: var(--surface-ink); box-shadow: var(--surface-shadow); }

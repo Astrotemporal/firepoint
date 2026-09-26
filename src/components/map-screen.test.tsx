@@ -16,6 +16,12 @@ describe("map screen", () => {
     expect(html).not.toContain("Clear all");
   });
 
+  it("asks for three marks on the fire's edge before estimating", () => {
+    const html = renderToStaticMarkup(<MapScreen />);
+    expect(html).toContain("Mark 3 points on the fire");
+    expect(html).not.toContain("Estimated fire");
+  });
+
   it("frames marks as private orientation, never reports or live fire data", () => {
     const html = renderToStaticMarkup(<MapScreen />);
     expect(html).toContain("are not reports");

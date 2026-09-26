@@ -2,7 +2,8 @@ import { z } from "zod";
 
 /** Personal map marks. Private to one browser; never a report, notice, or shared claim. */
 export const MARKS_KEY = "firepoint.marks.v1";
-export const MAX_MARKS = 20;
+/** Three marks on the fire's edge triangulate its extent (see triangulation.ts); a fourth replaces the oldest. */
+export const MAX_MARKS = 3;
 
 const FireMarkSchema = z.object({
   id: z.string().min(1).max(64),

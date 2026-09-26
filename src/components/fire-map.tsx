@@ -4,7 +4,9 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import mapboxgl from "mapbox-gl";
 import { DotLottie } from "@lottiefiles/dotlottie-web";
 import { useEffect, useRef } from "react";
+import type { FeatureCollection } from "geojson";
 import type { FireMark } from "@/domain/fire-marks";
+import type { FireEstimate } from "@/domain/triangulation";
 
 // Glendale, CA as [lng, lat]. A display camera only, never a coverage or zone boundary.
 const GLENDALE: [number, number] = [-118.255, 34.165];
@@ -23,6 +25,7 @@ export type MapHandle = {
 type FireMapProps = {
   dark: boolean;
   marks: FireMark[];
+  estimate: FireEstimate | null;
   onReady: (map: MapHandle | null) => void;
   onMove: (id: string, lat: number, lng: number) => void;
   onRemove: (id: string) => void;
@@ -30,7 +33,7 @@ type FireMapProps = {
 
 type PinView = { marker: mapboxgl.Marker; fire: DotLottie; title: HTMLElement; coords: HTMLElement; pin: HTMLElement };
 
-export function FireMap({ dark, marks, onReady, onMove, onRemove }: FireMapProps) {
+export function FireMap({ dark, marks, estimate, onReady, onMove, onRemove }: FireMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const pins = useRef(new Map<string, PinView>());
@@ -39,6 +42,7 @@ export function FireMap({ dark, marks, onReady, onMove, onRemove }: FireMapProps
   useEffect(() => { handlers.current = { onMove, onRemove }; });
   const style = dark ? STYLES.dark : STYLES.light;
   const styleRef = useRef(style);
+  const overlay = useRef<FeatureCollection>(overlayData([], null));
 
   useEffect(() => {
     const container = containerRef.current;
@@ -53,6 +57,8 @@ export function FireMap({ dark, marks, onReady, onMove, onRemove }: FireMapProps
       logoPosition: "bottom-right",
     });
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "bottom-right");
+    // A style change drops every source, so the overlay is rebuilt on each style load (including the first).
+    map.on("style.load", () => syncOverlay(map, overlay.current));
     mapRef.current = map;
     onReady({
       container,
@@ -95,6 +101,13 @@ export function FireMap({ dark, marks, onReady, onMove, onRemove }: FireMapProps
     });
   }, [marks]);
 
+  // The triangle between the marks and the estimated fire circle are map layers, drawn under the markers.
+  useEffect(() => {
+    overlay.current = overlayData(marks, estimate);
+    const map = mapRef.current;
+    if (map?.isStyleLoaded()) syncOverlay(map, overlay.current);
+  }, [marks, estimate]);
+
   if (!TOKEN) {
     return (
       <div className="map-loading" role="status">
@@ -136,6 +149,31 @@ function createPin(id: string, map: mapboxgl.Map, handlers: { current: Pick<Fire
     handlers.current.onMove(id, lat, lng);
   });
   return { marker, fire, title, coords, pin };
+}
+
+const OVERLAY_SOURCE = "fire-estimate";
+const FIRE_COLOR = "#e4744d";
+
+function overlayData(marks: FireMark[], estimate: FireEstimate | null): FeatureCollection {
+  const data: FeatureCollection = { type: "FeatureCollection", features: [] };
+  if (marks.length === 3) {
+    data.features.push({ type: "Feature", properties: { kind: "triangle" }, geometry: { type: "LineString", coordinates: [...marks, marks[0]].map((m) => [m.lng, m.lat]) } });
+  }
+  if (estimate) {
+    data.features.push({ type: "Feature", properties: { kind: "fire" }, geometry: { type: "Polygon", coordinates: [estimate.ring.map((p) => [p.lng, p.lat])] } });
+    data.features.push({ type: "Feature", properties: { kind: "center" }, geometry: { type: "Point", coordinates: [estimate.center.lng, estimate.center.lat] } });
+  }
+  return data;
+}
+
+function syncOverlay(map: mapboxgl.Map, data: FeatureCollection) {
+  const source = map.getSource(OVERLAY_SOURCE) as mapboxgl.GeoJSONSource | undefined;
+  if (source) { source.setData(data); return; }
+  map.addSource(OVERLAY_SOURCE, { type: "geojson", data });
+  map.addLayer({ id: "fire-area", type: "fill", source: OVERLAY_SOURCE, filter: ["==", ["get", "kind"], "fire"], paint: { "fill-color": FIRE_COLOR, "fill-opacity": 0.2 } });
+  map.addLayer({ id: "fire-edge", type: "line", source: OVERLAY_SOURCE, filter: ["==", ["get", "kind"], "fire"], paint: { "line-color": FIRE_COLOR, "line-width": 2.5 } });
+  map.addLayer({ id: "fire-triangle", type: "line", source: OVERLAY_SOURCE, filter: ["==", ["get", "kind"], "triangle"], paint: { "line-color": FIRE_COLOR, "line-width": 1.5, "line-dasharray": [2, 2], "line-opacity": 0.8 } });
+  map.addLayer({ id: "fire-center", type: "circle", source: OVERLAY_SOURCE, filter: ["==", ["get", "kind"], "center"], paint: { "circle-radius": 5, "circle-color": FIRE_COLOR, "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 } });
 }
 
 function removePin({ fire, marker }: PinView) {

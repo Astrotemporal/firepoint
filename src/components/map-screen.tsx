@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
 import { MARKS_KEY, MAX_MARKS, addMark, createMark, moveMark, parseMarks, type FireMark } from "@/domain/fire-marks";
+import { estimateFire, formatDistance } from "@/domain/triangulation";
 import { Flame } from "./flame";
 import type { MapHandle } from "./fire-map";
 import { applyTheme, currentTheme, storedTheme, type Theme } from "./theme";
@@ -56,6 +57,7 @@ export function MapScreen() {
   }
 
   const onReady = useCallback((map: MapHandle | null) => { mapRef.current = map; }, []);
+  const estimate = estimateFire(marks);
 
   function save(next: FireMark[]) {
     setMarks(next);
@@ -68,7 +70,9 @@ export function MapScreen() {
 
   function place(lat: number, lng: number) {
     save(addMark(marks, createMark(lat, lng)));
-    setHint(marks.length >= MAX_MARKS ? `Placed. Only the newest ${MAX_MARKS} marks are kept.` : "Placed. Drag the mark to adjust it, or select it to remove.");
+    if (marks.length >= MAX_MARKS) setHint("Placed, replacing your oldest mark. Drag any mark to refine the estimate.");
+    else if (marks.length === MAX_MARKS - 1) setHint("All three placed. Drag any mark to refine the estimate.");
+    else setHint(`Placed ${marks.length + 1} of ${MAX_MARKS}. Mark another point on the fire's edge.`);
   }
 
   function onPointerDown(event: PointerEvent<HTMLButtonElement>) {
@@ -121,7 +125,7 @@ export function MapScreen() {
   return (
     <main className="map-screen">
       <h1 className="sr-only">Firepoint map</h1>
-      <FireMap dark={theme === "dark"} marks={marks} onReady={onReady} onMove={(id, lat, lng) => save(moveMark(marks, id, lat, lng))} onRemove={(id) => { save(marks.filter((mark) => mark.id !== id)); setHint("Mark removed."); }} />
+      <FireMap dark={theme === "dark"} marks={marks} estimate={estimate} onReady={onReady} onMove={(id, lat, lng) => save(moveMark(marks, id, lat, lng))} onRemove={(id) => { save(marks.filter((mark) => mark.id !== id)); setHint("Mark removed."); }} />
       <div className="map-panel">
         <button
           type="button"
@@ -132,13 +136,20 @@ export function MapScreen() {
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerCancel}
           onClick={onClick}
-          aria-label="Add a fire mark. Drag onto the map, or press to place it at the map centre."
+          aria-label="Add a mark on the fire's edge. Drag onto the map, or press to place it at the map centre."
         >
           <Flame className="fire-token-flame" />
         </button>
         <div className="map-panel-copy">
-          <strong>Drag the fire onto the map</strong>
-          <span aria-live="polite">{hint ?? (ready ? `${marks.length} ${marks.length === 1 ? "mark" : "marks"} on this device` : "Local to this device")}</span>
+          <strong>{marks.length < MAX_MARKS ? `Mark ${MAX_MARKS} points on the fire's edge` : "Estimated fire"}</strong>
+          <span aria-live="polite">{hint ?? (ready ? `${marks.length} of ${MAX_MARKS} marks placed` : "Local to this device")}</span>
+          {marks.length === MAX_MARKS && (
+            <p className="fire-estimate" aria-live="polite">
+              {estimate
+                ? <>Centre {estimate.center.lat.toFixed(4)}, {estimate.center.lng.toFixed(4)} · radius {formatDistance(estimate.radiusM)} · around {formatDistance(estimate.circumferenceM)}</>
+                : "Your marks are in a line. Spread them around the fire."}
+            </p>
+          )}
         </div>
         {marks.length > 0 && <button type="button" className="map-clear" onClick={() => { save([]); setHint("All marks cleared."); }}>Clear all</button>}
       </div>
