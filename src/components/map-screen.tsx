@@ -119,6 +119,8 @@ export function MapScreen() {
   const centerKey = identity && `${identity}:${locateCount}`;
   const fitKey = identity && plan && startIdentity(plan.origin) === identity ? identity : null;
   const simulatedShown = stubHazards.some((hazard) => hazard.simulated);
+  // Like tapping the arrow in a maps app: with no device location yet, the locate button asks for it.
+  const askLocation = location.status === "fallback" && location.reason !== "insecure" && location.reason !== "unsupported";
 
   return (
     <main className="map-screen ev-shell">
@@ -145,8 +147,9 @@ export function MapScreen() {
           </Link>
         </div>
         {origin && (
-          <button type="button" className="ev-float-button ev-round ev-locate" onClick={() => setLocateCount((n) => n + 1)}
-            aria-label={origin.source === "gps" ? "Center on my location" : "Center on the route start"}>
+          <button type="button" className="ev-float-button ev-round ev-locate"
+            onClick={() => (askLocation ? tracker.start() : setLocateCount((n) => n + 1))}
+            aria-label={askLocation ? "Share my location" : origin.source === "gps" ? "Center on my location" : "Center on the route start"}>
             <span className="ev-locate-icon" aria-hidden="true" />
           </button>
         )}

@@ -77,8 +77,11 @@
 .ev-status { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 14px; padding: 2px 2px 6px; font-size: 14px; line-height: 1.4; font-weight: 700; color: var(--ev-text); }
 .ev-status > .ev-form { flex-basis: 100%; }
 .ev-status-warn { color: var(--ev-warn); }
-.ev-status-actions { display: flex; flex-wrap: wrap; gap: 0 14px; }
+.ev-status-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
 .ev-updating { font-weight: 600; color: var(--ev-muted); }
+.ev-ask-button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border: 0; border-radius: 22px; background: var(--ev-you); color: #fff; font-size: 15px; font-weight: 800; box-shadow: 0 1px 3px rgba(0, 0, 0, .2); }
+.ev-ask-button:hover { filter: brightness(1.08); }
+.ev-ask-button svg { width: 16px; height: 16px; }
 .ev-danger { margin-bottom: 8px; padding: 8px 10px; border-radius: 8px; background: var(--ev-danger-bg); color: var(--ev-danger-ink); border-left: 4px solid var(--ev-danger-edge); font-size: 14px; font-weight: 700; line-height: 1.4; }
 
 .ev-rows { list-style: none; margin: 0; padding: 0; }

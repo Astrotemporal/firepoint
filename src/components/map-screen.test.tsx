@@ -34,7 +34,7 @@ describe("map screen", () => {
     const html = renderToStaticMarkup(<MapScreen />);
     expect(html).toContain('class="fire-token"');
     expect(html).toContain('class="ev-bar"');
-    expect(html).toContain("Allow location access to see routes from where you are.");
+    expect(html).toContain("Use my location");
   });
 
   it("keeps the prep guide separate and links back to the map", () => {

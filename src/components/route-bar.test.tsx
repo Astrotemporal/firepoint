@@ -80,12 +80,25 @@ describe("RouteBar", () => {
     expect(html).not.toContain("destination=34.180800,-118.309000");
   });
 
-  it("asks for location on load, then offers an address after denial", () => {
-    expect(render({ location: { status: "locating", fix: null, attempt: 1 }, origin: null, plan: null }))
-      .toContain("Allow location access to see routes from where you are.");
+  it("offers one button to share location until it is allowed, and an address instead", () => {
+    const asking = render({ location: { status: "locating", fix: null, attempt: 1 }, origin: null, plan: null });
+    expect(asking).toMatch(/<button[^>]*class="ev-ask-button"[^>]*>.*Use my location<\/button>/);
+    expect(asking).toContain("Enter address");
+    const dismissed = render({ location: { status: "fallback", reason: "dismissed", fix: DEFAULT_FIX }, origin: DEFAULT_FIX });
+    expect(dismissed).toContain("From Glendale City Hall");
+    expect(dismissed).toContain("ev-ask-button");
+  });
+
+  it("says where routes start when location is blocked, without a button that can't work", () => {
     const denied = render({ location: { status: "fallback", reason: "denied", fix: DEFAULT_FIX }, origin: DEFAULT_FIX });
-    expect(denied).toContain("Routes start from Glendale City Hall.");
+    expect(denied).toContain("From Glendale City Hall · Location off");
     expect(denied).toContain("Enter address");
+    expect(denied).not.toContain("ev-ask-button");
+  });
+
+  it("doesn't ask when location is already allowed", () => {
+    const html = render({ location: { status: "locating", fix: null, attempt: 1, granted: true }, origin: null, plan: null });
+    expect(html).not.toContain("Use my location");
   });
 
   it("never treats an empty hazard list as an all-clear", () => {

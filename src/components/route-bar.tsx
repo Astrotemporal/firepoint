@@ -83,7 +83,8 @@ export function RouteBar(props: RouteBarProps) {
 }
 
 const FALLBACK_COPY = {
-  denied: "Location is off for this site. Routes start from Glendale City Hall.",
+  denied: "From Glendale City Hall · Location off",
+  dismissed: "From Glendale City Hall",
   unavailable: "Couldn’t find your location. Routes start from Glendale City Hall for now.",
   insecure: "Location needs a secure (https://) page. Routes start from Glendale City Hall.",
   unsupported: "This browser can’t share location. Routes start from Glendale City Hall.",
@@ -97,23 +98,29 @@ function StatusLine({ location, outsideAreaMeters, online, pending, onUseLocatio
       {editing ? "Cancel" : "Enter address"}
     </button>
   );
+  const useLocation = (
+    <button type="button" className="ev-ask-button" onClick={onUseLocation}><LocationArrow />Use my location</button>
+  );
 
-  let message: ReactNode;
+  let message: ReactNode = null;
   let actions: ReactNode = null;
   let warn = false;
   switch (location.status) {
     case "idle":
     case "locating":
-      message = location.status === "locating" && location.attempt === 2
-        ? "Still looking for your location…"
-        : "Allow location access to see routes from where you are.";
-      actions = enterAddress;
+      if (location.status === "locating" && location.attempt === 2) {
+        message = "Locating…";
+        actions = enterAddress;
+      } else if (location.status !== "locating" || !location.granted) {
+        actions = <>{useLocation}{enterAddress}</>;
+      }
       break;
     case "fallback":
-      warn = true;
+      warn = location.reason !== "dismissed";
       message = FALLBACK_COPY[location.reason];
       actions = (
         <>
+          {location.reason === "dismissed" && useLocation}
           {location.reason === "unavailable" && <button type="button" className="ev-link-button" onClick={onUseLocation}>Try again</button>}
           {enterAddress}
         </>
@@ -142,16 +149,24 @@ function StatusLine({ location, outsideAreaMeters, online, pending, onUseLocatio
     warn = true;
     message = <>Offline: straight-line directions only. {message}</>;
   }
-  if (!message && !pending) return null;
+  if (!message && !actions && !pending) return null;
   return (
     <div className={`ev-status${warn ? " ev-status-warn" : ""}`}>
-      <p role="status">
-        {message}
-        {pending && <span className="ev-updating">{message ? " · " : ""}Updating routes…</span>}
-      </p>
+      {(message || pending) && (
+        <p role="status">
+          {message}
+          {pending && <span className="ev-updating">{message ? " · " : ""}Updating routes…</span>}
+        </p>
+      )}
       {actions && <div className="ev-status-actions">{actions}</div>}
       {editing && <AddressForm onLocated={choose} />}
     </div>
+  );
+}
+
+function LocationArrow() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21 3 3 10.5l7.5 3 3 7.5L21 3z" fill="currentColor" /></svg>
   );
 }
 
