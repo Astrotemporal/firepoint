@@ -96,6 +96,9 @@
 .ev-go-shelter:hover { background: var(--ev-shelter-hover); }
 .ev-row-details { grid-column: 1 / -1; padding: 0 2px 10px 34px; }
 .ev-row-details > * + * { margin-top: 8px; }
+/* Escape route call-to-action, shown instead of a summary row until requested. */
+.ev-escape-cta { grid-column: 1 / -1; justify-content: center; min-height: 56px; border-radius: 12px; background: var(--ev-escape-bg); color: #fff; font-size: 16px; font-weight: 800; }
+.ev-escape-cta:hover { background: var(--ev-escape-hover); }
 .ev-danger-text { color: var(--ev-danger-text); }
 .ev-meta { font-size: 15px; line-height: 1.45; color: var(--ev-text); }
 .ev-strong { font-weight: 700; line-height: 1.4; }

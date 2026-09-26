@@ -61,13 +61,82 @@ describe("RoutePlanner recalculation", () => {
     expect(planner.getSnapshot().plan?.hazardsKey).toContain("simulated-verdugo-fire");
   });
 
-  it("offline, gives straight-line targets without calling the routing API", async () => {
+  it("offline, gives straight-line shelter targets without calling the routing API, and no escape unless requested", async () => {
     const { planner, getRoute } = setup(false);
     planner.update(cityHall, SIMULATED_HAZARDS);
     await vi.advanceTimersByTimeAsync(1000);
     const plan = planner.getSnapshot().plan;
     expect(getRoute).not.toHaveBeenCalled();
     expect(plan?.shelter).toMatchObject({ kind: "routing-unavailable", reason: "offline", shelter: { id: "pacific-community-center" } });
-    expect(plan?.escape).toMatchObject({ kind: "routing-unavailable", reason: "offline" });
+    expect(plan?.escape).toEqual({ kind: "not-requested" });
+
+    planner.requestEscape();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(getRoute).not.toHaveBeenCalled();
+    expect(planner.getSnapshot().plan?.escape).toMatchObject({ kind: "routing-unavailable", reason: "offline" });
+  });
+});
+
+describe("RoutePlanner escape requests", () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  function setup() {
+    const getRoute = vi.fn<GetRoute>(async (from, to) => ({
+      path: [from, to], distanceMeters: 1000, durationSeconds: 120, steps: [],
+    }));
+    const planner = new RoutePlanner({
+      getRoute, shelters: SHELTERS, zones: SAFE_ZONES, isOnline: () => true,
+      debounceMs: 1000, minIntervalMs: 5000, now: () => Date.now(),
+    });
+    /** Calls to `getRoute` whose destination is a safe zone (has `priority`), not a shelter. */
+    const escapeCalls = () => getRoute.mock.calls.filter(([, to]) => "priority" in to);
+    return { planner, getRoute, escapeCalls };
+  }
+
+  it("never calls getRoute for the escape leg until requested", async () => {
+    const { planner, escapeCalls } = setup();
+    planner.update(cityHall, []);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(escapeCalls()).toHaveLength(0);
+    expect(planner.getSnapshot().plan?.escape).toEqual({ kind: "not-requested" });
+    expect(planner.getSnapshot().escapeRequested).toBe(false);
+  });
+
+  it("computes the escape route once requested, and keeps it updated", async () => {
+    const { planner, escapeCalls } = setup();
+    planner.update(cityHall, []);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(escapeCalls()).toHaveLength(0);
+
+    planner.requestEscape();
+    expect(planner.getSnapshot().escapeRequested).toBe(true);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(escapeCalls().length).toBeGreaterThan(0);
+    expect(planner.getSnapshot().plan?.escape.kind).toBe("route");
+
+    // Later hazard changes keep recomputing the escape leg without asking again.
+    planner.update(cityHall, SIMULATED_HAZARDS);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(planner.getSnapshot().plan?.escape.kind).toBe("route");
+    expect(escapeCalls().length).toBeGreaterThan(1);
+  });
+
+  it("clearing removes the escape route and stops requesting it", async () => {
+    const { planner, escapeCalls } = setup();
+    planner.update(cityHall, []);
+    planner.requestEscape();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(planner.getSnapshot().plan?.escape.kind).toBe("route");
+    const callsBeforeClear = escapeCalls().length;
+
+    planner.clearEscape();
+    expect(planner.getSnapshot().escapeRequested).toBe(false);
+    expect(planner.getSnapshot().plan?.escape).toEqual({ kind: "not-requested" });
+
+    planner.update(cityHall, SIMULATED_HAZARDS); // hazard change; escape must not be recomputed
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(escapeCalls().length).toBe(callsBeforeClear);
+    expect(planner.getSnapshot().plan?.escape).toEqual({ kind: "not-requested" });
   });
 });

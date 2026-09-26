@@ -24,8 +24,9 @@ function render(overrides: Partial<RouteBarProps> = {}) {
   return renderToStaticMarkup(
     <RouteBar
       location={{ status: "tracking", fix: gps }} origin={gps} outsideAreaMeters={null} hazards={SIMULATED_HAZARDS}
-      threat={null} escapeFirst={false} plan={plan} pending={false} online appleMaps={false}
+      threat={null} escapeFirst={false} plan={plan} pending={false} online appleMaps={false} escapeRequested
       onUseLocation={noop} onManualLocation={noop} onRetryRoutes={noop} onToggleSimulated={noop}
+      onRequestEscape={noop} onClearEscape={noop}
       {...overrides}
     />,
   );
@@ -97,5 +98,42 @@ describe("RouteBar", () => {
     const html = render({ hazards: [mark], threat: { hazard: mark, edgeMeters: 400 }, escapeFirst: true });
     expect(html).toContain("Fire marks stay on this device and are not reports; routes avoid them.");
     expect(html).toContain("Fire mark 1 is 0.2 mi away. Take the escape route.");
+  });
+
+  describe("escape route on request", () => {
+    const notRequested = { escapeRequested: false, plan: { ...plan, escape: { kind: "not-requested" as const } } };
+
+    it("shows a Get escape route button and no escape route content before it's requested", () => {
+      const html = render(notRequested);
+      expect(html).toContain("Get escape route");
+      expect(html).not.toContain("toward Burbank via SR-134");
+      expect(html).not.toContain("destination=34.180800"); // no Go link for the (unrequested) escape zone
+      expect(html.match(/aria-expanded/g)).toHaveLength(1); // only the shelter row toggles
+    });
+
+    it("does not compute or highlight an escape route just because a start location exists", () => {
+      // No request has happened yet; the plan carries no escape route to show.
+      const html = render(notRequested);
+      expect(html).not.toContain("ev-row-summary\">Head");
+    });
+
+    it("shows the full escape route, with a Clear control, once requested", () => {
+      const html = render(); // default: escapeRequested + a resolved plan.escape
+      expect(html).toContain("toward Burbank via SR-134 · 9 min");
+      expect(html).toContain("Hide escape route");
+      expect(html.match(/aria-expanded/g)).toHaveLength(2);
+    });
+
+    it("shows a pending message once requested but before a route comes back", () => {
+      const html = render({ plan: { ...plan, escape: { kind: "not-requested" } } }); // escapeRequested: true (default)
+      expect(html).toContain("Finding the fastest way out…");
+    });
+
+    it("points the hazard-proximity warning at the button before a request, and at the route after", () => {
+      const near = { escapeFirst: true, threat: { hazard: SIMULATED_HAZARDS[0], edgeMeters: 1200 } };
+      expect(render({ ...near, ...notRequested })).toContain("Tap Get escape route.");
+      expect(render({ ...near, ...notRequested })).not.toContain("Take the escape route.");
+      expect(render({ ...near, escapeRequested: true })).toContain("Take the escape route.");
+    });
   });
 });

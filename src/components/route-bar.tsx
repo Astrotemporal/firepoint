@@ -25,10 +25,14 @@ export type RouteBarProps = {
   pending: boolean;
   online: boolean;
   appleMaps: boolean;
+  /** The user has asked for an escape route; until then the button, not a route, is shown. */
+  escapeRequested: boolean;
   onUseLocation: () => void;
   onManualLocation: (place: GeocodeResult) => void;
   onRetryRoutes: () => void;
   onToggleSimulated: () => void;
+  onRequestEscape: () => void;
+  onClearEscape: () => void;
 };
 
 type RowView = {
@@ -42,10 +46,10 @@ type RowView = {
 
 /** Compact bar under the map: one status line and two tappable route rows. */
 export function RouteBar(props: RouteBarProps) {
-  const { location, origin, hazards, threat, escapeFirst, online } = props;
+  const { location, origin, hazards, threat, escapeFirst, escapeRequested, online } = props;
   const [open, setOpen] = useState<"escape" | "shelter" | null>(null);
   const simulated = hazards.some((hazard) => hazard.simulated);
-  const rows = { escape: escapeRow(props), shelter: shelterRow(props) };
+  const shelterView = shelterRow(props);
   const order = escapeFirst ? (["escape", "shelter"] as const) : (["shelter", "escape"] as const);
 
   return (
@@ -58,15 +62,22 @@ export function RouteBar(props: RouteBarProps) {
           {threat.edgeMeters <= 0
             ? `You appear to be inside the hazard area (${threat.hazard.label}). `
             : `${threat.hazard.label} is ${threat.edgeMeters < 161 ? "less than 0.1 mi" : formatMiles(threat.edgeMeters)} away. `}
-          Take the escape route.
+          {escapeRequested ? "Take the escape route." : "Tap Get escape route."}
         </p>
       )}
       {location.status !== "idle" && (
         <ul className="ev-rows">
-          {order.map((kind) => (
+          {order.map((kind) => kind === "escape" ? (
+            <EscapeRow
+              key="escape" requested={escapeRequested} view={escapeRequested ? escapeRow(props) : null}
+              appleMaps={props.appleMaps} expanded={open === "escape"}
+              onToggle={() => setOpen(open === "escape" ? null : "escape")}
+              onRequest={props.onRequestEscape} onClear={props.onClearEscape}
+            />
+          ) : (
             <RouteRow
-              key={kind} kind={kind} view={rows[kind]} appleMaps={props.appleMaps}
-              expanded={open === kind} onToggle={() => setOpen(open === kind ? null : kind)}
+              key="shelter" kind="shelter" view={shelterView} appleMaps={props.appleMaps}
+              expanded={open === "shelter"} onToggle={() => setOpen(open === "shelter" ? null : "shelter")}
             />
           ))}
         </ul>
@@ -191,6 +202,32 @@ function AddressForm({ onLocated }: { onLocated: (place: GeocodeResult) => void 
   );
 }
 
+/** Escape row: a call-to-action button until requested, then the normal route row plus a Clear control. */
+function EscapeRow({ requested, view, appleMaps, expanded, onToggle, onRequest, onClear }: {
+  requested: boolean; view: RowView | null; appleMaps: boolean; expanded: boolean; onToggle: () => void;
+  onRequest: () => void; onClear: () => void;
+}) {
+  if (!requested) {
+    return (
+      <li className="ev-row ev-row-escape">
+        <button type="button" className="ev-row-main ev-escape-cta" onClick={onRequest}>
+          <span aria-hidden="true">🚗 </span>Get escape route
+        </button>
+      </li>
+    );
+  }
+  return (
+    <RouteRow
+      kind="escape" appleMaps={appleMaps} expanded={expanded} onToggle={onToggle}
+      view={{ ...view!, details: <>{view!.details}<ClearButton onClear={onClear} /></> }}
+    />
+  );
+}
+
+function ClearButton({ onClear }: { onClear: () => void }) {
+  return <button type="button" className="ev-button ev-button-quiet" onClick={onClear}>Hide escape route</button>;
+}
+
 function RouteRow({ kind, view, appleMaps, expanded, onToggle }: {
   kind: "escape" | "shelter"; view: RowView; appleMaps: boolean; expanded: boolean; onToggle: () => void;
 }) {
@@ -219,10 +256,13 @@ function waiting(pending: boolean, text: string): RowView {
   return { title: "", summary: pending ? text : "Waiting for a start location…", details: null };
 }
 
-function escapeRow({ plan, origin, hazards, pending, online, onRetryRoutes }: RouteBarProps): RowView {
+function escapeRow({ plan, origin, hazards, online, onRetryRoutes }: RouteBarProps): RowView {
   const title = "Escape route";
   const pick = plan?.escape;
-  if (!pick || !origin) return { ...waiting(pending, "Finding the fastest way out…"), title };
+  // Requested but not yet resolved (no origin yet, or the request is still in flight).
+  if (!pick || pick.kind === "not-requested" || !origin) {
+    return { title, summary: "Finding the fastest way out…", details: null };
+  }
   if (pick.kind === "no-zone") return { title, summary: "No evacuation point configured", details: null };
   if (pick.kind === "route") {
     return {

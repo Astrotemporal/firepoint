@@ -113,7 +113,7 @@ function planTargets(plan: RoutePlan | null): { shelter: Shelter | null; zone: S
   const escapePick = plan?.escape;
   return {
     shelter: shelterPick?.kind === "route" || shelterPick?.kind === "routing-unavailable" ? shelterPick.shelter : null,
-    zone: escapePick && escapePick.kind !== "no-zone" ? escapePick.zone : null,
+    zone: escapePick && escapePick.kind !== "no-zone" && escapePick.kind !== "not-requested" ? escapePick.zone : null,
   };
 }
 
@@ -292,7 +292,7 @@ function MapboxView({
       if (shelter.kind === "route") features.push(line(shelter.route.path, "shelter"));
       else if (shelter.kind === "routing-unavailable" && origin) features.push(line([origin, shelter.shelter], "shelter-guide"));
       if (escape.kind === "route") features.push(line(escape.route.path, "escape"));
-      else if (escape.kind !== "no-zone" && origin) {
+      else if (escape.kind !== "no-zone" && escape.kind !== "not-requested" && origin) {
         // Same rule as the route bar: never draw a guide line across the hazard.
         const heading = escapeHeading(origin, escape.zone, hazards);
         const end = heading.toward === "target" ? escape.zone : destinationPoint(origin, heading.bearing, 1_500);
