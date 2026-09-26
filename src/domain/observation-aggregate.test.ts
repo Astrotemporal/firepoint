@@ -25,13 +25,30 @@ function observation(overrides: Record<string, unknown> = {}) {
 const run = (observations: unknown[], moderation: unknown = attested, extra: Partial<typeof config> = {}, rightsReviewed = true) =>
   aggregateObservations({ now, config: { ...config, ...extra }, moderation, rightsReviewed, observations });
 
-/** Every id offered must be absent from the public half, whatever its state. */
-function expectNoIds(aggregate: unknown, offered: { id: string }[]) {
+/** Per-report precision (ids, points, text, exact clocks) must be absent from the public half, whatever its state. */
+function expectNoPerReportDetail(aggregate: unknown, offered: Record<string, unknown>[]) {
   const serialized = JSON.stringify(aggregate);
-  for (const item of offered) expect(serialized).not.toContain(item.id);
+  for (const item of offered) {
+    expect(serialized).not.toContain(String(item.id));
+    for (const key of ["observedAt", "publishedAt"]) {
+      const value = item[key];
+      if (typeof value === "string") expect(serialized).not.toContain(value.replace(/Z$/, ""));
+    }
+    // Points finer than a cell: only multi-digit fractions can indicate a leak; single digits appear in config.
+    if (Array.isArray(item.approximatePoint)) for (const n of item.approximatePoint) {
+      if (String(n).length > 3) expect(serialized).not.toContain(String(n));
+    }
+  }
   expect(serialized).not.toContain("synthetic-id-");
-  expect(serialized).not.toContain("inputObservationIds");
-  expect(serialized).not.toContain("private-audit");
+  expect(serialized).not.toContain("SYNTHETIC REPORT TEXT ONLY");
+  for (const forbidden of ["inputObservationIds", "private-audit", "approximatePoint", "precisionMeters", "sourceTimes",
+    "oldestPublishedAt", "newestPublishedAt", "Polygon", "excluded\""]) expect(serialized).not.toContain(forbidden);
+  // Any timestamp in the public half must sit on a time-bin edge, except the moderation attestation itself.
+  const times = [...serialized.matchAll(/"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)"/g)].map((m) => m[1]!);
+  for (const time of times) {
+    if (time === now || time === attested.attestedAt) continue;
+    expect(Date.parse(time) % (config.timeBinSeconds * 1000)).toBe(0);
+  }
 }
 
 describe("observation aggregate", () => {
@@ -43,9 +60,10 @@ describe("observation aggregate", () => {
     expect(aggregate.reason).toBe("missing-moderation");
     expect(aggregate.cells).toEqual([]);
     expect(aggregate.allClear).toBe(false);
-    expect(aggregate.provenance.offeredObservationCount).toBe(3);
-    expectNoIds(aggregate, offered);
+    expect(Object.keys(aggregate.provenance).sort()).toEqual(["config", "moderation", "rightsReviewed"]);
+    expectNoPerReportDetail(aggregate, offered);
     expect(audit.inputObservationIds).toEqual(offered.map((item) => item.id).sort());
+    expect(audit.offeredObservationCount).toBe(3);
   });
 
   it("publishes a coarse cell per hazard kind and time bin, and never a point, polygon, text or id", () => {
@@ -70,18 +88,15 @@ describe("observation aggregate", () => {
     expect(cell.timeBinStart).toBe("2026-01-01T00:00:00.000Z");
     expect(cell.timeBinEnd).toBe("2026-01-01T01:00:00.000Z");
     expect(cell.verification).toBe("unverified");
-    const serialized = JSON.stringify(aggregate);
-    expect(serialized).not.toContain("0.123456");
-    expect(serialized).not.toContain("0.654321");
-    expect(serialized).not.toContain("SYNTHETIC REPORT TEXT ONLY");
-    expect(serialized).not.toContain("approximatePoint");
-    expect(serialized).not.toContain("Polygon");
-    expectNoIds(aggregate, offered);
+    expect(Object.keys(cell).sort()).toEqual(["cellBounds", "cellId", "countBin", "countSaturated", "hazardKind", "reportCount", "timeBinEnd", "timeBinStart", "verification"]);
+    expectNoPerReportDetail(aggregate, offered);
     expect(aggregate.usage).toEqual({ routingHazardInput: false, officialAuthority: false, boundaryOrModelEstimate: false });
     expect(aggregate.caveats).toEqual(AGGREGATE_CAVEATS);
     expect(aggregate.provenance.uniqueReporterDedupe).toBe("not-possible");
-    expect(aggregate.provenance.sourceTimes.earliestObservedAt).toBe("2026-01-01T00:10:00.000Z");
-    expect(aggregate.provenance.sourceTimes.latestPublishedAt).toBe("2026-01-01T01:30:00.000Z");
+    expect(aggregate.provenance.sourceWindow).toEqual({ start: "2026-01-01T00:00:00.000Z", end: "2026-01-01T02:00:00.000Z" });
+    const { audit } = run(offered);
+    expect(audit.sourceTimes.earliestObservedAt).toBe("2026-01-01T00:10:00.000Z");
+    expect(audit.sourceTimes.latestPublishedAt).toBe("2026-01-01T01:30:00.000Z");
   });
 
   it("saturates counts so volume cannot escalate, and treats one id repeated as one observation", () => {
@@ -96,7 +111,7 @@ describe("observation aggregate", () => {
     expect(audit.excluded).toEqual([{ id: many[0]!.id, reason: "duplicate-id" }]);
   });
 
-  it("excludes each ineligible observation with a named reason, publicly only as counts", () => {
+  it("excludes each ineligible observation with a named reason, publicly as nothing when withheld", () => {
     const offered = [
       observation({ approximatePoint: null, precisionMeters: null }),
       observation({ precisionMeters: 5000 }),
@@ -109,11 +124,11 @@ describe("observation aggregate", () => {
     expect(aggregate.state).toBe("withheld");
     if (aggregate.state !== "withheld") return;
     expect(aggregate.reason).toBe("no-eligible-observations");
-    expect(aggregate.provenance.exclusionCounts).toEqual({
-      "no-public-point": 1, "precision-coarser-than-cell": 1, "outside-coverage": 1, expired: 1,
-      "future-dated": 1, "published-after-attestation": 1, "duplicate-id": 0,
-    });
-    expectNoIds(aggregate, offered);
+    for (const key of ["offeredObservationCount", "countedObservationCount", "exclusionCounts", "sourceWindow", "withheldCellCount"]) {
+      expect(JSON.stringify(aggregate)).not.toContain(key);
+    }
+    expectNoPerReportDetail(aggregate, offered);
+    expect(audit.countedObservationCount).toBe(0);
     expect(audit.excluded.map((item) => item.reason)).toEqual([
       "no-public-point", "precision-coarser-than-cell", "outside-coverage", "expired", "future-dated", "published-after-attestation",
     ]);
@@ -122,9 +137,10 @@ describe("observation aggregate", () => {
   it("withholds when every cell is under the threshold and reports only how many", () => {
     const offered = [observation(), observation(), observation({ topic: "fire" }), observation({ topic: "fire" })];
     const { aggregate, audit } = run(offered, attested, { minReportsPerCell: 4 });
-    expect(aggregate).toMatchObject({ state: "withheld", reason: "all-cells-below-threshold", withheldCellCount: 2 });
+    expect(aggregate).toMatchObject({ state: "withheld", reason: "all-cells-below-threshold" });
     expect(JSON.stringify(aggregate)).not.toContain("cell:");
-    expectNoIds(aggregate, offered);
+    expect(JSON.stringify(aggregate)).not.toContain("withheldCellCount");
+    expectNoPerReportDetail(aggregate, offered);
     expect(audit.withheldCellCount).toBe(2);
   });
 
@@ -132,7 +148,7 @@ describe("observation aggregate", () => {
     const offered = [observation(), observation(), observation()];
     const { aggregate } = run(offered, attested, {}, false);
     expect(aggregate).toMatchObject({ state: "withheld", reason: "rights-unreviewed", cells: [] });
-    expectNoIds(aggregate, offered);
+    expectNoPerReportDetail(aggregate, offered);
     const published = run(offered).aggregate;
     expect(ObservationAggregateSchema.safeParse({ ...published, provenance: { ...published.provenance, rightsReviewed: false } }).success).toBe(false);
     expect(ObservationAggregateSchema.safeParse({ ...published, provenance: { ...published.provenance, moderation: { status: "missing", detail: "x" } } }).success).toBe(false);
@@ -144,6 +160,10 @@ describe("observation aggregate", () => {
     expect(audit.audience).toBe("private-audit");
     expect(ObservationAggregateSchema.safeParse({ ...aggregate, audit }).success).toBe(false);
     expect(ObservationAggregateSchema.safeParse({ ...aggregate, provenance: { ...aggregate.provenance, inputObservationIds: [] } }).success).toBe(false);
+    expect(ObservationAggregateSchema.safeParse({ ...aggregate, provenance: { ...aggregate.provenance, sourceTimes: audit.sourceTimes } }).success).toBe(false);
+    if (aggregate.state !== "published") return;
+    expect(ObservationAggregateSchema.safeParse({ ...aggregate, cells: [{ ...aggregate.cells[0], newestPublishedAt: now }] }).success).toBe(false);
+    expect(ObservationAggregateSchema.safeParse({ ...aggregate, state: "withheld", reason: "missing-moderation", cells: [] }).success).toBe(false);
   });
 
   it("rejects private marks, raw submissions, official notices and a fake all-clear", () => {

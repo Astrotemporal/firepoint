@@ -106,8 +106,6 @@ export const AggregateCellSchema = z.object({
   reportCount: z.number().int().min(3),
   countSaturated: z.boolean(),
   countBin: CountBin,
-  oldestPublishedAt: Instant,
-  newestPublishedAt: Instant,
   verification: z.literal("unverified"),
 }).strict();
 export type AggregateCell = z.infer<typeof AggregateCellSchema>;
@@ -116,7 +114,7 @@ export type AggregateCell = z.infer<typeof AggregateCellSchema>;
 export const AGGREGATE_CAVEATS = {
   uncertainty: "Counts are moderated but unverified resident observations. They are not confirmed incidents, boundaries, forecasts, or road status.",
   abuse: "Nothing here proves how many different people reported. Repeated, coordinated, or mistaken reports raise counts; counts confer no official authority.",
-  privacy: "Cells are coarse and small counts are withheld, which limits but does not eliminate re-identification risk. No exact reporter location, text, identity, report id, or submission time is included.",
+  privacy: "Cells are coarse and small counts are withheld, which limits but does not eliminate re-identification risk. No exact reporter location, text, identity, report id, or per-report time is included; times are bin-aligned.",
   notAllClear: "An empty or withheld cell means no published reports met the threshold, never that the place is safe. Follow the issuing agency.",
 } as const;
 const CaveatsSchema = z.object({
@@ -126,22 +124,22 @@ const CaveatsSchema = z.object({
   notAllClear: z.literal(AGGREGATE_CAVEATS.notAllClear),
 }).strict();
 
-/** Public provenance is coarse on purpose: counts by reason, never ids that could be joined to raw reports. */
-const ProvenanceSchema = z.object({
+/**
+ * Public provenance is coarse on purpose: counts by reason and bin-aligned watermarks, never ids
+ * or per-report clocks that could be joined to raw reports. Withheld outputs carry less still.
+ */
+const WithheldProvenanceSchema = z.object({
   config: AggregationConfigSchema,
   moderation: ModerationAttestationSchema,
   rightsReviewed: z.boolean(),
-  offeredObservationCount: z.number().int().nonnegative(),
-  countedObservationCount: z.number().int().nonnegative(),
+}).strict();
+const PublishedProvenanceSchema = WithheldProvenanceSchema.extend({
+  offeredObservationCount: z.number().int().positive(),
+  countedObservationCount: z.number().int().positive(),
   /** How many offered observations each rule excluded. Zero counts are listed so the reader sees the rule ran. */
   exclusionCounts: z.record(ExclusionReasonSchema, z.number().int().nonnegative()),
-  /** Publisher/resident clocks of the counted inputs, never our generation time. */
-  sourceTimes: z.object({
-    earliestObservedAt: Instant.nullable(),
-    latestObservedAt: Instant.nullable(),
-    earliestPublishedAt: Instant.nullable(),
-    latestPublishedAt: Instant.nullable(),
-  }).strict(),
+  /** Earliest bin start and latest bin end that contain a counted observation; aligned to `timeBinSeconds`, never exact. */
+  sourceWindow: z.object({ start: Instant, end: Instant }).strict(),
   /** No reporter identity exists at this layer, so repeat reports by one person cannot be collapsed. */
   uniqueReporterDedupe: z.literal("not-possible"),
 }).strict();
@@ -158,9 +156,6 @@ const AggregateBaseSchema = z.object({
     officialAuthority: z.literal(false),
     boundaryOrModelEstimate: z.literal(false),
   }).strict(),
-  provenance: ProvenanceSchema,
-  /** Cells below `minReportsPerCell`; only the number is public, never where they were. */
-  withheldCellCount: z.number().int().nonnegative(),
   caveats: CaveatsSchema,
 });
 
@@ -170,10 +165,19 @@ export type WithheldReason = z.infer<typeof WithheldReasonSchema>;
 export const ObservationAggregateSchema = z.discriminatedUnion("state", [
   AggregateBaseSchema.extend({
     state: z.literal("published"),
+    provenance: PublishedProvenanceSchema,
+    /** Cells below `minReportsPerCell`; only the number is public, never where they were. */
+    withheldCellCount: z.number().int().nonnegative(),
     cells: z.array(AggregateCellSchema).min(1),
   }).strict().refine((item) => item.provenance.moderation.status === "attested" && item.provenance.rightsReviewed,
     { message: "published output requires attested moderation and a rights review", path: ["state"] }),
-  AggregateBaseSchema.extend({ state: z.literal("withheld"), reason: WithheldReasonSchema, cells: z.array(AggregateCellSchema).length(0) }).strict(),
+  /** Minimal on purpose: no counts, no times, no cells. Details live in the private audit. */
+  AggregateBaseSchema.extend({
+    state: z.literal("withheld"),
+    reason: WithheldReasonSchema,
+    provenance: WithheldProvenanceSchema,
+    cells: z.array(AggregateCellSchema).length(0),
+  }).strict(),
 ]);
 export type ObservationAggregate = z.infer<typeof ObservationAggregateSchema>;
 
@@ -189,6 +193,15 @@ export const AggregationAuditSchema = z.object({
   /** Sorted ids of every observation offered, before any exclusion. */
   inputObservationIds: z.array(Id),
   excluded: z.array(z.object({ id: Id, reason: ExclusionReasonSchema }).strict()),
+  offeredObservationCount: z.number().int().nonnegative(),
+  countedObservationCount: z.number().int().nonnegative(),
+  /** Exact publisher/resident clocks of the counted inputs. Private: exact times correlate to people. */
+  sourceTimes: z.object({
+    earliestObservedAt: Instant.nullable(),
+    latestObservedAt: Instant.nullable(),
+    earliestPublishedAt: Instant.nullable(),
+    latestPublishedAt: Instant.nullable(),
+  }).strict(),
   /** Number of (cell, kind, bin) groups withheld for being under the threshold. Locations stay out. */
   withheldCellCount: z.number().int().nonnegative(),
 }).strict();
@@ -247,44 +260,45 @@ export function aggregateObservations(rawInput: unknown): AggregationResult {
 
   const publishedTimes = counted.map((item) => Date.parse(item.publishedAt));
   const observedTimes = counted.flatMap((item) => item.observedAt ? [Date.parse(item.observedAt)] : []);
+  const effectiveTimes = counted.map((item) => Date.parse(item.observedAt ?? item.publishedAt));
   const iso = (values: number[], pick: (...v: number[]) => number) => values.length ? new Date(pick(...values)).toISOString() : null;
   const exclusionCounts = Object.fromEntries(ExclusionReasonSchema.options.map((reason) =>
     [reason, excluded.filter((item) => item.reason === reason).length])) as Record<ExclusionReason, number>;
-  const provenance: z.infer<typeof ProvenanceSchema> = {
-    config, moderation, rightsReviewed,
-    offeredObservationCount: input.observations.length,
-    countedObservationCount: counted.length,
-    exclusionCounts,
-    sourceTimes: {
-      earliestObservedAt: iso(observedTimes, Math.min), latestObservedAt: iso(observedTimes, Math.max),
-      earliestPublishedAt: iso(publishedTimes, Math.min), latestPublishedAt: iso(publishedTimes, Math.max),
-    },
-    uniqueReporterDedupe: "not-possible",
-  };
+  const binMs = config.timeBinSeconds * 1000;
+  const binStartOf = (ms: number) => Math.floor(ms / binMs) * binMs;
+
   const base = {
     version: 1 as const, kind: "community-observation-aggregate" as const, generatedAt: now,
     verification: "unverified" as const, allClear: false as const,
     usage: { routingHazardInput: false as const, officialAuthority: false as const, boundaryOrModelEstimate: false as const },
-    provenance, caveats: AGGREGATE_CAVEATS,
+    caveats: AGGREGATE_CAVEATS,
   };
+  const withheldProvenance = { config, moderation, rightsReviewed };
   const finish = (aggregate: unknown, withheldCellCount: number): AggregationResult => ({
     aggregate: ObservationAggregateSchema.parse(aggregate),
-    audit: AggregationAuditSchema.parse({ audience: "private-audit", generatedAt: now, configVersion: config.configVersion,
-      inputObservationIds, excluded, withheldCellCount }),
+    audit: AggregationAuditSchema.parse({
+      audience: "private-audit", generatedAt: now, configVersion: config.configVersion,
+      inputObservationIds, excluded,
+      offeredObservationCount: input.observations.length, countedObservationCount: counted.length,
+      sourceTimes: {
+        earliestObservedAt: iso(observedTimes, Math.min), latestObservedAt: iso(observedTimes, Math.max),
+        earliestPublishedAt: iso(publishedTimes, Math.min), latestPublishedAt: iso(publishedTimes, Math.max),
+      },
+      withheldCellCount,
+    }),
   });
   const withheld = (reason: WithheldReason, withheldCellCount: number) =>
-    finish({ ...base, state: "withheld", reason, withheldCellCount, cells: [] }, withheldCellCount);
+    finish({ ...base, state: "withheld", reason, provenance: withheldProvenance, cells: [] }, withheldCellCount);
 
   if (moderation.status !== "attested") return withheld("missing-moderation", 0);
   if (!rightsReviewed) return withheld("rights-unreviewed", 0);
   if (counted.length === 0) return withheld("no-eligible-observations", 0);
 
   const groups = new Map<string, typeof counted>();
-  const binMs = config.timeBinSeconds * 1000;
   for (const item of counted) {
     const point = item.approximatePoint as [number, number];
     const { ix, iy } = cellIndex(config, point);
-    const binStart = Math.floor(Date.parse(item.observedAt ?? item.publishedAt) / binMs) * binMs;
+    const binStart = binStartOf(Date.parse(item.observedAt ?? item.publishedAt));
     const key = `${ix}|${iy}|${item.topic}|${binStart}`;
     groups.set(key, [...(groups.get(key) ?? []), item]);
   }
@@ -296,7 +310,6 @@ export function aggregateObservations(rawInput: unknown): AggregationResult {
     const [ix, iy, topic, binStart] = key.split("|") as [string, string, ObservationHazardKind, string];
     const west = Number(ix) * config.cellSizeDegrees;
     const south = Number(iy) * config.cellSizeDegrees;
-    const published = members.map((item) => Date.parse(item.publishedAt));
     const count = Math.min(members.length, config.countCap);
     cells.push({
       cellId: `cell:${config.cellSizeDegrees}:${ix}:${iy}`,
@@ -307,11 +320,20 @@ export function aggregateObservations(rawInput: unknown): AggregationResult {
       reportCount: count,
       countSaturated: members.length >= config.countCap,
       countBin: countBin(count),
-      oldestPublishedAt: new Date(Math.min(...published)).toISOString(),
-      newestPublishedAt: new Date(Math.max(...published)).toISOString(),
       verification: "unverified",
     });
   }
   if (cells.length === 0) return withheld("all-cells-below-threshold", withheldCellCount);
-  return finish({ ...base, state: "published", withheldCellCount, cells }, withheldCellCount);
+  const provenance: z.infer<typeof PublishedProvenanceSchema> = {
+    ...withheldProvenance,
+    offeredObservationCount: input.observations.length,
+    countedObservationCount: counted.length,
+    exclusionCounts,
+    sourceWindow: {
+      start: new Date(binStartOf(Math.min(...effectiveTimes))).toISOString(),
+      end: new Date(binStartOf(Math.max(...effectiveTimes)) + binMs).toISOString(),
+    },
+    uniqueReporterDedupe: "not-possible",
+  };
+  return finish({ ...base, state: "published", provenance, withheldCellCount, cells }, withheldCellCount);
 }
