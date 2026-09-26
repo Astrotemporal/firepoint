@@ -2,7 +2,8 @@
 import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
 
-const url = process.env.FIREPOINT_PREVIEW_URL ?? "http://127.0.0.1:3000";
+// The safety/prep page lives at /prepare; the homepage is the full-screen Mapbox map, which needs a token and tiles.
+const url = new URL("/prepare", process.env.FIREPOINT_PREVIEW_URL ?? "http://127.0.0.1:3000").href;
 const browser = await chromium.launch({ headless: true });
 await mkdir("docs/preview", { recursive: true });
 try {

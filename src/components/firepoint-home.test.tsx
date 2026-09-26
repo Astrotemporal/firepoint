@@ -11,11 +11,22 @@ describe("Firepoint home safety states", () => {
     expect(html).toContain("NOT LOOKED UP");
     expect(html).toContain("not an all-clear");
     expect(html).toContain("Approximate neighborhood name only");
+    expect(html).toContain("Live source checks are paused");
+    expect(html).not.toContain("Check central Glendale");
+  });
+
+  it("offers live source checks only on request, and says what they do not cover", () => {
+    const html = renderToStaticMarkup(<FirepointHome demoLiveSources />);
+    expect(html).toContain("Check central Glendale");
+    expect(html).toContain("Use my location once");
+    expect(html).toContain("does not check evacuation orders");
+    expect(html).not.toContain("status-ok");
   });
 
   it("sends people to named official providers, not guessed internal feeds", () => {
     const html = renderToStaticMarkup(<FirepointHome />);
-    expect(html).toContain("public.alertsense.com/SignUp/Default.aspx?regionid=1916");
+    expect(html).toContain("glendaleca.gov/government/departments/fire-department/other/emergency-preparedness-response/city-wide-emergency-communications");
+    expect(html).not.toContain("public.alertsense.com");
     expect(html).toContain("glendaleca.gov/government/departments/fire-department/other-links/emergency-preparedness-response/know-your-zone");
     expect(html).toContain("weather.gov/lox/");
   });

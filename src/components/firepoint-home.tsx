@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AreaMap } from "@/components/area-map";
+import { LiveSources } from "@/components/live-sources";
 
 const CHECKLIST_KEY = "firepoint.prep.v1";
 const AREA_KEY = "firepoint.area.v1";
@@ -19,8 +21,8 @@ const LINKS = [
     index: "01",
     label: "Glendale Alerts",
     purpose: "Sign up to receive city emergency messages.",
-    url: "https://public.alertsense.com/SignUp/Default.aspx?regionid=1916",
-    domain: "AlertSense · city enrollment",
+    url: "https://www.glendaleca.gov/government/departments/fire-department/other/emergency-preparedness-response/city-wide-emergency-communications",
+    domain: "City of Glendale · official page",
   },
   {
     index: "02",
@@ -46,7 +48,7 @@ function loadChecks(): TaskId[] {
   } catch { return []; }
 }
 
-export function FirepointHome() {
+export function FirepointHome({ demoLiveSources = false }: { demoLiveSources?: boolean } = {}) {
   const [checks, setChecks] = useState<TaskId[]>([]);
   const [area, setArea] = useState(false);
   const [ready, setReady] = useState(false);
@@ -97,11 +99,11 @@ export function FirepointHome() {
   return (
     <div className="site-shell">
       <header className="topbar">
-        <a className="brand" href="#top" aria-label="Firepoint home">
+        <Link className="brand" href="/" aria-label="Firepoint map">
           <span className="brand-mark" aria-hidden="true"><span /></span>
           <span>firepoint<span className="brand-period">.</span></span>
-        </a>
-        <a className="top-action" href="#official">Official sources <span aria-hidden="true">↗</span></a>
+        </Link>
+        <nav className="top-nav" aria-label="Sections"><Link className="top-action" href="/">Map</Link><a className="top-action" href="#official">Official sources <span aria-hidden="true">↗</span></a></nav>
       </header>
 
       <main id="top">
@@ -131,6 +133,10 @@ export function FirepointHome() {
                 <p className="status-caption">For current decisions, follow emergency officials and their published instructions.</p>
               </div>
             </div>
+            {demoLiveSources ? <LiveSources /> : <section className="live-panel" aria-label="Live source checks paused">
+              <h3>Live source checks are paused</h3>
+              <p>Firepoint has not completed source-rights, caching, rate-limit and monitoring checks. No live feed was checked here. Use the official agency links below for current information.</p>
+            </section>}
           </section>
 
           <section id="official" className="official-section" aria-labelledby="official-heading">

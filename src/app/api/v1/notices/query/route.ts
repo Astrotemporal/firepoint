@@ -1,37 +1,22 @@
-import { PlaceQuerySchema } from "@/domain/contracts";
 import { asNwsNoticeFeed, unconfiguredNwsFeed } from "@/domain/notice-feed";
 import { fetchNwsActiveAlerts } from "@/server/nws";
+import { PRIVATE_HEADERS as PRIVATE, readPlaceQuery } from "@/server/place-query";
+import { demoLiveSourcesEnabled, pausedSourceResponse } from "@/server/live-query-gate";
 
 export const runtime = "nodejs";
-const PRIVATE = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
 
 /** Point query only. This route knows NWS weather alerts, not evacuation orders. */
 export async function POST(request: Request): Promise<Response> {
-  if (!request.headers.get("content-type")?.startsWith("application/json")) {
-    return Response.json({ error: "JSON body required" }, { status: 415, headers: PRIVATE });
-  }
-  if (Number(request.headers.get("content-length")) > 1024) {
-    return Response.json({ error: "Body too large" }, { status: 413, headers: PRIVATE });
-  }
-  let payload: unknown;
-  try {
-    const text = await request.text();
-    if (text.length > 1024) return Response.json({ error: "Body too large" }, { status: 413, headers: PRIVATE });
-    payload = JSON.parse(text);
-  } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400, headers: PRIVATE });
-  }
-  const parsed = PlaceQuerySchema.safeParse(payload);
-  if (!parsed.success) {
-    return Response.json({ error: "Invalid point or missing user action" }, { status: 400, headers: PRIVATE });
-  }
+  const input = await readPlaceQuery(request);
+  if ("error" in input) return input.error;
+  if (!demoLiveSourcesEnabled()) return pausedSourceResponse(PRIVATE);
   const generatedAt = new Date().toISOString();
   const userAgent = process.env.NWS_USER_AGENT?.trim();
   if (!userAgent) {
     return Response.json(unconfiguredNwsFeed(generatedAt), { status: 503, headers: PRIVATE });
   }
   try {
-    const [longitude, latitude] = parsed.data.point;
+    const [longitude, latitude] = input.query.point;
     const result = await fetchNwsActiveAlerts({ latitude, longitude, userAgent });
     const feed = asNwsNoticeFeed(result, generatedAt);
     return Response.json(feed, { status: result.status === "ok" ? 200 : 503, headers: PRIVATE });

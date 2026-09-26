@@ -31,7 +31,7 @@ describe("Firepoint data contract", () => {
   it("cannot turn a neighborhood, unknown footprint or report into a verified zone", () => {
     expect(EvacuationZoneSchema.safeParse({ result: "unavailable", reason: "No verified standing-zone source", officialLookupUrl: null }).success).toBe(true);
     expect(EvacuationZoneSchema.safeParse({ result: "verified", zoneId: "synthetic-zone" }).success).toBe(false);
-    const hazard = { kind: "standing-hazard", dataset: "synthetic-map", classification: null,
+    const hazard = { kind: "standing-hazard", hazard: "flood", dataset: "synthetic-map", classification: null,
       lookup: "outside", coverage: "unknown", caveat: "SYNTHETIC TEST ONLY", origin };
     expect(StandingHazardSchema.safeParse(hazard).success).toBe(false);
     expect(StandingHazardSchema.safeParse({ ...hazard, coverage: "verified" }).success).toBe(true);
