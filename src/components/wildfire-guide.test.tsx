@@ -1,0 +1,61 @@
+import { describe, expect, it } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
+import { WildfireGuide } from "./wildfire-guide";
+import { GO, KIT, SIX_PS, SOURCES, TERMS, TRAPPED } from "@/domain/wildfire-guide";
+import manifest from "../app/manifest";
+
+const html = renderToStaticMarkup(<WildfireGuide />);
+const text = html.replace(/<[^>]+>/g, " ").replace(/&#x27;|&#39;/g, "'").replace(/&amp;/g, "&");
+
+describe("wildfire guide page", () => {
+  it("reads as a Ready, Set, Go guide from the fire department", () => {
+    expect(html).toContain('id="ready"');
+    expect(html).toContain('id="set"');
+    expect(html).toContain('id="go"');
+    expect(html).toContain(SOURCES.rsg.url);
+    expect(html).toContain(SOURCES.brochure.url);
+    for (const { p } of SIX_PS) expect(text).toContain(p);
+    for (const item of KIT) expect(text).toContain(item);
+  });
+
+  it("puts 911 and the not-an-alert-system note before the guide", () => {
+    const call = html.indexOf("Call 911");
+    expect(call).toBeGreaterThan(-1);
+    expect(call).toBeLessThan(html.indexOf('id="ready"'));
+    expect(text).toMatch(/not an alert system/i);
+  });
+
+  it("quotes official evacuation terms with their source and links to the zone lookup", () => {
+    for (const { term } of TERMS) expect(text).toContain(term);
+    expect(html).toContain(SOURCES.terms.url);
+    expect(html).toContain(SOURCES.zone.url);
+    expect(html).toContain(SOURCES.alerts.url);
+  });
+
+  it("is informational only: no checkboxes, forms, or live source checks", () => {
+    expect(html).not.toContain('type="checkbox"');
+    expect(html).not.toContain("<form");
+    expect(html).not.toContain("Check central Glendale");
+    expect(text).not.toMatch(/all[- ]clear(?! information)|you are safe/i);
+  });
+});
+
+describe("offline fallback", () => {
+  const offline = readFileSync("public/offline.html", "utf8");
+
+  it("carries the leaving steps, trapped steps and supply kit", () => {
+    for (const step of GO) expect(offline).toContain(step);
+    for (const group of TRAPPED) for (const item of group.items) expect(offline).toContain(item);
+    for (const item of KIT) expect(offline).toContain(item);
+  });
+
+  it("stays a static page that caches nothing live", () => {
+    const sw = readFileSync("public/sw.js", "utf8");
+    expect(manifest().display).toBe("standalone");
+    expect(sw).toContain('url.pathname.startsWith("/api/")');
+    expect(sw).toContain('caches.match("/offline.html")');
+    expect(offline).toContain("not checked");
+    expect(offline).not.toContain('type="checkbox"');
+  });
+});
