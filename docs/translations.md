@@ -9,7 +9,8 @@ Firepoint offers **English, Spanish and Eastern Armenian**, reflecting Glendale'
 | Surface | Status |
 | --- | --- |
 | `/prepare` wildfire guide | Translated: [`wildfire-guide.es.ts`](../src/domain/wildfire-guide.es.ts), [`wildfire-guide.hy.ts`](../src/domain/wildfire-guide.hy.ts) |
-| Map screen and route bar (`/`) | Language select only; the text is still English. Translating it waits for the open map PR #19 to land |
+| Public map screen (`/`, production) | English only. On Spanish/Armenian visits the status card is marked `lang="en"`, says "Map status is available in English only." and repeats only the guide's existing 911 line and guide name in that language; see `src/domain/public-screen-copy.ts`. No new safety text is translated |
+| Routing prototype and route bar (`/` with `FIREPOINT_PROTOTYPE_ROUTING`) | Language select only; the text is still English. Translating it waits for the open map PR #19 to land |
 | `public/offline.html` | English only (a static fallback; tests keep it in sync with the English guide) |
 | Official notices, agency names, photo credits | Never translated: shown as published |
 

@@ -1,5 +1,6 @@
 import type { Viewport } from "next";
 import { PublicMapScreen } from "@/components/public-map-screen";
+import { publicScreenLocalized } from "@/domain/public-screen-copy";
 import { getLocale } from "@/i18n/server";
 import { unverifiedRoutingPrototypeEnabled } from "@/server/release-gate";
 import "./map-screen.css";
@@ -20,5 +21,5 @@ export default async function Home() {
     const { MapScreen } = await import("@/components/map-screen");
     return <MapScreen locale={locale} />;
   }
-  return <PublicMapScreen locale={locale} />;
+  return <PublicMapScreen locale={locale} localized={publicScreenLocalized(locale)} />;
 }

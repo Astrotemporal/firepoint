@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { MARKS_KEY, MAX_MARKS, addMark, createMark, moveMark, parseMarks, type FireMark } from "@/domain/fire-marks";
+import { ENGLISH_ONLY_NOTICE, type PublicScreenLocalized } from "@/domain/public-screen-copy";
 import { LANGUAGE_LABEL, type Locale } from "@/i18n/locales";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { registerServiceWorker } from "@/lib/service-worker";
@@ -34,7 +35,13 @@ export const PUBLIC_STATUS_BODY = "Follow official sources. This is not an all-c
 const NONE: readonly never[] = [];
 const MAP_LABEL = "Map with your private marks. No live incidents, shelters or routes are shown.";
 
-export function PublicMapScreen({ locale = "en" }: { locale?: Locale } = {}) {
+type PublicMapScreenProps = {
+  locale?: Locale;
+  /** Existing translated lines for a non-English visit (see `publicScreenLocalized`); null on English. */
+  localized?: PublicScreenLocalized | null;
+};
+
+export function PublicMapScreen({ locale = "en", localized = null }: PublicMapScreenProps = {}) {
   // <html data-theme> is set before paint by the layout's theme script.
   const theme = useSyncExternalStore<Theme>(subscribeTheme, currentTheme, () => "light");
   const [marks, setMarks] = useState<FireMark[]>([]);
@@ -102,24 +109,36 @@ export function PublicMapScreen({ locale = "en" }: { locale?: Locale } = {}) {
         ) : (
           <div className="ev-map ev-map-notice" role="status"><p>Map unavailable: no Mapbox token is configured.</p></div>
         )}
-        <FirePanel
-          ready={ready} count={marks.length} hint={panelHint} map={mapRef} onPlace={place} onHint={setHint}
-          onClear={() => { save([]); setHint("All marks cleared."); }}
-        />
+        {/* The mark control and its announcements are English only; the language select below keeps its own language. */}
+        <div lang="en">
+          <FirePanel
+            ready={ready} count={marks.length} hint={panelHint} map={mapRef} onPlace={place} onHint={setHint}
+            onClear={() => { save([]); setHint("All marks cleared."); }}
+          />
+        </div>
         <div className="map-actions">
           <LanguageSelect current={locale} label={LANGUAGE_LABEL[locale]} returnTo="/" className="map-lang-select" />
-          <button type="button" className="theme-toggle" onClick={() => applyTheme(theme === "dark" ? "light" : "dark", true)}
+          <button type="button" lang="en" className="theme-toggle" onClick={() => applyTheme(theme === "dark" ? "light" : "dark", true)}
             aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"} title={theme === "dark" ? "Light mode" : "Dark mode"}>
             {theme === "dark" ? <SunIcon /> : <MoonIcon />}
           </button>
-          <Link className="map-brand" href="/prepare" aria-label="Firepoint: official sources and prep list">
+          <Link lang="en" className="map-brand" href="/prepare" aria-label="Firepoint: official sources and the Ready, Set, Go guide">
             <span className="brand-mark" aria-hidden="true"><span /></span>
             <span>Official sources &amp; prep <span aria-hidden="true">↗</span></span>
           </Link>
         </div>
         {!canStore && <p className="map-storage-warning" role="status">Browser storage is unavailable. Marks may be lost when you leave this page.</p>}
       </div>
-      <section ref={statusRef} className="ev-public-status" aria-labelledby="ev-public-status-title">
+      <section ref={statusRef} lang="en" className="ev-public-status" aria-labelledby="ev-public-status-title">
+        {localized && (
+          <>
+            {/* Lines that already exist in the visitor's language (from the /prepare guide); nothing new is translated here. */}
+            <p lang={localized.locale} className="ev-public-status-localized">
+              <strong>{localized.urgentCall}</strong> <Link href="/prepare">{localized.guideTitle}</Link>
+            </p>
+            <p className="ev-public-status-english-only">{ENGLISH_ONLY_NOTICE}</p>
+          </>
+        )}
         <p id="ev-public-status-title" className="ev-public-status-title" role="status">{PUBLIC_STATUS_TITLE}</p>
         <p className="ev-public-status-body">{PUBLIC_STATUS_BODY}</p>
         <p className="ev-public-status-links">

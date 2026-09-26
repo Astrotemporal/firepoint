@@ -63,9 +63,19 @@ try {
       check(await page.evaluate(() => window.__geolocationCalls) === 0, `${name}: geolocation was requested`);
       check(directions.length === 0, `${name}: directions/geocoding requested: ${directions.join(", ")}`);
       check(shippedPrototype.length === 0, `${name}: prototype code shipped in ${shippedPrototype.join(", ")}`);
+      // A saved non-English language: the card stays English, says so, and shows only the guide's existing 911 line.
+      await context.addCookies([{ name: "firepoint.lang", value: "es", url: base }]);
+      await page.goto(base + "/", { waitUntil: "domcontentloaded" });
+      await page.locator(".ev-public-status-title").waitFor();
+      const englishOnly = (await page.locator(".ev-public-status-english-only").textContent())?.trim();
+      check(englishOnly === "Map status is available in English only.", `${name}: es fallback line was ${JSON.stringify(englishOnly)}`);
+      check(await page.locator('section.ev-public-status[lang="en"]').count() === 1, `${name}: es card is not marked lang=en`);
+      check((await page.locator('.ev-public-status-localized[lang="es"]').textContent())?.includes("911") === true, `${name}: es 911 line missing`);
+      check(await page.locator(".ev-public-status-title").textContent() === STATUS_TITLE, `${name}: es status title changed`);
+      await context.clearCookies();
       const guide = await page.goto(base + "/prepare", { waitUntil: "domcontentloaded" });
       check(guide?.status() === 200 && await page.locator("#guide-title").count() === 1, `${name}: /prepare did not render`);
-      console.log(`${name}: public homepage OK — ${JSON.stringify(title)}; geolocation calls 0; directions requests 0; prototype chunks 0`);
+      console.log(`${name}: public homepage OK — ${JSON.stringify(title)}; geolocation calls 0; directions requests 0; prototype chunks 0; es fallback shown`);
     } finally { await context.close(); }
   }
 } finally { await browser.close(); }

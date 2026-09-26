@@ -198,3 +198,6 @@
   .ev-shell-static .mapboxgl-ctrl-bottom-left, .ev-shell-static .mapboxgl-ctrl-bottom-right { bottom: 0; }
   .ev-shell-static .map-panel { bottom: 44px; }
 }
+.ev-public-status-localized { font-size: 15px; font-weight: 700; line-height: 1.4; }
+.ev-public-status-localized a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ev-ink); font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
+.ev-public-status-english-only { margin-top: 2px !important; margin-bottom: 8px !important; padding: 6px 10px; border-radius: 8px; background: var(--ev-badge-bg); color: var(--ev-badge-ink); border-left: 4px solid var(--ev-badge-edge); font-size: 14px; font-weight: 700; line-height: 1.4; }
