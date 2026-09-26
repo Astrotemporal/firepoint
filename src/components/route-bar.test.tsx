@@ -95,7 +95,7 @@ describe("RouteBar", () => {
 
   it("says private marks are not reports, do not affect routes, and empty feeds are not all-clears", () => {
     const html = render({ hazards: [], threat: null, escapeFirst: false });
-    expect(html).toContain("Fire marks stay on this device; they are not reports and do not affect routes.");
+    expect(html).toContain("Fire marks are private, not reports, and do not affect routes.");
     expect(html).toContain("this is not an all-clear");
     expect(html).not.toContain("Take the escape route.");
   });

@@ -70,8 +70,8 @@ export function RouteBar(props: RouteBarProps) {
         </ul>
       )}
       <p className="ev-note">
-        Shelters are unverified. Fire marks stay on this device; they are not reports and do not affect routes.
-        Live fire data isn’t connected, so this is not an all-clear. Follow official orders; to report a fire, call 911.
+        Shelters are unverified. Fire marks are private, not reports, and do not affect routes. Live fire data isn’t connected, so this
+        is not an all-clear. Follow official orders; to report a fire, call 911.
       </p>
       {!online && <span className="ev-sr-only" role="status">You are offline.</span>}
     </section>

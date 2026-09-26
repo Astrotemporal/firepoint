@@ -17,7 +17,7 @@ type FirePanelProps = {
 
 type Drag = { startX: number; startY: number; lastX: number; lastY: number; moved: boolean };
 
-/** Drag the fire onto the map (or press it to drop one at the map centre). */
+/** A floating fire to drag onto the map (or press to drop one at the map centre). */
 export function FirePanel({ ready, count, hint, map, onPlace, onHint, onClear }: FirePanelProps) {
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
   const drag = useRef<Drag | null>(null);
@@ -86,6 +86,7 @@ export function FirePanel({ ready, count, hint, map, onPlace, onHint, onClear }:
 
   return (
     <div className="map-panel">
+      {count > 0 && <button type="button" className="map-clear" onClick={onClear}>Clear</button>}
       <button
         type="button"
         className={`fire-token${ghost ? " is-dragging" : ""}`}
@@ -96,15 +97,15 @@ export function FirePanel({ ready, count, hint, map, onPlace, onHint, onClear }:
         onPointerCancel={onPointerCancel}
         onLostPointerCapture={onLostPointerCapture}
         onClick={onClick}
-        aria-label="Add a fire mark. Drag onto the map, or press to place it at the map centre."
+        title="Drag onto the map to mark a fire"
+        aria-label="Add a fire mark. Drag onto the map, or press to place it at the map centre. Marks stay on this device and are not reports."
       >
         <Flame className="fire-token-flame" />
       </button>
-      <div className="map-panel-copy">
-        <strong>Drag the fire onto the map</strong>
-        <span aria-live="polite">{hint ?? (ready ? `${count} ${count === 1 ? "mark" : "marks"} on this device · private, not reports` : "Local to this device")}</span>
-      </div>
-      {count > 0 && <button type="button" className="map-clear" onClick={onClear}>Clear all</button>}
+      {/* Status is announced, not shown: marks are private pins, never reports or routing hazards. */}
+      <span className="sr-only" aria-live="polite">
+        {hint ?? (ready ? `${count} ${count === 1 ? "mark" : "marks"} on this device · private, not reports` : "Local to this device")}
+      </span>
       {ghost && <Flame className="fire-ghost" style={{ left: ghost.x, top: ghost.y }} />}
     </div>
   );

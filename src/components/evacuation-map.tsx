@@ -41,7 +41,7 @@ type EvacuationMapProps = {
   onRemoveMark: (id: string) => void;
 };
 
-const COLORS = { shelterRoute: "#1d4ed8", escapeRoute: "#c2410c", hazard: "#b91c1c", you: "#1a73e8" };
+const COLORS = { shelterRoute: "#1d4ed8", escapeRoute: "#c2410c", hazard: "#b91c1c", you: "#007aff" };
 const EMPTY: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 const toLngLat = (point: LatLng): [number, number] => [point.lng, point.lat];
 
@@ -173,16 +173,7 @@ function MapboxView({
       setLoaded((count) => count + 1);
     });
     map.on("error", () => { if (!everLoaded) setFailed(true); });
-    map.on("click", "hazards-fill", (event) => {
-      const hazard = event.features?.[0]?.properties;
-      // A tap on a fire pin opens the pin's own popup instead.
-      if (!hazard || (event.originalEvent.target as Element | null)?.closest?.(".mapboxgl-marker")) return;
-      popupRef.current?.remove();
-      popupRef.current = new Popup({ offset: 8, maxWidth: "260px" }).setLngLat(event.lngLat)
-        .setDOMContent(popupContent([String(hazard.label), `Severity ${hazard.severity} of 5`,
-          hazard.simulated ? "Simulated for testing. Not a real incident." : "From the hazard feed."]))
-        .addTo(map);
-    });
+
     mapRef.current = map;
     onReady({ container, pointToLatLng: (x, y) => map.unproject([x, y]), center: () => map.getCenter() });
     const pins = pinsRef.current;
@@ -217,9 +208,8 @@ function MapboxView({
     if (!loaded || !source) return;
     source.setData({
       type: "FeatureCollection",
-      features: hazards.map((hazard) => circle(hazard.center, hazard.radiusMeters, {
-        label: hazard.label, severity: hazard.severity, simulated: hazard.simulated,
-      })),
+      // No source is wired yet; private marks never enter this area-fill layer.
+      features: hazards.map((hazard) => circle(hazard.center, hazard.radiusMeters)),
     });
   }, [hazards, loaded]);
 
@@ -237,7 +227,6 @@ function MapboxView({
       views.set(mark.id, view);
       view.marker.setLngLat([mark.lng, mark.lat]);
       view.title.textContent = markLabel(index);
-      view.coords.textContent = `${mark.lat.toFixed(4)}, ${mark.lng.toFixed(4)}`;
       view.pin.setAttribute("aria-label", `${markLabel(index)}. Drag to move, press Enter for options.`);
     });
   }, [marks]);
@@ -320,7 +309,7 @@ function MapboxView({
       const element = document.createElement("div");
       element.className = className;
       element.setAttribute("role", "img");
-      youRef.current = new Marker({ element, anchor: gps ? "center" : "bottom" }).setLngLat(toLngLat(origin)).addTo(map);
+      youRef.current = new Marker({ element, anchor: "center" }).setLngLat(toLngLat(origin)).addTo(map);
     }
     youRef.current.getElement().setAttribute("aria-label", gps ? "Your location" : `Routes start here: ${origin.label ?? "chosen location"}`);
     youRef.current.setLngLat(toLngLat(origin));
