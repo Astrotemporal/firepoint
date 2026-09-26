@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FireMark } from "@/domain/fire-marks";
 import { GLENDALE_CITY_HALL } from "@/evacuation/data/glendale";
 import type { LocationFix } from "@/evacuation/location";
+import { RING_DASH, ringStack } from "@/domain/ring-visual";
 import { markLabel, privateMarkHalos } from "@/evacuation/marks";
 import type { RoutePlan } from "@/evacuation/route-planner";
 import {
@@ -82,8 +83,13 @@ function addLayers(map: MapboxMap): void {
   map.addLayer({ id: "hazards-line", type: "line", source: "hazards", paint: { "line-color": COLORS.hazard, "line-width": 2 } });
   map.addLayer({ id: "private-mark-halos-fill", type: "fill", source: "private-mark-halos",
     paint: { "fill-color": "#ef4444", "fill-opacity": 0.07 } });
+  // Same dash rhythm and radius label as the /prepare defensible-space figure; a different unit and meaning.
   map.addLayer({ id: "private-mark-halos-outline", type: "line", source: "private-mark-halos",
-    paint: { "line-color": COLORS.hazard, "line-opacity": 0.65, "line-width": 2, "line-dasharray": [2, 2] } });
+    paint: { "line-color": COLORS.hazard, "line-opacity": 0.65, "line-width": 2, "line-dasharray": [...RING_DASH] } });
+  map.addLayer({ id: "private-mark-halos-label", type: "symbol", source: "private-mark-halos",
+    layout: { "symbol-placement": "line", "text-field": ["get", "label"], "text-size": 11, "text-letter-spacing": 0.05,
+      "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"], "text-rotation-alignment": "map", "text-pitch-alignment": "viewport" },
+    paint: { "text-color": COLORS.hazard, "text-opacity": 0.85, "text-halo-color": "#ffffff", "text-halo-width": 1.2 } });
   map.addLayer({ id: "accuracy-fill", type: "fill", source: "accuracy", paint: { "fill-color": COLORS.you, "fill-opacity": 0.12 } });
   map.addLayer({ id: "accuracy-line", type: "line", source: "accuracy", paint: { "line-color": COLORS.you, "line-opacity": 0.4, "line-width": 1 } });
   const lineLayout = { "line-join": "round", "line-cap": "round" } as const;
@@ -220,8 +226,9 @@ function MapboxView({
   useEffect(() => {
     const source = mapRef.current?.getSource<GeoJSONSource>("private-mark-halos");
     if (!loaded || !source) return;
-    source.setData({ type: "FeatureCollection", features: privateMarkHalos(marks).map((halo) =>
-      circle(halo.center, halo.displayRadiusMeters, { kind: halo.kind, id: halo.id })) });
+    // Each halo is its own single ring; `ringStack` only supplies the shared dash/label convention.
+    source.setData({ type: "FeatureCollection", features: ringStack(privateMarkHalos(marks)).map((edge) =>
+      circle(edge.ring.center, edge.radius, { kind: edge.ring.kind, id: edge.ring.id, label: edge.label, dashed: edge.dashed })) });
   }, [marks, loaded]);
 
   // Mapbox markers live outside React, so sync them with the stored marks by id.
@@ -354,7 +361,7 @@ function MapboxView({
         ref={containerRef}
         className="ev-map"
         role="region"
-        aria-label="Map of your location, routes, hazards, and shelters. The same information is listed below the map."
+        aria-label="Map of your location, routes, hazards, and shelters. Dashed rings around fire marks are private 500 m display sketches, not zones. The same information is listed below the map."
       />
       {failed && <MapNotice text="The map couldn’t load. Check your connection; routes below still work." />}
     </>

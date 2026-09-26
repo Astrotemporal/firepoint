@@ -1,8 +1,17 @@
 "use client";
 
 import { useRef, useState, type PointerEvent, type RefObject } from "react";
+import type { PrivateDisplayHalo } from "@/domain/ring-visual";
+import { PRIVATE_MARK_DISPLAY_RADIUS_METERS } from "@/evacuation/marks";
 import type { MapHandle } from "./evacuation-map";
 import { Flame } from "./flame";
+import { RingLegend } from "./ring-legend";
+
+/** Legend sample only: no position, no id, nothing stored. It describes how every halo is drawn. */
+const LEGEND_HALO: PrivateDisplayHalo = {
+  kind: "private-display-halo", meaning: "arbitrary-display-sketch", unit: "m", provenance: "this-device",
+  id: "legend", center: { lat: 0, lng: 0 }, displayRadiusMeters: PRIVATE_MARK_DISPLAY_RADIUS_METERS, label: "Legend",
+};
 
 type FirePanelProps = {
   /** False until stored marks are read after hydration; the fire stays disabled until then. */
@@ -106,6 +115,7 @@ export function FirePanel({ ready, count, hint, map, onPlace, onHint, onClear }:
       <span className="sr-only" aria-live="polite">
         {hint ?? (ready ? `${count} ${count === 1 ? "mark" : "marks"} on this device · private, not reports` : "Local to this device")}
       </span>
+      {count > 0 && <RingLegend ring={LEGEND_HALO} dashed note="around each mark. Not a zone, perimeter or report; routes ignore it." />}
       {ghost && <Flame className="fire-ghost" style={{ left: ghost.x, top: ghost.y }} />}
     </div>
   );

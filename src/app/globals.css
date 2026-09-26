@@ -52,7 +52,12 @@ h1 em,h2 em { font-weight: 400; }
 .map-loading { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--surface-muted); font-size: 13px; letter-spacing: .06em; }
 .map-loading code { font-size: 12px; background: var(--surface); padding: 2px 5px; border-radius: 3px; }
 /* The fire sits bottom-right, just above the map attribution, on a frosted tile that reads as something to pick up. */
-.map-panel { position: absolute; z-index: 1000; right: 16px; bottom: 44px; display: flex; align-items: center; gap: 10px; }
+.map-panel { position: absolute; z-index: 1000; right: 16px; bottom: 44px; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 10px; max-width: min(360px, calc(100% - 32px)); }
+/* Legend for the dashed private halo: same dash rhythm as the /prepare rings, named as a sketch, above the fire. */
+.ring-legend { order: -1; flex-basis: 100%; display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 12px; border: 1px solid var(--glass-edge); border-radius: 12px; background: var(--glass-bg); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: var(--glass-shadow); color: var(--surface-ink); font-size: 12px; line-height: 1.35; }
+.ring-legend-swatch { flex: none; stroke: #b91c1c; }
+.ring-legend strong { color: #b91c1c; }
+:root[data-theme="dark"] .ring-legend-swatch, :root[data-theme="dark"] .ring-legend strong { stroke: #f87171; color: #f87171; }
 .fire-token { width: 64px; height: 64px; display: grid; place-items: center; padding: 0; border: 1px solid var(--glass-edge); border-radius: 18px; background: var(--glass-bg); -webkit-backdrop-filter: blur(12px) saturate(1.4); backdrop-filter: blur(12px) saturate(1.4); box-shadow: var(--glass-shadow); cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; transition: transform .15s, background-color .15s, box-shadow .15s; }
 .fire-token:hover { background: var(--glass-hover); transform: translateY(-2px); box-shadow: var(--glass-shadow), 0 10px 24px rgba(24,49,46,.18); }
 .fire-token:active { transform: scale(.96); }
