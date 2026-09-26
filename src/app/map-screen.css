@@ -1,0 +1,126 @@
+/* Homepage map: fire marks and directions. Mobile-first. The fire panel and actions (.map-*) are styled in globals.css;
+   the map, route bar, and pins here are ev-*. Theme tokens follow <html data-theme>, set before paint by the layout. */
+.ev-shell {
+  --ev-surface: var(--white); --ev-ink: var(--ink); --ev-text: #33413a; --ev-muted: #4a5a52; --ev-line: var(--line); --ev-edge: #c9cfc4;
+  --ev-map-bg: #dfe3da; --ev-map-stripe: #d6dbd0; --ev-float-edge: var(--ink); --ev-float-hover: var(--lime);
+  --ev-button-bg: var(--ink); --ev-button-ink: #fff; --ev-start: var(--ink); --ev-warn: #5c2d06;
+  --ev-escape-ink: #9a3412; --ev-escape-bg: #9a3412; --ev-escape-hover: #7c2d12;
+  --ev-shelter-ink: #1e40af; --ev-shelter-bg: #1e40af; --ev-shelter-hover: #1e3a8a;
+  --ev-danger-bg: #fee2e2; --ev-danger-ink: #6b1010; --ev-danger-edge: #b91c1c; --ev-danger-text: #8f1414;
+  --ev-badge-bg: #fef3c7; --ev-badge-ink: #5c2d06; --ev-badge-edge: #b45309;
+}
+:root[data-theme="dark"] .ev-shell {
+  color-scheme: dark;
+  --ev-surface: #17211f; --ev-ink: #eef2ea; --ev-text: #c9d3cb; --ev-muted: #a3b3a8; --ev-line: #2c3a36; --ev-edge: #33443f;
+  --ev-map-bg: #0f1716; --ev-map-stripe: #16211f; --ev-float-edge: #33443f; --ev-float-hover: #22302d;
+  --ev-button-bg: #d7ebac; --ev-button-ink: #18312e; --ev-start: #d7ebac; --ev-warn: #f3a37f;
+  --ev-escape-ink: #fdba74; --ev-escape-bg: #c2410c; --ev-escape-hover: #9a3412;
+  --ev-shelter-ink: #93c5fd; --ev-shelter-bg: #1d4ed8; --ev-shelter-hover: #1e40af;
+  --ev-danger-bg: #3b1212; --ev-danger-ink: #fecaca; --ev-danger-edge: #ef4444; --ev-danger-text: #fca5a5;
+  --ev-badge-bg: #3a2a0c; --ev-badge-ink: #fde68a; --ev-badge-edge: #b45309;
+}
+.ev-shell { position: fixed; inset: 0; display: flex; flex-direction: column; overflow: hidden; overflow: clip; background: var(--ev-map-bg); color: var(--ev-ink); font-size: 16px; }
+.ev-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* Map fills everything above the bar. */
+.ev-map-area { position: relative; flex: 1 1 auto; min-height: 0; }
+/* Two classes so Mapbox's own `.mapboxgl-map { position: relative }` can't collapse the container. */
+.ev-map-area .ev-map { position: absolute; inset: 0; background: var(--ev-map-bg); }
+.ev-map-loading { background: repeating-linear-gradient(45deg, var(--ev-map-bg) 0 14px, var(--ev-map-stripe) 14px 28px); }
+.ev-map-notice { display: grid; place-items: center; padding: 72px 24px 24px; text-align: center; font-weight: 700; line-height: 1.5; color: var(--ev-text); }
+
+.ev-float-button { z-index: 2; min-height: 48px; min-width: 48px; padding: 0 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--ev-surface); color: var(--ev-ink); border: 2px solid var(--ev-float-edge); border-radius: 12px; font-weight: 800; font-size: 15px; text-decoration: none; box-shadow: 0 2px 8px rgba(0, 0, 0, .22); }
+.ev-float-button:hover { background: var(--ev-float-hover); }
+.ev-round { padding: 0; border-radius: 50%; width: 48px; }
+.ev-round svg { width: 20px; height: 20px; }
+/* Google-Maps-style "my location" button, bottom-right above the Mapbox attribution. */
+.ev-locate { position: absolute; right: 12px; bottom: 40px; width: 52px; height: 52px; }
+.ev-locate-icon { width: 20px; height: 20px; border-radius: 50%; border: 3px solid #1a73e8; position: relative; }
+.ev-locate-icon::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: #1a73e8; }
+/* Zoom buttons sit under the theme/prep actions; phones pinch to zoom, so they are hidden there. */
+.ev-shell .mapboxgl-ctrl-top-right { top: calc(64px + env(safe-area-inset-top, 0px)); right: 6px; }
+@media (max-width: 650px) { .ev-shell .mapboxgl-ctrl-top-right .mapboxgl-ctrl-group { display: none; } }
+
+/* Blue location dot with a soft pulse, like Google Maps. */
+.ev-you { width: 20px; height: 20px; border-radius: 50%; background: #1a73e8; border: 3px solid #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .25), 0 0 0 0 rgba(26, 115, 232, .45); animation: ev-pulse 2s ease-out infinite; }
+@keyframes ev-pulse { to { box-shadow: 0 0 0 1px rgba(0, 0, 0, .25), 0 0 0 16px rgba(26, 115, 232, 0); } }
+.ev-start { width: 22px; height: 22px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--ev-start); border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .35); }
+
+/* Marker pins: green = open, gray = full/closed, orange = evacuation point. */
+.ev-pin { padding: 0; border: 0; background: none; cursor: pointer; }
+.ev-pin-body { width: 34px; height: 34px; display: grid; place-items: center; border: 3px solid #fff; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 2px 6px rgba(0, 0, 0, .35); }
+.ev-pin-glyph { transform: rotate(45deg); font-size: 17px; font-weight: 800; color: #fff; line-height: 1; }
+.ev-pin-open .ev-pin-body { background: #15803d; }
+.ev-pin-closed .ev-pin-body { background: #6b7280; }
+.ev-pin-zone .ev-pin-body { background: #c2410c; }
+.ev-pin-chosen .ev-pin-body { outline: 3px solid var(--ev-ink); outline-offset: 1px; }
+.ev-popup { font: 14px/1.4 Arial, Helvetica, sans-serif; color: var(--ev-ink); }
+.ev-popup strong { display: block; font-size: 15px; margin-bottom: 2px; }
+.ev-shell .mapboxgl-popup-content { padding: 16px 16px 14px; border-radius: 10px; background: var(--ev-surface); color: var(--ev-ink); box-shadow: 0 2px 6px rgba(0, 0, 0, .18), 0 8px 24px rgba(0, 0, 0, .12); }
+.ev-shell .mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip { border-top-color: var(--ev-surface); }
+.ev-shell .mapboxgl-popup-anchor-top .mapboxgl-popup-tip { border-bottom-color: var(--ev-surface); }
+.ev-shell .mapboxgl-popup-anchor-left .mapboxgl-popup-tip { border-right-color: var(--ev-surface); }
+.ev-shell .mapboxgl-popup-anchor-right .mapboxgl-popup-tip { border-left-color: var(--ev-surface); }
+.ev-shell .mapboxgl-popup-close-button { width: 32px; height: 32px; font-size: 22px; color: var(--ev-muted); }
+:root[data-theme="dark"] .ev-shell .mapboxgl-ctrl-group { background: var(--ev-surface); }
+:root[data-theme="dark"] .ev-shell .mapboxgl-ctrl-group button + button { border-top-color: var(--ev-edge); }
+:root[data-theme="dark"] .ev-shell .mapboxgl-ctrl-icon { filter: invert(1); }
+
+/* Compact bar under the map. Details open only when a row is tapped. */
+.ev-bar { flex: 0 0 auto; max-height: 60vh; max-height: 60dvh; overflow-y: auto; overscroll-behavior: contain; background: var(--ev-surface); border-top: 1px solid var(--ev-edge); box-shadow: 0 -4px 16px rgba(0, 0, 0, .16); padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); }
+.ev-bar > * { max-width: 720px; margin-left: auto; margin-right: auto; }
+.ev-bar p { margin: 0; }
+
+.ev-status { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 14px; padding: 2px 2px 6px; font-size: 14px; line-height: 1.4; font-weight: 700; color: var(--ev-text); }
+.ev-status > .ev-form { flex-basis: 100%; }
+.ev-status-warn { color: var(--ev-warn); }
+.ev-status-actions { display: flex; flex-wrap: wrap; gap: 0 14px; }
+.ev-updating { font-weight: 600; color: var(--ev-muted); }
+.ev-danger { margin-bottom: 8px; padding: 8px 10px; border-radius: 8px; background: var(--ev-danger-bg); color: var(--ev-danger-ink); border-left: 4px solid var(--ev-danger-edge); font-size: 14px; font-weight: 700; line-height: 1.4; }
+
+.ev-rows { list-style: none; margin: 0; padding: 0; }
+.ev-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 8px; padding: 4px 0; border-top: 1px solid var(--ev-line); }
+.ev-row:first-child { border-top: 0; }
+.ev-row-main { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 6px 2px; background: none; border: 0; color: inherit; text-align: left; }
+.ev-row-icon { font-size: 22px; flex: none; }
+.ev-row-text { display: flex; flex-direction: column; min-width: 0; }
+.ev-row-title { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--ev-muted); }
+.ev-row-escape .ev-row-title { color: var(--ev-escape-ink); }
+.ev-row-shelter .ev-row-title { color: var(--ev-shelter-ink); }
+.ev-row-summary { font-size: 16px; font-weight: 700; line-height: 1.3; }
+.ev-row-chevron { margin-left: auto; padding-left: 4px; color: var(--ev-muted); }
+.ev-go { min-width: 60px; min-height: 48px; display: grid; place-items: center; padding: 0 14px; border-radius: 24px; color: #fff; font-size: 17px; font-weight: 800; text-decoration: none; }
+.ev-go-escape { background: var(--ev-escape-bg); }
+.ev-go-escape:hover { background: var(--ev-escape-hover); }
+.ev-go-shelter { background: var(--ev-shelter-bg); }
+.ev-go-shelter:hover { background: var(--ev-shelter-hover); }
+.ev-row-details { grid-column: 1 / -1; padding: 0 2px 10px 34px; }
+.ev-row-details > * + * { margin-top: 8px; }
+.ev-danger-text { color: var(--ev-danger-text); }
+.ev-meta { font-size: 15px; line-height: 1.45; color: var(--ev-text); }
+.ev-strong { font-weight: 700; line-height: 1.4; }
+.ev-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 14px; color: var(--ev-text); }
+.ev-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 13px; font-weight: 800; background: var(--ev-badge-bg); color: var(--ev-badge-ink); border: 1px solid var(--ev-badge-edge); }
+.ev-steps { margin: 0; padding-left: 20px; }
+.ev-steps li { padding: 6px 0; border-top: 1px solid var(--ev-line); font-size: 15px; line-height: 1.4; }
+.ev-step-distance { display: block; font-size: 13px; color: var(--ev-muted); }
+
+.ev-straight { display: flex; align-items: center; gap: 12px; }
+.ev-compass { position: relative; flex: none; width: 64px; height: 64px; display: grid; place-items: center; border: 3px solid var(--ev-ink); border-radius: 50%; background: var(--ev-surface); color: var(--ev-ink); }
+.ev-compass svg { width: 36px; height: 36px; transition: transform .3s; }
+.ev-compass-north { position: absolute; top: 0; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: 800; }
+
+.ev-button { min-height: 48px; padding: 8px 16px; border: 2px solid var(--ev-button-bg); border-radius: 10px; background: var(--ev-button-bg); color: var(--ev-button-ink); font-size: 16px; font-weight: 800; }
+.ev-button:disabled { opacity: .65; cursor: progress; }
+.ev-button-quiet { width: 100%; background: transparent; color: var(--ev-ink); }
+.ev-link-button { min-height: 44px; padding: 0; background: none; border: 0; color: var(--ev-ink); font-size: 14px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+/* 16px+ keeps iOS from zooming into the field. */
+.ev-form { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.ev-form input { flex: 1 1 180px; min-height: 48px; padding: 8px 12px; border: 2px solid var(--ev-ink); border-radius: 10px; background: var(--ev-surface); color: var(--ev-ink); font-size: 17px; }
+.ev-form-error { flex-basis: 100%; font-size: 14px; color: var(--ev-danger-text); }
+.ev-note { padding-top: 6px; border-top: 1px solid var(--ev-line); font-size: 12px; line-height: 1.45; color: var(--ev-text); }
+.ev-note .ev-link-button { min-height: 32px; font-size: 12px; }
+
+.ev-shell a:focus-visible, .ev-shell button:focus-visible, .ev-shell input:focus-visible { outline: 3px solid #df7548; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .ev-you { animation: none; } .ev-compass svg { transition: none; } }
+@media (prefers-reduced-motion: no-preference) { .ev-bar, .ev-float-button, .ev-shell .mapboxgl-popup-content { transition: background-color .25s, color .25s; } }

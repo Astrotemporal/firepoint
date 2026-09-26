@@ -21,3 +21,16 @@ export function applyTheme(theme: Theme, remember: boolean) {
   if (!remember) return;
   try { localStorage.setItem(THEME_KEY, theme); } catch { /* The toggle still works for this visit. */ }
 }
+
+/**
+ * Notifies on every change to <html data-theme>, and follows the system setting until someone picks a theme.
+ * Shaped for useSyncExternalStore with `currentTheme` as the snapshot.
+ */
+export function subscribeTheme(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  const system = window.matchMedia("(prefers-color-scheme: dark)");
+  const follow = () => { if (!storedTheme()) applyTheme(system.matches ? "dark" : "light", false); };
+  system.addEventListener("change", follow);
+  return () => { observer.disconnect(); system.removeEventListener("change", follow); };
+}
