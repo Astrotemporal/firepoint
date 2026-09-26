@@ -82,7 +82,7 @@ export function RouteBar(props: RouteBarProps) {
     >
       <button
         type="button" className="ev-sheet-handle" aria-expanded={snap !== "peek"} aria-controls="ev-sheet-body"
-        aria-label={snap === "full" ? t.collapseDirections : t.expandDirections} {...handleProps}
+        aria-label={snap === "peek" ? t.expandDirections : t.collapseDirections} {...handleProps}
       >
         <span aria-hidden="true" />
       </button>
