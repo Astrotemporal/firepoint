@@ -41,7 +41,7 @@ type EvacuationMapProps = {
   onRemoveMark: (id: string) => void;
 };
 
-const COLORS = { shelterRoute: "#1d4ed8", escapeRoute: "#c2410c", hazard: "#b91c1c", you: "#1a73e8" };
+const COLORS = { shelterRoute: "#1d4ed8", escapeRoute: "#c2410c", hazard: "#b91c1c", you: "#007aff" };
 const EMPTY: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 const toLngLat = (point: LatLng): [number, number] => [point.lng, point.lat];
 
@@ -105,6 +105,12 @@ function addLayers(map: MapboxMap): void {
       "line-color": ["match", ["get", "kind"], "shelter-guide", COLORS.shelterRoute, COLORS.escapeRoute],
       "line-width": 3, "line-dasharray": [0.3, 2],
     },
+  });
+  // Drawn last, over the routes. A plain label instead of a popup, so the demo fire is never mistaken for a real one.
+  map.addLayer({
+    id: "hazards-label", type: "symbol", source: "hazards", filter: ["all", ["get", "simulated"], ["!", ["get", "mark"]]],
+    layout: { "text-field": "Simulated fire", "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"], "text-size": 13 },
+    paint: { "text-color": COLORS.hazard, "text-halo-color": "#ffffff", "text-halo-width": 1.5 },
   });
 }
 
@@ -173,18 +179,6 @@ function MapboxView({
       setLoaded((count) => count + 1);
     });
     map.on("error", () => { if (!everLoaded) setFailed(true); });
-    map.on("click", "hazards-fill", (event) => {
-      const hazard = event.features?.[0]?.properties;
-      // A tap on a fire pin opens the pin's own popup instead.
-      if (!hazard || (event.originalEvent.target as Element | null)?.closest?.(".mapboxgl-marker")) return;
-      popupRef.current?.remove();
-      popupRef.current = new Popup({ offset: 8, maxWidth: "260px" }).setLngLat(event.lngLat)
-        .setDOMContent(popupContent(hazard.mark
-          ? [String(hazard.label), "Your mark: private to this device, not a report.", "Routes avoid this area."]
-          : [String(hazard.label), `Severity ${hazard.severity} of 5`,
-            hazard.simulated ? "Simulated for testing. Not a real incident." : "From the hazard feed."]))
-        .addTo(map);
-    });
     mapRef.current = map;
     onReady({ container, pointToLatLng: (x, y) => map.unproject([x, y]), center: () => map.getCenter() });
     const pins = pinsRef.current;
@@ -220,7 +214,7 @@ function MapboxView({
     source.setData({
       type: "FeatureCollection",
       features: hazards.map((hazard) => circle(hazard.center, hazard.radiusMeters, {
-        label: hazard.label, severity: hazard.severity, simulated: hazard.simulated, mark: Boolean(hazard.userMark),
+        simulated: hazard.simulated, mark: Boolean(hazard.userMark),
       })),
     });
   }, [hazards, loaded]);
@@ -239,7 +233,6 @@ function MapboxView({
       views.set(mark.id, view);
       view.marker.setLngLat([mark.lng, mark.lat]);
       view.title.textContent = markLabel(index);
-      view.coords.textContent = `${mark.lat.toFixed(4)}, ${mark.lng.toFixed(4)}`;
       view.pin.setAttribute("aria-label", `${markLabel(index)}. Drag to move, press Enter for options.`);
     });
   }, [marks]);
@@ -322,7 +315,7 @@ function MapboxView({
       const element = document.createElement("div");
       element.className = className;
       element.setAttribute("role", "img");
-      youRef.current = new Marker({ element, anchor: gps ? "center" : "bottom" }).setLngLat(toLngLat(origin)).addTo(map);
+      youRef.current = new Marker({ element, anchor: "center" }).setLngLat(toLngLat(origin)).addTo(map);
     }
     youRef.current.getElement().setAttribute("aria-label", gps ? "Your location" : `Routes start here: ${origin.label ?? "chosen location"}`);
     youRef.current.setLngLat(toLngLat(origin));
@@ -365,7 +358,7 @@ function MapboxView({
 
 /** Keep fitted routes clear of the directions drawer: the side card on wide screens, the raised sheet on phones. */
 function fitPadding(container: HTMLElement) {
-  if (window.matchMedia("(min-width: 760px)").matches) return { top: 72, bottom: 48, left: 440, right: 64 };
+  if (window.matchMedia("(min-width: 760px)").matches) return { top: 48, bottom: 48, left: 440, right: 80 };
   const shell = container.closest<HTMLElement>(".ev-shell");
   const px = (name: string) => (shell ? parseFloat(getComputedStyle(shell).getPropertyValue(name)) || 0 : 0);
   // The map already ends at the peek, so only the part of the sheet above it covers routes.

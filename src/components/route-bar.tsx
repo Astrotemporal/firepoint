@@ -63,7 +63,7 @@ export function RouteBar(props: RouteBarProps) {
       {threat.edgeMeters <= 0
         ? `You appear to be inside the hazard area (${threat.hazard.label}). `
         : `${threat.hazard.label} is ${threat.edgeMeters < 161 ? "less than 0.1 mi" : formatMiles(threat.edgeMeters)} away. `}
-      {escapeRequested ? "Take the escape route." : "Tap Get escape route."}
+      {escapeRequested ? "Take the escape route." : "Tap Escape."}
     </p>
   ) : null;
   const status = <StatusLine {...props} onEditing={(editing) => editing && setSnap("half")} />;
@@ -100,8 +100,8 @@ export function RouteBar(props: RouteBarProps) {
                 />
               </ul>
             ) : (
-              <button type="button" className="ev-escape-cta" onClick={requestEscape}>
-                <span aria-hidden="true">🚗</span> Get escape route
+              <button type="button" className="ev-escape-cta" onClick={requestEscape} aria-label="Escape: get an escape route">
+                <span aria-hidden="true">🚗</span> Escape
               </button>
             )}
             {danger ?? status}
@@ -117,9 +117,7 @@ export function RouteBar(props: RouteBarProps) {
               </ul>
             )}
             <p className="ev-note">
-              {simulated ? "Demo: simulated fire, unverified shelters. " : "Shelters are unverified. "}
-              Fire marks stay on this device and are not reports; routes avoid them. Live fire data isn’t connected, so this
-              is not an all-clear. Follow official orders; to report a fire, call 911.{" "}
+              Live fire data isn’t connected, so this is not an all-clear. Follow official orders; to report a fire, call 911.{" "}
               <button type="button" className="ev-link-button" onClick={props.onToggleSimulated}>
                 {simulated ? "Hide simulated fire" : "Show simulated fire"}
               </button>

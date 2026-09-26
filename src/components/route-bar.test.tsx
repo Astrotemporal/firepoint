@@ -42,7 +42,7 @@ describe("RouteBar", () => {
     expect(html).toMatch(/aria-expanded="false"/);
     expect(html).toContain("Location approximate");
     expect(html).toContain("Unverified: confirm it’s open");
-    expect(html).toContain("Demo: simulated fire, unverified shelters.");
+    expect(html).toContain("Hide simulated fire");
   });
 
   it("keeps the escape route at the top of the drawer once requested, with the fire warning in the peek", () => {
@@ -94,26 +94,26 @@ describe("RouteBar", () => {
     expect(html).toMatch(/class="ev-bar ev-sheet ev-sheet-peek"/);
     expect(html).toMatch(/<button[^>]*class="ev-sheet-handle"[^>]*aria-expanded="false"[^>]*aria-label="Expand directions"/);
     expect(html).toMatch(/<button[^>]*class="ev-sheet-tab"[^>]*aria-label="Hide directions"/);
-    expect(html.indexOf("Get escape route")).toBeLessThan(html.indexOf('id="ev-sheet-body"'));
+    expect(html.indexOf("> Escape</button>")).toBeLessThan(html.indexOf('id="ev-sheet-body"'));
   });
 
   it("never treats an empty hazard list as an all-clear", () => {
     expect(render({ hazards: [] })).toContain("this is not an all-clear");
   });
 
-  it("says fire marks are private, not reports, and that routes avoid them", () => {
+  it("treats a nearby fire mark like a hazard, without calling it simulated", () => {
     const mark = { ...SIMULATED_HAZARDS[0], id: "mark-1", label: "Fire mark 1", simulated: false, userMark: true };
     const html = render({ hazards: [mark], threat: { hazard: mark, edgeMeters: 400 }, escapeFirst: true });
-    expect(html).toContain("Fire marks stay on this device and are not reports; routes avoid them.");
     expect(html).toContain("Fire mark 1 is 0.2 mi away. Take the escape route.");
+    expect(html).toContain("Show simulated fire");
   });
 
   describe("escape route on request", () => {
     const notRequested = { escapeRequested: false, plan: { ...plan, escape: { kind: "not-requested" as const } } };
 
-    it("shows a Get escape route button and no escape route content before it's requested", () => {
+    it("shows an ESCAPE button and no escape route content before it's requested", () => {
       const html = render(notRequested);
-      expect(html).toContain("Get escape route");
+      expect(html).toMatch(/<button[^>]*class="ev-escape-cta"[^>]*aria-label="Escape: get an escape route"[^>]*>.*Escape<\/button>/);
       expect(html).not.toContain("toward Burbank via SR-134");
       expect(html).not.toContain("destination=34.180800"); // no Go link for the (unrequested) escape zone
       expect(html.match(/class="ev-row-main" aria-expanded/g)).toHaveLength(1); // only the shelter row toggles
@@ -139,7 +139,7 @@ describe("RouteBar", () => {
 
     it("points the hazard-proximity warning at the button before a request, and at the route after", () => {
       const near = { escapeFirst: true, threat: { hazard: SIMULATED_HAZARDS[0], edgeMeters: 1200 } };
-      expect(render({ ...near, ...notRequested })).toContain("Tap Get escape route.");
+      expect(render({ ...near, ...notRequested })).toContain("Tap Escape.");
       expect(render({ ...near, ...notRequested })).not.toContain("Take the escape route.");
       expect(render({ ...near, escapeRequested: true })).toContain("Take the escape route.");
     });
