@@ -10,7 +10,7 @@ Firepoint is a planned, account-optional mobile web app for emergency awareness 
 
 [Current mobile Mapbox home](docs/preview/map-mobile.png) · [Desktop map](docs/preview/map-desktop.png) · [Official links and paused-check mobile page](docs/preview/prepare-mobile.png). These were captured from real app code and a real public Mapbox token, with **no live source queries or private marks**. The flame toolbar is for private marks, **not** verified fires; its icon/wording is under review. The map images are snapshots, not a forecast or an automatically refreshed live feed.
 
-[The preview workflow](.github/workflows/preview.yml) separately refreshes [`/prepare` desktop](docs/preview/desktop.png) and [mobile](docs/preview/mobile.png) screenshots after `main` pushes. It does not load the optional second map or query live sources. The Mapbox home requires internet and a browser-publishable, URL-restricted token.
+[The preview workflow](.github/workflows/preview.yml) captures `/prepare` desktop and mobile screenshots as **downloadable CI artifacts** for PRs and `main` pushes. Checked-in [desktop](docs/preview/desktop.png) and [mobile](docs/preview/mobile.png) PNGs may lag; the workflow no longer pushes bot commits to `main`. It does not load the Mapbox home or query live sources. The Mapbox home requires internet and a browser-publishable, URL-restricted token.
 
 ## What exists now
 
