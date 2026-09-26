@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AreaMap } from "@/components/area-map";
 
 const CHECKLIST_KEY = "firepoint.prep.v1";
 const AREA_KEY = "firepoint.area.v1";
@@ -158,6 +159,7 @@ export function FirepointHome() {
           </section>
 
           <section className="area-section" aria-labelledby="area-heading"><div className="area-copy"><div className="section-kicker">OPTIONAL REFERENCE <span> / 04</span></div><h2 id="area-heading">A place in mind.</h2><p>Save a neighborhood label to personalize this device. This is not an address lookup, an official zone, or a check for local hazards.</p></div><div className="area-card"><div className="area-card-top"><span className="area-dot" aria-hidden="true" /> GLENDALE REFERENCE</div><strong>Glenoaks Canyon</strong><span className="area-disclaimer">Approximate neighborhood name only</span><button type="button" className="area-button" onClick={saveArea} disabled={!ready}>{area ? "Remove saved label" : "Save on this device"} <span aria-hidden="true">{area ? "×" : "+"}</span></button>{area && <p className="saved-note" role="status">Saved locally. For your official evacuation zone, use Glendale Fire’s Know Your Zone link above.</p>}</div></section>
+          <div className="map-section"><div className="section-kicker">ORIENT YOURSELF <span> / 05</span></div><AreaMap /></div>
         </div>
       </main>
       <footer className="footer"><div className="footer-inner"><div><span className="footer-brand">firepoint<span>.</span></span><p>Prepare here. Confirm with the source.</p></div><div className="footer-links"><a href="#official">Official links ↑</a><a href="#prepare">Your list ↑</a></div><p className="footer-fine">Independent community tool · No live alerts, official zone lookup, or all-clear information. In an emergency, follow local officials. Call 911 for immediate help.</p></div></footer>
