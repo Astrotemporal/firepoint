@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { MARKS_KEY, MAX_MARKS, addMark, createMark, moveMark, parseMarks, type FireMark } from "@/domain/fire-marks";
 import { GLENDALE_CITY_HALL, SAFE_ZONES, SERVICE_RADIUS_METERS, SHELTERS } from "@/evacuation/data/glendale";
 import { isAppleMobile } from "@/evacuation/format";
-import { getActiveHazards, setStubHazards, SIMULATED_HAZARDS, subscribeToHazards } from "@/evacuation/hazards";
+import { getActiveHazards, subscribeToHazards } from "@/evacuation/hazards";
 import { DEFAULT_FIX, LocationTracker, type LocationFix } from "@/evacuation/location";
 import { markHazards } from "@/evacuation/marks";
 import { RoutePlanner } from "@/evacuation/route-planner";
@@ -62,7 +62,7 @@ export function MapScreen() {
   const [hint, setHint] = useState<string | null>(null);
   const mapRef = useRef<MapHandle | null>(null);
 
-  // Fire marks count as fires for routing, next to the hazard feed (a simulated stub for now).
+  // Fire marks count as fires for routing, next to the hazard feed (an empty stub until a real feed is connected).
   const hazards = useMemo(() => [...stubHazards, ...markHazards(marks)], [stubHazards, marks]);
   const fix = location.fix;
   const metersFromGlendale = fix?.source === "gps" ? haversine(fix, GLENDALE_CITY_HALL) : 0;
@@ -120,7 +120,6 @@ export function MapScreen() {
   const centerKey = identity && `${identity}:${locateCount}`;
   const escapeReady = plan ? plan.escape.kind !== "not-requested" : false;
   const fitKey = identity && plan && startIdentity(plan.origin) === identity ? `${identity}:${escapeReady}` : null;
-  const simulatedShown = stubHazards.some((hazard) => hazard.simulated);
 
   return (
     <main className="map-screen ev-shell">
@@ -169,7 +168,6 @@ export function MapScreen() {
         onUseLocation={() => tracker.start()}
         onManualLocation={(place) => tracker.setManual(place, place.label)}
         onRetryRoutes={() => planner.refresh()}
-        onToggleSimulated={() => setStubHazards(simulatedShown ? [] : SIMULATED_HAZARDS)}
         onRequestEscape={() => { if (!origin) tracker.start(); planner.requestEscape(); }}
         onClearEscape={() => planner.clearEscape()}
       />

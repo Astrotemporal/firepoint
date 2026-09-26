@@ -31,7 +31,6 @@ export type RouteBarProps = {
   onUseLocation: () => void;
   onManualLocation: (place: GeocodeResult) => void;
   onRetryRoutes: () => void;
-  onToggleSimulated: () => void;
   onRequestEscape: () => void;
   onClearEscape: () => void;
 };
@@ -50,11 +49,10 @@ type RowView = {
  * and a left side card on wider screens. The escape button, fire warning and status make up the peek.
  */
 export function RouteBar(props: RouteBarProps) {
-  const { location, origin, hazards, threat, escapeFirst, escapeRequested, online } = props;
+  const { location, origin, threat, escapeFirst, escapeRequested, online } = props;
   const [open, setOpen] = useState<"escape" | "shelter" | null>(null);
   const [hidden, setHidden] = useState(false);
   const { snap, setSnap, dragging, style, handleProps, sheetRef, innerRef, peekRef } = useSheet();
-  const simulated = hazards.some((hazard) => hazard.simulated);
 
   // The peek holds one line under the button: the fire warning when there is one, otherwise the location status.
   const danger = origin && threat && escapeFirst ? (
@@ -117,10 +115,7 @@ export function RouteBar(props: RouteBarProps) {
               </ul>
             )}
             <p className="ev-note">
-              Live fire data isn’t connected, so this is not an all-clear. Follow official orders; to report a fire, call 911.{" "}
-              <button type="button" className="ev-link-button" onClick={props.onToggleSimulated}>
-                {simulated ? "Hide simulated fire" : "Show simulated fire"}
-              </button>
+              Live fire data isn’t connected, so this is not an all-clear. Follow official orders; to report a fire, call 911.
             </p>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SAFE_ZONES, SHELTERS } from "./data/glendale";
-import { SIMULATED_HAZARDS } from "./hazards";
+import { TEST_HAZARDS } from "./hazards.fixture";
 import { RoutePlanner } from "./route-planner";
 import type { GetRoute, LatLng } from "./types";
 
@@ -55,7 +55,7 @@ describe("RoutePlanner recalculation", () => {
     planner.update(north(0), []);
     await vi.advanceTimersByTimeAsync(1000);
     expect(planner.getSnapshot().plan?.shelter.kind).toBe("route");
-    planner.update(north(0), SIMULATED_HAZARDS);
+    planner.update(north(0), TEST_HAZARDS);
     await vi.advanceTimersByTimeAsync(1000);
     expect(runs()).toBe(1); // same origin
     expect(planner.getSnapshot().plan?.hazardsKey).toContain("simulated-verdugo-fire");
@@ -63,7 +63,7 @@ describe("RoutePlanner recalculation", () => {
 
   it("offline, gives straight-line shelter targets without calling the routing API, and no escape unless requested", async () => {
     const { planner, getRoute } = setup(false);
-    planner.update(cityHall, SIMULATED_HAZARDS);
+    planner.update(cityHall, TEST_HAZARDS);
     await vi.advanceTimersByTimeAsync(1000);
     const plan = planner.getSnapshot().plan;
     expect(getRoute).not.toHaveBeenCalled();
@@ -116,7 +116,7 @@ describe("RoutePlanner escape requests", () => {
     expect(planner.getSnapshot().plan?.escape.kind).toBe("route");
 
     // Later hazard changes keep recomputing the escape leg without asking again.
-    planner.update(cityHall, SIMULATED_HAZARDS);
+    planner.update(cityHall, TEST_HAZARDS);
     await vi.advanceTimersByTimeAsync(1000);
     expect(planner.getSnapshot().plan?.escape.kind).toBe("route");
     expect(escapeCalls().length).toBeGreaterThan(1);
@@ -134,7 +134,7 @@ describe("RoutePlanner escape requests", () => {
     expect(planner.getSnapshot().escapeRequested).toBe(false);
     expect(planner.getSnapshot().plan?.escape).toEqual({ kind: "not-requested" });
 
-    planner.update(cityHall, SIMULATED_HAZARDS); // hazard change; escape must not be recomputed
+    planner.update(cityHall, TEST_HAZARDS); // hazard change; escape must not be recomputed
     await vi.advanceTimersByTimeAsync(1000);
     expect(escapeCalls().length).toBe(callsBeforeClear);
     expect(planner.getSnapshot().plan?.escape).toEqual({ kind: "not-requested" });

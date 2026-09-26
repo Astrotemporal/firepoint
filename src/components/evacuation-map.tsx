@@ -77,7 +77,7 @@ function pinElement(className: string, glyph: string, label: string): HTMLButton
 
 function addLayers(map: MapboxMap): void {
   for (const id of ["hazards", "accuracy", "routes"]) map.addSource(id, { type: "geojson", data: EMPTY });
-  // A person's own fire marks are shaded lighter than hazards from the feed (or the simulated one).
+  // A person's own fire marks are shaded lighter than hazards from the feed.
   map.addLayer({ id: "hazards-fill", type: "fill", source: "hazards", paint: { "fill-color": "#ef4444", "fill-opacity": ["case", ["get", "mark"], 0.16, 0.28] } });
   map.addLayer({ id: "hazards-line", type: "line", source: "hazards", paint: { "line-color": COLORS.hazard, "line-width": 2 } });
   map.addLayer({ id: "accuracy-fill", type: "fill", source: "accuracy", paint: { "fill-color": COLORS.you, "fill-opacity": 0.12 } });

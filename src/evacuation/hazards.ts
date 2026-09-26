@@ -1,38 +1,19 @@
 import type { Hazard } from "./types";
 
 /*
- * STUB hazard source. Disaster detection lives elsewhere; see README "Replacing the hazard stub".
- * Contract for a real feed: getActiveHazards() returns the SAME array instance until the list
- * changes (it backs React's useSyncExternalStore), and subscribers are called after each change.
+ * STUB hazard source: empty until a vetted feed is connected. Disaster detection lives elsewhere; see README
+ * "Replacing the hazard stub". Contract for a real feed: getActiveHazards() returns the SAME array instance until
+ * the list changes (it backs React's useSyncExternalStore), and subscribers are called after each change.
+ * An empty list is not an all-clear; the directions bar says so.
  */
 
-/** Test/demo fire in the Verdugo Mountains. Not a real incident. */
-export const SIMULATED_HAZARDS: readonly Hazard[] = [
-  {
-    id: "simulated-verdugo-fire",
-    type: "fire",
-    center: { lat: 34.185, lng: -118.235 },
-    radiusMeters: 1500,
-    severity: 4,
-    label: "Simulated fire · Verdugo Mountains",
-    simulated: true,
-  },
-];
-
-let active: readonly Hazard[] = SIMULATED_HAZARDS;
-const listeners = new Set<() => void>();
+const NONE: readonly Hazard[] = [];
 
 export function getActiveHazards(): readonly Hazard[] {
-  return active;
+  return NONE;
 }
 
 export function subscribeToHazards(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => { listeners.delete(listener); };
-}
-
-/** Demo control for the stub (e.g. hide the simulated fire). A real feed would not expose this. */
-export function setStubHazards(next: readonly Hazard[]): void {
-  active = next;
-  listeners.forEach((listener) => listener());
+  void listener;
+  return () => {};
 }
