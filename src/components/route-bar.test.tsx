@@ -43,6 +43,7 @@ describe("RouteBar", () => {
     expect(html).toContain("Location approximate");
     expect(html).toContain("Unverified: confirm it’s open");
     expect(html).not.toMatch(/simulated fire/i); // no demo fire or toggle in the app
+    expect(html).not.toMatch(/🏠|🚗/); // row icons are drawn glyphs, not emoji
   });
 
   it("keeps the escape route at the top of the drawer once requested, with the fire warning in the peek", () => {

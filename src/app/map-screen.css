@@ -77,6 +77,8 @@
 .ev-sheet-inner { padding: 0 14px 10px; }
 .ev-sheet-inner > * { max-width: 720px; margin-left: auto; margin-right: auto; }
 .ev-bar p { margin: 0; }
+/* Apple's system font (San Francisco) where available, like Maps. */
+.ev-bar { font-family: -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
 .ev-sheet-handle { flex: none; display: grid; place-items: center; width: 100%; height: 26px; padding: 0; border: 0; background: none; cursor: grab; touch-action: none; }
 .ev-sheet-handle span { width: 40px; height: 5px; border-radius: 3px; background: var(--ev-edge); }
 .ev-sheet-dragging .ev-sheet-handle { cursor: grabbing; }
@@ -127,29 +129,31 @@
 .ev-danger { margin-bottom: 8px; padding: 8px 10px; border-radius: 8px; background: var(--ev-danger-bg); color: var(--ev-danger-ink); border-left: 4px solid var(--ev-danger-edge); font-size: 14px; font-weight: 700; line-height: 1.4; }
 
 .ev-rows { list-style: none; margin: 0; padding: 0; }
-.ev-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 8px; padding: 4px 0; border-top: 1px solid var(--ev-line); }
+.ev-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 10px; padding: 6px 0; border-top: 1px solid var(--ev-line); }
 .ev-row:first-child { border-top: 0; }
-.ev-row-main { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 6px 2px; background: none; border: 0; color: inherit; text-align: left; }
-.ev-row-icon { font-size: 22px; flex: none; }
+.ev-row-main { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 6px 2px; background: none; border: 0; color: inherit; text-align: left; }
+.ev-row-icon { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; color: #fff; }
 .ev-row-text { display: flex; flex-direction: column; min-width: 0; }
-.ev-row-title { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--ev-muted); }
-.ev-row-escape .ev-row-title { color: var(--ev-escape-ink); }
-.ev-row-shelter .ev-row-title { color: var(--ev-shelter-ink); }
-.ev-row-summary { font-size: 16px; font-weight: 700; line-height: 1.3; }
-.ev-row-chevron { margin-left: auto; padding-left: 4px; color: var(--ev-muted); }
+.ev-row-title { font-size: 13px; font-weight: 600; line-height: 1.3; letter-spacing: -.005em; color: var(--ev-muted); }
+.ev-row-icon svg { width: 22px; height: 22px; }
+.ev-row-escape .ev-row-icon { background: var(--ev-escape-bg); }
+.ev-row-shelter .ev-row-icon { background: var(--ev-shelter-bg); }
+.ev-row-main[aria-expanded="true"] .ev-row-chevron { transform: rotate(90deg); }
+.ev-row-summary { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 17px; font-weight: 600; line-height: 1.25; letter-spacing: -.02em; }
+.ev-row-chevron { flex: none; width: 8px; height: 14px; margin-left: auto; color: var(--ev-muted); opacity: .6; transition: transform .2s ease; }
 .ev-row-escape { grid-template-columns: 1fr auto auto; }
 .ev-escape-close { width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: var(--ev-line); color: var(--ev-ink); font-size: 18px; font-weight: 800; }
 /* Phones close the escape route by sliding the drawer down, so the close control is side-card only. */
 @media (max-width: 759px) { .ev-escape-close { display: none; } .ev-row-escape { grid-template-columns: 1fr auto; } }
-.ev-go { min-width: 60px; min-height: 48px; display: grid; place-items: center; padding: 0 14px; border-radius: 24px; color: #fff; font-size: 17px; font-weight: 800; text-decoration: none; }
+.ev-go { min-width: 64px; min-height: 44px; display: grid; place-items: center; padding: 0 18px; border-radius: 999px; color: #fff; font-size: 17px; font-weight: 600; letter-spacing: -.02em; text-decoration: none; }
 .ev-go-escape { background: var(--ev-escape-bg); }
 .ev-go-escape:hover { background: var(--ev-escape-hover); }
 .ev-go-shelter { background: var(--ev-shelter-bg); }
 .ev-go-shelter:hover { background: var(--ev-shelter-hover); }
-.ev-row-details { grid-column: 1 / -1; padding: 0 2px 10px 34px; }
+.ev-row-details { grid-column: 1 / -1; padding: 0 2px 10px 54px; }
 .ev-row-details > * + * { margin-top: 8px; }
 /* Escape button: the sheet's headline control until a route is requested. */
-.ev-escape-cta { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 56px; border: 0; border-radius: 14px; background: var(--ev-escape-bg); color: #fff; font-size: 19px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; box-shadow: 0 2px 6px rgba(0, 0, 0, .18); }
+.ev-escape-cta { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 56px; border: 0; border-radius: 999px; background: var(--ev-escape-bg); color: #fff; font-size: 19px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; box-shadow: 0 2px 6px rgba(0, 0, 0, .18); }
 .ev-escape-fire { flex: none; width: 26px; aspect-ratio: 500 / 690; margin-top: -4px; }
 .ev-escape-fire canvas { display: block; width: 100%; height: 100%; }
 .ev-escape-cta:hover { background: var(--ev-escape-hover); }

@@ -308,12 +308,14 @@ function RouteRow({ kind, view, appleMaps, expanded, onToggle, action }: {
   return (
     <li className={`ev-row ev-row-${kind}`}>
       <button type="button" className="ev-row-main" aria-expanded={expanded} aria-controls={detailsId} onClick={onToggle}>
-        <span className="ev-row-icon" aria-hidden="true">{kind === "escape" ? "🚗" : "🏠"}</span>
+        <span className="ev-row-icon" aria-hidden="true"><RowGlyph kind={kind} /></span>
         <span className="ev-row-text">
           <span className="ev-row-title">{view.title}</span>
           <span className={`ev-row-summary${view.danger ? " ev-danger-text" : ""}`}>{view.summary}</span>
         </span>
-        <span className="ev-row-chevron" aria-hidden="true">{expanded ? "▾" : "▸"}</span>
+        <svg className="ev-row-chevron" viewBox="0 0 8 14" aria-hidden="true" focusable="false">
+          <path d="M1.5 1.5 6.5 7l-5 5.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </button>
       {view.goTo && (
         <a className={`ev-go ev-go-${kind}`} href={directionsUrl(view.goTo, appleMaps)} target="_blank" rel="noopener noreferrer">
@@ -323,6 +325,18 @@ function RouteRow({ kind, view, appleMaps, expanded, onToggle, action }: {
       {action}
       <div id={detailsId} className="ev-row-details" hidden={!expanded}>{view.details}</div>
     </li>
+  );
+}
+
+/** Filled glyphs in the style of SF Symbols (car.fill, house.fill), drawn white on the row's tinted circle. */
+const GLYPHS = {
+  escape: "M5 11l1.6-4.3A2 2 0 0 1 8.5 5.4h7a2 2 0 0 1 1.9 1.3L19 11a2 2 0 0 1 2 2v4a1 1 0 0 1-1 1h-1v1.5a1.5 1.5 0 0 1-3 0V18H8v1.5a1.5 1.5 0 0 1-3 0V18H4a1 1 0 0 1-1-1v-4a2 2 0 0 1 2-2zm2.2 0h9.6l-1.2-3.3a.8.8 0 0 0-.7-.5H9.1a.8.8 0 0 0-.7.5zM6.5 15.5a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5zm11 0a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5z",
+  shelter: "M12 2.8 2.5 10.6a.9.9 0 0 0 1.1 1.4l.9-.7V20a1.5 1.5 0 0 0 1.5 1.5H10v-5.5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5.5h4a1.5 1.5 0 0 0 1.5-1.5v-8.7l.9.7a.9.9 0 0 0 1.1-1.4z",
+} as const;
+
+function RowGlyph({ kind }: { kind: "escape" | "shelter" }) {
+  return (
+    <svg viewBox="0 0 24 24" focusable="false"><path d={GLYPHS[kind]} fill="currentColor" fillRule="evenodd" /></svg>
   );
 }
 
