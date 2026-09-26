@@ -4,7 +4,7 @@ This is the working guide for the **new Firepoint repository**. Read [source pol
 
 ## Local setup and routine
 
-1. Clone this repository and use the checked-in npm lockfile. From the repository root run `npm ci`, then `npm run dev`; open <http://localhost:3000>.
+1. Clone this repository and use the checked-in npm lockfile. From the repository root run `npm ci`, copy `.env.example` to ignored `.env.local`, then `npm run dev`; open <http://localhost:3000>. The full-screen Mapbox home needs a browser-publishable, URL-restricted `NEXT_PUBLIC_MAPBOX_TOKEN=pk.…`; other provider keys stay server-only. Production source queries are paused; `FIREPOINT_DEMO_LIVE_SOURCES=enabled` is for local nonproduction integration tests only.
 2. Make one focused change on a branch. Write down what the user can actually do after the change and what remains unavailable. Do not present proposed work as shipped.
 3. Run `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` before review. These scripts now exist. Include manual checks for small-screen use, keyboard access, and offline/error states when relevant. A passing adapter test does not mean its data reaches the UI.
 4. In the pull request, give the changed behavior, source/provenance and permission evidence (if any), coverage and freshness limits, screenshots for UI changes, and commands run. Review safety copy and privacy consequences explicitly. Never put provider keys, location histories, or private reports in commits, logs, screenshots, or tickets.

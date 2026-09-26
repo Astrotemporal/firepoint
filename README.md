@@ -8,19 +8,15 @@ Firepoint is a planned, account-optional mobile web app for emergency awareness 
 
 ## App preview
 
-<img src="docs/preview/desktop.png" width="760" alt="Firepoint desktop view: official links, preparation checklist, tentative area label, and an optional street map button">
+[Current mobile Mapbox home](docs/preview/map-mobile.png) · [Desktop map](docs/preview/map-desktop.png) · [Official links and paused-check mobile page](docs/preview/prepare-mobile.png). These were captured from real app code and a real public Mapbox token, with **no live source queries or private marks**. The flame toolbar is for private marks, **not** verified fires; its icon/wording is under review. The map images are snapshots, not a forecast or an automatically refreshed live feed.
 
-<details><summary>View the mobile preview</summary>
-
-<img src="docs/preview/mobile.png" width="300" alt="Firepoint mobile view of the same static preparedness page">
-
-</details>
-
-[The preview workflow](.github/workflows/preview.yml) captures the **static page** on pull requests and refreshes these images after `main` pushes (or a manual workflow run), if GitHub Actions has permission to write to `main`. It deliberately does not load map tiles, query live notices, or display private location data. The interactive map can be opened in the running app while online.
+[The preview workflow](.github/workflows/preview.yml) separately refreshes [`/prepare` desktop](docs/preview/desktop.png) and [mobile](docs/preview/mobile.png) screenshots after `main` pushes. It does not load the optional second map or query live sources. The Mapbox home requires internet and a browser-publishable, URL-restricted token.
 
 ## What exists now
 
-This repository began as a Next.js 16 starter and is under active development. The current UI has outbound links to named official sources, a short checklist saved only after an item is checked, and an optional Glenoaks Canyon neighborhood label saved on this device. Neither the label nor the checklist is an official lookup. A click-to-load OpenFreeMap/OpenStreetMap street map gives general Glendale orientation **only while online**; it has no incident or zone overlay and does not locate the visitor. A "What public sources report right now" panel queries two server routes **only when the visitor asks**, for central Glendale or a one-time, rounded device location: `POST /api/v1/notices/query` (NWS weather alerts, needs a real `NWS_USER_AGENT` contact) and `POST /api/v1/context/query` (CAL FIRE incident points, NIFC/WFIGS mapped perimeters, and AirNow air quality when `AIRNOW_API_KEY` is set), plus `POST /api/v1/hazards/query` (Glendale GIS MCP mapped hazard zones from a dated snapshot, when the event's `GLENDALE_GIS_MCP_KEY` is set). Each source shows its own checked/unavailable/not-set-up status; an empty or failed source is never presented as an all-clear. Neither route ingests city evacuation orders or establishes operational coverage. Hazard lookup, verified evacuation-zone lookup, public reporting, accounts, and an operational backend are not shipped. A service worker supplies a separate offline checklist page, but it does not cache the main app page, official notices, API responses, or maps. An offline map and live offline status are not shipped.
+This repository began as a Next.js 16 starter and is under active development. The **`/` homepage is a full-screen Mapbox map** when a public `NEXT_PUBLIC_MAPBOX_TOKEN` is configured. It loads online without a tap and has a dark/light toggle and user-placed private flame marks; the marks are **not** confirmed incidents, and the map has no official zone, order, fire perimeter or safe-route overlay. The older, click-to-load OpenFreeMap map remains on `/prepare`, so **two basemap providers currently coexist** pending map-owner consolidation. Neither map is available offline. The `/prepare` page holds official agency links, a local checklist and an optional Glenoaks Canyon reference label; no label or saved mark is an official lookup.
+
+Server-only adapters for NWS weather alerts, CAL FIRE incidents, NIFC/WFIGS perimeters, AirNow observations and dated Glendale GIS standing-hazard maps are installed. **Production UI and personalized POST routes are paused** while source rights, caching, rate limits and monitoring are reviewed. `FIREPOINT_DEMO_LIVE_SOURCES=enabled` permits explicit queries in local nonproduction development only; it is not a public coverage claim. None of these sources checks a City/County evacuation order or verified standing evacuation zone. An offline fallback keeps a separate local checklist, **not** live notices, maps or a safe route. There is no durable ingestion worker, report service or ElevenLabs endpoint.
 
 ## Run locally
 
@@ -28,7 +24,7 @@ Use Node.js and npm compatible with the checked-in `package-lock.json`:
 
 ```bash
 npm ci
-cp .env.example .env.local  # optional; add a real contact to NWS_USER_AGENT for the server-only NWS route
+cp .env.example .env.local  # add a public Mapbox pk. token for tiles; keep other keys server-only
 npm run dev
 ```
 
@@ -49,8 +45,9 @@ The `Makefile` also has `make gis-fetch`/`make gis-local` developer-only MCP ste
 - [Team start](docs/team-start.md): setup, small-change workflow, review gates, and proposed feature boundaries.
 - [Source policy](docs/source-policy.md): source trust, coverage, freshness, location privacy, offline behavior, and reports.
 - [Data contracts](docs/contracts.md): proposed and implemented schemas; check its status notes before claiming a route or UI integration exists.
-- [Map decisions](docs/maps.md): online basemap attribution and limits.
+- [Map decisions](docs/maps.md): current Mapbox home, secondary OpenFreeMap map, attribution, cost, privacy and limits.
+- [PWA storage, systems, audio and route handoff](docs/pwa-storage-and-systems.md): shipped versus proposed behavior and provenance gates.
 - [Resident stories](docs/user-stories.md), [four-person scope](docs/hackathon-roles.md), and [source/storage roadmap](docs/source-roadmap.md): proposals and ownership boundaries, not shipped services.
 - [Product vision](docs/vision.md) and [broader API roadmap](docs/roadmap.md): teammate proposals for later phases. Check their assumptions against the source policy and current status before promising a live feature.
 
-Implemented source integrations are NWS point alerts, CAL FIRE incidents, NIFC/WFIGS current perimeters and AirNow observations, all request-time with no durable cache or polling. NWS is inactive without a real identifying contact and AirNow without a key. None of them is an evacuation feed. Other documents describe future work. Before showing a source in the app, verify its publisher, jurisdiction, update behavior, access terms, and geographic coverage. Never substitute a map view, neighborhood name, or empty feed response for an evacuation status.
+Implemented adapters include NWS point alerts, CAL FIRE incidents, NIFC/WFIGS current perimeters, AirNow observations and Glendale GIS dated hazard maps. All are request-time with no durable cache or polling; production queries are paused. NWS is inactive without a real identifying contact and AirNow without a key. None of them is an evacuation feed. Other documents describe future work. Before showing a source in the app, verify its publisher, jurisdiction, update behavior, access terms, and geographic coverage. Never substitute a map view, neighborhood name, or empty feed response for an evacuation status.
