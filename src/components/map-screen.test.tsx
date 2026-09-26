@@ -4,6 +4,7 @@ import { MapScreen } from "./map-screen";
 import { Flame } from "./flame";
 import { FirepointHome } from "./firepoint-home";
 import Home from "../app/page";
+import { THEME_KEY, THEME_SCRIPT } from "./theme";
 
 describe("map screen", () => {
   it("server-renders a placeholder instead of Leaflet, with the fire disabled until hydrated", () => {
@@ -36,6 +37,18 @@ describe("map screen", () => {
     expect(order.every((i) => i > 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(html).toMatch(/<a[^>]*href="\/"[^>]*>Map<\/a>/);
+  });
+});
+
+describe("theme", () => {
+  it("offers a light/dark toggle on the map", () => {
+    expect(renderToStaticMarkup(<MapScreen />)).toMatch(/<button[^>]*class="theme-toggle"[^>]*aria-label="Switch to dark mode"/);
+  });
+
+  it("applies a saved choice or the system setting before paint, and never throws", () => {
+    expect(THEME_SCRIPT).toContain(THEME_KEY);
+    expect(THEME_SCRIPT).toContain("prefers-color-scheme: dark");
+    expect(THEME_SCRIPT.startsWith("try{")).toBe(true);
   });
 });
 

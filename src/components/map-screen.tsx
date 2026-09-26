@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent } from "rea
 import { MARKS_KEY, MAX_MARKS, addMark, createMark, moveMark, parseMarks, type FireMark } from "@/domain/fire-marks";
 import { Flame } from "./flame";
 import type { MapHandle } from "./fire-map";
+import { applyTheme, currentTheme, storedTheme, type Theme } from "./theme";
 
 // Mapbox GL touches `window` and WebGL on import, so the map only ever renders in the browser.
 const FireMap = dynamic(() => import("./fire-map").then((mod) => mod.FireMap), {
@@ -20,6 +21,7 @@ export function MapScreen() {
   const [ready, setReady] = useState(false);
   const [canStore, setCanStore] = useState(true);
   const [hint, setHint] = useState<string | null>(null);
+  const [theme, setTheme] = useState<Theme>("light");
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
   const mapRef = useRef<MapHandle | null>(null);
   const drag = useRef<Drag | null>(null);
@@ -30,12 +32,28 @@ export function MapScreen() {
     // Read device state after hydration, so server HTML and first client render match.
     queueMicrotask(() => {
       if (!active) return;
+      setTheme(currentTheme());
       try { setMarks(parseMarks(localStorage.getItem(MARKS_KEY))); }
       catch { setCanStore(false); }
       setReady(true);
     });
-    return () => { active = false; };
+    // Until someone picks a theme, keep following the system setting.
+    const system = window.matchMedia("(prefers-color-scheme: dark)");
+    const follow = () => {
+      if (storedTheme()) return;
+      const next = system.matches ? "dark" : "light";
+      applyTheme(next, false);
+      setTheme(next);
+    };
+    system.addEventListener("change", follow);
+    return () => { active = false; system.removeEventListener("change", follow); };
   }, []);
+
+  function toggleTheme() {
+    const next = theme === "dark" ? "light" : "dark";
+    applyTheme(next, true);
+    setTheme(next);
+  }
 
   const onReady = useCallback((map: MapHandle | null) => { mapRef.current = map; }, []);
 
@@ -103,7 +121,7 @@ export function MapScreen() {
   return (
     <main className="map-screen">
       <h1 className="sr-only">Firepoint map</h1>
-      <FireMap marks={marks} onReady={onReady} onMove={(id, lat, lng) => save(moveMark(marks, id, lat, lng))} onRemove={(id) => { save(marks.filter((mark) => mark.id !== id)); setHint("Mark removed."); }} />
+      <FireMap dark={theme === "dark"} marks={marks} onReady={onReady} onMove={(id, lat, lng) => save(moveMark(marks, id, lat, lng))} onRemove={(id) => { save(marks.filter((mark) => mark.id !== id)); setHint("Mark removed."); }} />
       <div className="map-panel">
         <button
           type="button"
@@ -124,13 +142,35 @@ export function MapScreen() {
         </div>
         {marks.length > 0 && <button type="button" className="map-clear" onClick={() => { save([]); setHint("All marks cleared."); }}>Clear all</button>}
       </div>
-      <Link className="map-brand" href="/prepare" aria-label="Firepoint: official sources and prep list">
-        <span className="brand-mark" aria-hidden="true"><span /></span>
-        <span>Official sources &amp; prep <span aria-hidden="true">↗</span></span>
-      </Link>
+      <div className="map-actions">
+        <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"} title={theme === "dark" ? "Light mode" : "Dark mode"}>
+          {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+        </button>
+        <Link className="map-brand" href="/prepare" aria-label="Firepoint: official sources and prep list">
+          <span className="brand-mark" aria-hidden="true"><span /></span>
+          <span>Official sources &amp; prep <span aria-hidden="true">↗</span></span>
+        </Link>
+      </div>
       <p className="map-note"><span aria-hidden="true">!</span> Your marks are private and are not reports. This map does not show live fires, evacuation zones, or hazards. To report a fire, call 911.</p>
       {!canStore && <p className="map-storage-warning" role="status">Browser storage is unavailable. Marks may be lost when you leave this page.</p>}
       {ghost && <Flame className="fire-ghost" style={{ left: ghost.x, top: ghost.y }} />}
     </main>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="12" cy="12" r="4.2" />
+      <path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor">
+      <path d="M20.2 14.6A8.6 8.6 0 0 1 9.4 3.8a8.6 8.6 0 1 0 10.8 10.8z" />
+    </svg>
   );
 }

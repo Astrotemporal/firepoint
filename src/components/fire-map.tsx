@@ -9,7 +9,7 @@ import type { FireMark } from "@/domain/fire-marks";
 // Glendale, CA as [lng, lat]. A display camera only, never a coverage or zone boundary.
 const GLENDALE: [number, number] = [-118.255, 34.165];
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-const STYLES = { light: "mapbox://styles/mapbox/streets-v12", dark: "mapbox://styles/mapbox/navigation-night-v1" };
+const STYLES = { light: "mapbox://styles/mapbox/streets-v12", dark: "mapbox://styles/mapbox/dark-v11" };
 
 type LatLng = { lat: number; lng: number };
 
