@@ -130,7 +130,7 @@ export function RouteBar(props: RouteBarProps) {
 
 const FALLBACK_COPY = {
   denied: "From Glendale City Hall · Location off",
-  dismissed: "From Glendale City Hall",
+  prompt: "From Glendale City Hall",
   unavailable: "Couldn’t find your location. Routes start from Glendale City Hall for now.",
   insecure: "Location needs a secure (https://) page. Routes start from Glendale City Hall.",
   unsupported: "This browser can’t share location. Routes start from Glendale City Hall.",
@@ -156,20 +156,19 @@ function StatusLine({ location, outsideAreaMeters, online, pending, onUseLocatio
   let warn = false;
   switch (location.status) {
     case "idle":
+      actions = <>{useLocation}{enterAddress}</>;
+      break;
     case "locating":
-      if (location.status === "locating" && location.attempt === 2) {
-        message = "Locating…";
-        actions = enterAddress;
-      } else if (location.status !== "locating" || !location.granted) {
-        actions = <>{useLocation}{enterAddress}</>;
-      }
+      // The browser's own prompt is up, or location is on its way.
+      if (location.attempt === 2) message = "Locating…";
+      actions = enterAddress;
       break;
     case "fallback":
-      warn = location.reason !== "dismissed";
+      warn = location.reason !== "prompt";
       message = FALLBACK_COPY[location.reason];
       actions = (
         <>
-          {location.reason === "dismissed" && useLocation}
+          {location.reason === "prompt" && useLocation}
           {location.reason === "unavailable" && <button type="button" className="ev-link-button" onClick={onUseLocation}>Try again</button>}
           {enterAddress}
         </>

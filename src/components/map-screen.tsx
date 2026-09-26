@@ -121,7 +121,7 @@ export function MapScreen() {
   const escapeReady = plan ? plan.escape.kind !== "not-requested" : false;
   const fitKey = identity && plan && startIdentity(plan.origin) === identity ? `${identity}:${escapeReady}` : null;
   // Like tapping the arrow in a maps app: with no device location yet, the locate and Escape buttons ask for it.
-  const askLocation = location.status === "fallback" && location.reason !== "insecure" && location.reason !== "unsupported";
+  const askLocation = location.status === "fallback" && (location.reason === "prompt" || location.reason === "unavailable");
 
   return (
     <main className="map-screen ev-shell">

@@ -12,13 +12,12 @@ export type LocationFix = LatLng & {
   label: string | null;
 };
 
-/** `dismissed`: the prompt was closed and can be shown again. `denied`: blocked for this site (or unknown). */
-export type FallbackReason = "denied" | "dismissed" | "unavailable" | "unsupported" | "insecure";
+/** `prompt`: the browser can still ask (a tap shows its prompt). `denied`: blocked, so asking shows nothing. */
+export type FallbackReason = "denied" | "prompt" | "unavailable" | "unsupported" | "insecure";
 
 export type LocationState =
   | { status: "idle"; fix: null }
-  /** `granted`: the site already has permission, so there is nothing to ask. */
-  | { status: "locating"; fix: null; attempt: 1 | 2; granted?: boolean }
+  | { status: "locating"; fix: null; attempt: 1 | 2 }
   | { status: "tracking"; fix: LocationFix }
   /** Routing uses Glendale City Hall until a real or manual location is available. */
   | { status: "fallback"; fix: LocationFix; reason: FallbackReason }
@@ -47,6 +46,8 @@ export type LocationEnvironment = {
 };
 
 const PERMISSION_DENIED = 1;
+/** A denial faster than this came back without a prompt: the browser or the system blocks location. */
+const INSTANT_DENIAL_MS = 500;
 const IDLE: LocationState = { status: "idle", fix: null };
 
 function browserEnvironment(): LocationEnvironment {
@@ -59,9 +60,9 @@ function browserEnvironment(): LocationEnvironment {
 }
 
 /**
- * Live location as an external store (for useSyncExternalStore). The page calls `activate()` on
- * load, which shows the browser's own permission prompt, like a maps app, and follows the site's
- * permission afterwards. Positions stay in memory; nothing here persists them.
+ * Live location as an external store (for useSyncExternalStore). On load it watches only if the site
+ * may already use location; otherwise it waits for a tap (`start()`), because browsers show their
+ * permission prompt reliably only for a tap. Positions stay in memory; nothing here persists them.
  */
 export class LocationTracker {
   private state: LocationState = IDLE;
@@ -71,6 +72,7 @@ export class LocationTracker {
   private resumeWatch = false;
   private permission: PermissionStatusLike | null = null;
   private unlistenPermission: (() => void) | null = null;
+  private requestedAt = 0;
 
   constructor(private readonly environment: () => LocationEnvironment = browserEnvironment) {}
 
@@ -81,15 +83,16 @@ export class LocationTracker {
 
   getSnapshot = () => this.state;
 
-  /** On page load: start watching (prompting if needed), or restart a watch paused by `stop()`. */
+  /** On page load: restart a watch paused by `stop()`, or check the permission (see `onPermissionChange`). */
   activate(): void {
-    this.listenToPermission();
+    const environment = this.environment();
     if (this.resumeWatch && this.geolocation) {
       this.resumeWatch = false;
       this.watch(this.geolocation);
-    } else if (this.state.status === "idle") {
-      this.start();
+    } else if (this.state.status === "idle" && (!environment.queryPermission || !environment.secureContext || !environment.geolocation)) {
+      this.start(); // No permission to read (or location can't work): ask now, or explain why not.
     }
+    this.listenToPermission();
   }
 
   /** Begin watching; also the "Use my location" / "Try again" action. */
@@ -98,7 +101,8 @@ export class LocationTracker {
     if (!environment.secureContext) return this.fallback("insecure");
     if (!environment.geolocation) return this.fallback("unsupported");
     this.geolocation = environment.geolocation;
-    this.set({ status: "locating", fix: null, attempt: 1, granted: this.permission?.state === "granted" });
+    this.requestedAt = Date.now();
+    this.set({ status: "locating", fix: null, attempt: 1 });
     this.watch(environment.geolocation);
   }
 
@@ -131,20 +135,20 @@ export class LocationTracker {
       this.permission = status;
       status.addEventListener("change", this.onPermissionChange);
       this.onPermissionChange();
-    }).catch(() => { /* Optional: the prompt works without it. */ });
+    }).catch(() => { if (this.state.status === "idle") this.start(); });
   }
 
   private onPermissionChange = () => {
     const permission = this.permission?.state;
     const current = this.state;
-    if (current.status === "locating") {
-      const granted = permission === "granted";
-      if (Boolean(current.granted) !== granted) this.set({ ...current, granted });
+    if (current.status === "idle") {
+      if (permission === "granted") this.start();
+      else if (permission) this.fallback(permission === "denied" ? "denied" : "prompt");
     } else if (current.status === "fallback") {
       // Allowed in settings: start now, no reload needed.
-      if (permission === "granted" && (current.reason === "denied" || current.reason === "dismissed")) this.start();
-      else if (permission === "prompt" && current.reason === "denied") this.fallback("dismissed");
-      else if (permission === "denied" && current.reason === "dismissed") this.fallback("denied");
+      if (permission === "granted" && (current.reason === "denied" || current.reason === "prompt")) this.start();
+      else if (permission === "prompt" && current.reason === "denied") this.fallback("prompt");
+      else if (permission === "denied" && current.reason === "prompt") this.fallback("denied");
     }
   };
 
@@ -170,8 +174,9 @@ export class LocationTracker {
   private onError = (error: PositionErrorLike) => {
     if (error.code === PERMISSION_DENIED) {
       this.clearWatch();
-      // Closing the prompt also reports "denied", but then the permission is still "prompt".
-      return this.fallback(this.permission?.state === "prompt" ? "dismissed" : "denied");
+      // Closing the prompt also reports "denied" but leaves the permission at "prompt", so it can be asked again.
+      const closed = this.permission?.state === "prompt" && Date.now() - this.requestedAt > INSTANT_DENIAL_MS;
+      return this.fallback(closed ? "prompt" : "denied");
     }
     // Timeout or position unavailable. A watch keeps running after these errors, so an existing
     // fix is kept, and a fallback upgrades itself when a fix eventually arrives.

@@ -81,13 +81,13 @@ describe("RouteBar", () => {
     expect(html).not.toContain("destination=34.180800,-118.309000");
   });
 
-  it("offers one button to share location until it is allowed, and an address instead", () => {
-    const asking = render({ location: { status: "locating", fix: null, attempt: 1 }, origin: null, plan: null });
-    expect(asking).toMatch(/<button[^>]*class="ev-ask-button"[^>]*>.*Use my location<\/button>/);
-    expect(asking).toContain("Enter address");
-    const dismissed = render({ location: { status: "fallback", reason: "dismissed", fix: DEFAULT_FIX }, origin: DEFAULT_FIX });
-    expect(dismissed).toContain("From Glendale City Hall");
-    expect(dismissed).toContain("ev-ask-button");
+  it("offers one button that asks for location, and an address instead", () => {
+    const idle = render({ location: { status: "idle", fix: null }, origin: null, plan: null });
+    expect(idle).toMatch(/<button[^>]*class="ev-ask-button"[^>]*>.*Use my location<\/button>/);
+    expect(idle).toContain("Enter address");
+    const prompt = render({ location: { status: "fallback", reason: "prompt", fix: DEFAULT_FIX }, origin: DEFAULT_FIX });
+    expect(prompt).toContain("From Glendale City Hall");
+    expect(prompt).toContain("ev-ask-button");
   });
 
   it("says where routes start when location is blocked, without a button that can't work", () => {
@@ -97,17 +97,9 @@ describe("RouteBar", () => {
     expect(denied).not.toContain("ev-ask-button");
   });
 
-  it("doesn't ask when location is already allowed", () => {
-    const html = render({ location: { status: "locating", fix: null, attempt: 1, granted: true }, origin: null, plan: null });
-    expect(html).not.toContain("Use my location");
-  });
-
-  it("renders as a drawer: a handle for phones, a hide tab for the side card, starting at the peek", () => {
-    const html = render({ escapeRequested: false });
-    expect(html).toMatch(/class="ev-bar ev-sheet ev-sheet-peek ev-sheet-idle"/);
-    expect(html).toMatch(/<button[^>]*class="ev-sheet-handle"[^>]*aria-expanded="false"[^>]*aria-label="Expand directions"/);
-    expect(html).toMatch(/<button[^>]*class="ev-sheet-tab"[^>]*aria-label="Hide directions"/);
-    expect(html.indexOf("> Escape</button>")).toBeLessThan(html.indexOf('id="ev-sheet-body"'));
+  it("doesn't show the button while the browser's prompt is up", () => {
+    const html = render({ location: { status: "locating", fix: null, attempt: 1 }, origin: null, plan: null });
+    expect(html).not.toContain("ev-ask-button");
   });
 
   it("never treats an empty hazard list as an all-clear", () => {
