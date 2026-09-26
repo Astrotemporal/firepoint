@@ -16,8 +16,9 @@ try {
         catch (error) { if (attempt === 23) throw error; await new Promise((resolve) => setTimeout(resolve, 250)); }
       }
       if (response?.status() !== 200) throw new Error(`Preview page returned ${response?.status()}`);
-      await page.getByRole("heading", { name: /A calmer place/ }).waitFor();
-      await page.getByRole("button", { name: "Load street map (uses internet)" }).waitFor();
+      await page.locator("#guide-title").waitFor();
+      // The brand and the back link both mention "map"; target the actual back link.
+      await page.locator('a.g-back[href="/"]').waitFor();
       // The merged main branch includes a first-load animation. Preview the useful page, not its transient overlay.
       if (await page.locator(".preloader").count()) {
         await page.locator(".preloader").waitFor({ state: "hidden", timeout: 10000 });

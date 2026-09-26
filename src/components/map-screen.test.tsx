@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MapScreen } from "./map-screen";
 import { Flame } from "./flame";
-import { FirepointHome } from "./firepoint-home";
+import { WildfireGuide } from "./wildfire-guide";
 import Home from "../app/page";
 import { THEME_KEY, THEME_SCRIPT } from "./theme";
 
@@ -13,13 +13,13 @@ describe("map screen", () => {
     expect(html).not.toContain("mapboxgl-map");
     expect(html).toMatch(/<button[^>]*class="fire-token"[^>]*disabled=""/);
     expect(html).toContain("Local to this device");
-    expect(html).not.toContain("Clear all");
+    expect(html).not.toContain('class="map-clear"');
   });
 
   it("frames marks as private orientation, never reports or live fire data", () => {
     const html = renderToStaticMarkup(<MapScreen />);
-    expect(html).toContain("are not reports");
-    expect(html).toContain("Live fire data isn’t connected, so this\n        is not an all-clear".replace(/\s+/g, " "));
+    expect(html).toMatch(/<button[^>]*class="fire-token"[^>]*aria-label="[^"]*Marks stay on this device and are not reports\."/);
+    expect(html).toContain("Live fire data isn’t connected, so this is not an all-clear");
     expect(html).toContain("call 911");
   });
 
@@ -37,10 +37,10 @@ describe("map screen", () => {
     expect(html).toContain("Allow location access to see routes from where you are.");
   });
 
-  it("keeps the prep page intact and links back to the map", () => {
-    const html = renderToStaticMarkup(<FirepointHome />);
+  it("keeps the prep guide separate and links back to the map", () => {
+    const html = renderToStaticMarkup(<WildfireGuide />);
     expect(html).not.toContain('class="map-screen"');
-    const order = ["/ 01", "/ 02", "/ 03", "/ 04"].map((k) => html.indexOf(k));
+    const order = ['id="ready"', 'id="set"', 'id="go"'].map((k) => html.indexOf(k));
     expect(order.every((i) => i > 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(html).toMatch(/<a[^>]*href="\/"[^>]*>Map<\/a>/);
