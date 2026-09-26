@@ -44,4 +44,16 @@ describe("ring legend and figure accessibility", () => {
     expect(svg).not.toMatch(/500|\bm\b|private|sketch/);
     expect(html).not.toContain("ring-legend");
   });
+
+  it("keeps the same dashed circles under localized feet labels, with no English sketch text in ES or HY", () => {
+    for (const [locale, feet, label] of [["es", "pies", "Espacio defendible"], ["hy", "ֆուտ", "Պաշտպանական տարածք"]] as const) {
+      const html = renderToStaticMarkup(<WildfireGuide locale={locale} />);
+      const svg = html.slice(html.indexOf('<svg class="g-rings"'), html.indexOf("</svg>"));
+      expect(svg).toContain(`aria-label="${label}`);
+      expect(svg.match(/<circle[^>]*>/g)?.map((tag) => tag.includes("stroke-dasharray"))).toEqual([true, false, false]);
+      expect(svg.match(/<text[^>]*>[^<]*<\/text>/g)?.map((tag) => tag.replace(/<[^>]*>|<!-- -->/g, "").trim()))
+        .toEqual([`30 ${feet}`, `100 ${feet}`, `200 ${feet}`]);
+      expect(svg).not.toMatch(/\bft\b|private|sketch|500/);
+    }
+  });
 });

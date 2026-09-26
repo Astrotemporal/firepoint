@@ -72,6 +72,13 @@ h1 em,h2 em { font-weight: 400; }
 .theme-toggle svg { width: 21px; height: 21px; }
 .map-brand { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 16px 0 11px; background: var(--accent-bg); color: var(--accent-ink); border-radius: 999px; text-decoration: none; font-size: 13px; font-weight: 700; box-shadow: var(--surface-shadow); }
 .map-brand:hover { background: var(--accent-hover); }
+/* EN / ES / AM language select: a compact pill with its own chevron, 48px tall like its neighbors. */
+.lang-select { -webkit-appearance: none; appearance: none; height: 48px; padding: 0 30px 0 16px; border: 0; border-radius: 999px; font: 800 13px/1 Arial, Helvetica, sans-serif; letter-spacing: .06em; cursor: pointer;
+  background: var(--surface, #fffdf8) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%235d6c65' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 13px center;
+  color: var(--surface-ink, #18312e); box-shadow: var(--surface-shadow, none); }
+.lang-select:hover { color: #df7548; }
+.lang-select option { color: #18312e; background: #fffdf8; }
+.lang-noscript { display: inline-flex; gap: 8px; font-size: 13px; font-weight: 700; }
 .map-brand .brand-mark { width: 24px; height: 24px; background: var(--accent-ink); }
 .map-brand .brand-mark span { width: 10px; height: 10px; }
 .map-storage-warning { position: absolute; z-index: 1000; left: 16px; top: calc(16px + env(safe-area-inset-top, 0px)); max-width: min(430px, calc(100% - 96px)); padding: 11px 14px; background: #fff1dc; border-left: 4px solid #c87537; font-size: 12px; line-height: 1.45; }
