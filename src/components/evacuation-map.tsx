@@ -77,7 +77,7 @@ function pinElement(className: string, glyph: string, label: string): HTMLButton
 
 function addLayers(map: MapboxMap): void {
   for (const id of ["hazards", "accuracy", "routes"]) map.addSource(id, { type: "geojson", data: EMPTY });
-  // A person's own fire marks are shaded lighter than hazards from the feed (or the simulated one).
+  // A person's own fire marks are shaded lighter than hazards from the feed.
   map.addLayer({ id: "hazards-fill", type: "fill", source: "hazards", paint: { "fill-color": "#ef4444", "fill-opacity": ["case", ["get", "mark"], 0.16, 0.28] } });
   map.addLayer({ id: "hazards-line", type: "line", source: "hazards", paint: { "line-color": COLORS.hazard, "line-width": 2 } });
   map.addLayer({ id: "accuracy-fill", type: "fill", source: "accuracy", paint: { "fill-color": COLORS.you, "fill-opacity": 0.12 } });
@@ -119,7 +119,7 @@ function planTargets(plan: RoutePlan | null): { shelter: Shelter | null; zone: S
   const escapePick = plan?.escape;
   return {
     shelter: shelterPick?.kind === "route" || shelterPick?.kind === "routing-unavailable" ? shelterPick.shelter : null,
-    zone: escapePick && escapePick.kind !== "no-zone" ? escapePick.zone : null,
+    zone: escapePick && escapePick.kind !== "no-zone" && escapePick.kind !== "not-requested" ? escapePick.zone : null,
   };
 }
 
@@ -285,7 +285,7 @@ function MapboxView({
       if (shelter.kind === "route") features.push(line(shelter.route.path, "shelter"));
       else if (shelter.kind === "routing-unavailable" && origin) features.push(line([origin, shelter.shelter], "shelter-guide"));
       if (escape.kind === "route") features.push(line(escape.route.path, "escape"));
-      else if (escape.kind !== "no-zone" && origin) {
+      else if (escape.kind !== "no-zone" && escape.kind !== "not-requested" && origin) {
         // Same rule as the route bar: never draw a guide line across the hazard.
         const heading = escapeHeading(origin, escape.zone, hazards);
         const end = heading.toward === "target" ? escape.zone : destinationPoint(origin, heading.bearing, 1_500);
@@ -340,7 +340,7 @@ function MapboxView({
     const { shelter, zone } = planTargets(plan);
     if (shelter) bounds.extend(toLngLat(shelter));
     if (zone) bounds.extend(toLngLat(zone));
-    map.fitBounds(bounds, { padding: { top: 72, bottom: 48, left: 32, right: 64 }, maxZoom: 16, duration: 900 });
+    map.fitBounds(bounds, { padding: fitPadding(map.getContainer()), maxZoom: 16, duration: 900 });
   }, [fitKey, plan, origin, loaded]);
 
   return (
@@ -354,4 +354,15 @@ function MapboxView({
       {failed && <MapNotice text="The map couldn’t load. Check your connection; routes below still work." />}
     </>
   );
+}
+
+/** Keep fitted routes clear of the directions drawer: the side card on wide screens, the raised sheet on phones. */
+function fitPadding(container: HTMLElement) {
+  if (window.matchMedia("(min-width: 760px)").matches) return { top: 48, bottom: 48, left: 440, right: 80 };
+  const shell = container.closest<HTMLElement>(".ev-shell");
+  const px = (name: string) => (shell ? parseFloat(getComputedStyle(shell).getPropertyValue(name)) || 0 : 0);
+  // The map already ends at the peek, so only the part of the sheet above it covers routes.
+  const covered = Math.max(0, px("--ev-sheet-h") - px("--ev-peek"));
+  const bottom = Math.min(container.clientHeight * 0.6, covered + 32);
+  return { top: 150, bottom: Math.max(48, bottom), left: 32, right: 48 };
 }

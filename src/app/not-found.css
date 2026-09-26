@@ -1,0 +1,82 @@
+/* 404, in the /prepare guide's palette (glendaleca.gov: navy #0f3e5e, blue #005996, gold #e39c25; Playfair Display and
+   Montserrat stand in for Questa and Proxima Nova). A route draws itself across radar rings and dead-ends at a pin.
+   Always navy, whatever <html data-theme> says. */
+.not-found {
+  --ink: #0f3e5e; --navy-deep: #0b3450; --white: #ffffff; --gold: #e39c25; --gold-soft: #efc57f; --blue: #005996;
+  --dek: #cfdce6; --muted: #9db3c4;
+  --serif: var(--font-serif), Georgia, 'Times New Roman', serif; --sans: var(--font-sans), Arial, Helvetica, sans-serif;
+  position: relative; min-height: 100dvh; overflow: hidden; display: grid; place-items: center;
+  padding: calc(40px + env(safe-area-inset-top, 0px)) 6% calc(40px + env(safe-area-inset-bottom, 0px));
+  background: var(--ink) radial-gradient(ellipse 60% 50% at 78% 45%, rgba(227,156,37,.12), transparent 70%);
+  color: var(--white); font-family: var(--sans); font-size: 15px;
+}
+.nf-inner { position: relative; z-index: 1; width: 100%; max-width: 1220px; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); align-items: center; gap: 48px; }
+.nf-kicker { display: flex; align-items: center; gap: 12px; font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; color: var(--gold-soft); }
+.nf-kicker-line { width: 28px; height: 1px; background: var(--gold-soft); }
+.nf-copy h1 { font-family: var(--serif); font-weight: 500; font-size: clamp(64px, 7vw, 104px); line-height: .92; letter-spacing: -.035em; margin: 22px 0 22px; }
+.nf-copy h1 em { color: var(--gold); font-style: italic; }
+.nf-lede { font-size: 17px; line-height: 1.65; max-width: 480px; color: var(--dek); }
+.nf-path { margin-top: 18px; font-size: 13px; color: var(--muted); }
+.nf-path-code { margin-left: 6px; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16); color: var(--gold-soft); font-size: 12px; word-break: break-all; }
+.nf-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 24px; margin-top: 30px; }
+.not-found .nf-button { display: inline-flex; align-items: center; gap: 26px; justify-content: space-between; min-height: 52px; padding: 0 20px; border-radius: 12px; background: var(--gold); color: var(--ink); font-weight: 700; font-size: 14px; text-decoration: none; transition: background-color .15s, transform .15s; }
+.not-found .nf-button:hover { background: var(--gold-soft); transform: translateY(-1px); }
+.not-found .nf-link { color: var(--white); font-weight: 700; font-size: 14px; text-underline-offset: 5px; }
+.not-found .nf-link:hover { color: var(--gold-soft); }
+.not-found a:focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; border-radius: 6px; }
+.nf-foot { margin-top: 52px; display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 12px; }
+.nf-spark { color: var(--gold); font-size: 18px; }
+
+/* Scene */
+.nf-scene { position: relative; width: min(100%, 480px); aspect-ratio: 1; margin: 0 auto; justify-self: center; }
+.nf-map { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.nf-ring { position: absolute; border: 1px solid rgba(239,197,127,.32); border-radius: 50%; }
+.nf-ring-1 { inset: 0; }
+.nf-ring-2 { inset: 15%; }
+.nf-ring-3 { inset: 30%; background: rgba(227,156,37,.08); }
+.nf-ping { position: absolute; inset: 30%; border-radius: 50%; border: 2px solid rgba(239,197,127,.6); opacity: 0; }
+.nf-route-shadow { stroke: rgba(227,156,37,.14); stroke-width: 10; stroke-linecap: round; }
+.nf-route { stroke: var(--gold); stroke-width: 3; stroke-linecap: round; stroke-dasharray: .045 .025; }
+.nf-start { fill: var(--gold-soft); }
+.nf-pin { position: absolute; left: calc(430 / 480 * 100%); top: calc(250 / 480 * 100%); width: 40px; height: 40px; margin: -46px 0 0 -20px; background: var(--gold); border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 10px 24px rgba(0,0,0,.35); display: grid; place-items: center; }
+.nf-pin-mark { transform: rotate(45deg); font-family: var(--serif); font-size: 22px; font-weight: 700; color: var(--ink); line-height: 1; }
+.nf-flame { position: absolute; width: 54px; height: 54px; left: 48%; top: 27%; filter: drop-shadow(0 6px 10px rgba(0,0,0,.4)); transform-origin: 50% 100%; }
+.nf-coords { position: absolute; left: 0; right: 0; bottom: -8px; text-align: center; font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); }
+
+/* Motion: the route draws in, the pin drops when it lands, the ring pings, the flame breathes. */
+@media (prefers-reduced-motion: no-preference) {
+  .nf-route { stroke-dasharray: 1; stroke-dashoffset: 1; animation: nf-draw 2.2s cubic-bezier(.65,0,.35,1) .3s forwards; }
+  .nf-pin { opacity: 0; animation: nf-drop .55s cubic-bezier(.2,1.4,.4,1) 2.4s forwards; }
+  .nf-ping { animation: nf-ping 3.2s ease-out 2.6s infinite; }
+  .nf-ring-1 { animation: nf-spin 48s linear infinite; border-style: dashed; }
+  .nf-flame { animation: nf-flicker 1.6s ease-in-out infinite alternate; }
+  .nf-start { animation: nf-pulse 2.4s ease-in-out infinite; transform-origin: 40px 300px; transform-box: view-box; }
+  .nf-copy > * { opacity: 0; animation: nf-rise .7s ease-out forwards; }
+  .nf-copy > :nth-child(1) { animation-delay: .05s; }
+  .nf-copy > :nth-child(2) { animation-delay: .15s; }
+  .nf-copy > :nth-child(3) { animation-delay: .25s; }
+  .nf-copy > :nth-child(4) { animation-delay: .32s; }
+  .nf-copy > :nth-child(5) { animation-delay: .4s; }
+  .nf-copy > :nth-child(6) { animation-delay: .5s; }
+}
+@media (prefers-reduced-motion: reduce) { .not-found .nf-button { transition: none; } }
+@keyframes nf-draw { to { stroke-dashoffset: 0; } }
+@keyframes nf-drop { from { opacity: 0; transform: rotate(-45deg) translate(-30px, -30px) scale(.6); } to { opacity: 1; transform: rotate(-45deg) translate(0, 0) scale(1); } }
+@keyframes nf-ping { 0% { opacity: .9; transform: scale(1); } 100% { opacity: 0; transform: scale(2.4); } }
+@keyframes nf-spin { to { transform: rotate(360deg); } }
+@keyframes nf-flicker { 0% { transform: scale(1) rotate(-1.5deg); } 50% { transform: scale(1.06, .97) rotate(1deg); } 100% { transform: scale(.97, 1.05) rotate(-.5deg); } }
+@keyframes nf-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: .6; } }
+@keyframes nf-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 900px) {
+  .nf-inner { grid-template-columns: 1fr; gap: 36px; }
+  .nf-scene { order: -1; width: min(100%, 320px); }
+  .nf-copy h1 { font-size: clamp(58px, 15vw, 96px); }
+  .nf-lede { font-size: 15px; }
+  .nf-actions { align-items: stretch; flex-direction: column; gap: 20px; }
+  .nf-actions .nf-button { width: fit-content; }
+  .nf-foot { margin-top: 40px; line-height: 1.5; }
+  .nf-flame { width: 42px; height: 42px; }
+  .nf-pin { width: 34px; height: 34px; margin: -40px 0 0 -17px; }
+  .nf-pin-mark { font-size: 19px; }
+}
