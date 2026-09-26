@@ -31,6 +31,18 @@ describe("Firepoint home safety states", () => {
     expect(html).toContain("weather.gov/lox/");
   });
 
+  it("shows Ready, Set, Go fire guidance with the go-bag list first", () => {
+    const html = renderToStaticMarkup(<FirepointHome />);
+    expect(html).toContain('role="tablist"');
+    expect(html).toContain(">Ready<");
+    expect(html).toContain(">Set<");
+    expect(html).toContain(">Go<");
+    expect(html).toContain("N95 masks");
+    expect(html).toContain("Write down important phone numbers");
+    expect(html).toContain("readyforwildfire.org/prepare-for-wildfire/emergency-supply-kit/");
+    expect(html).toContain("Call 911");
+  });
+
   it("provides an offline-only checklist fallback without caching live responses", () => {
     const sw = readFileSync("public/sw.js", "utf8");
     const offline = readFileSync("public/offline.html", "utf8");

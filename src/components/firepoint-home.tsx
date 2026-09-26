@@ -3,19 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AreaMap } from "@/components/area-map";
+import { FireReadiness } from "@/components/fire-readiness";
 import { LiveSources } from "@/components/live-sources";
 
-const CHECKLIST_KEY = "firepoint.prep.v1";
 const AREA_KEY = "firepoint.area.v1";
-const TASKS = [
-  { id: "contacts", label: "Write down important phone numbers", detail: "Keep a paper copy where you can find it." },
-  { id: "medication", label: "Set aside medication and essentials", detail: "Include what each person or pet needs." },
-  { id: "route", label: "Talk through how you would leave", detail: "Choose a meeting place and a backup plan." },
-  { id: "alerts", label: "Sign up for official alerts", detail: "Use the city enrollment link below." },
-] as const;
-
-type TaskId = (typeof TASKS)[number]["id"];
-
 const LINKS = [
   {
     index: "01",
@@ -40,16 +31,7 @@ const LINKS = [
   },
 ] as const;
 
-function loadChecks(): TaskId[] {
-  try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(CHECKLIST_KEY) ?? "[]");
-    if (!Array.isArray(parsed)) return [];
-    return TASKS.map((task) => task.id).filter((id) => parsed.includes(id));
-  } catch { return []; }
-}
-
 export function FirepointHome({ demoLiveSources = false }: { demoLiveSources?: boolean } = {}) {
-  const [checks, setChecks] = useState<TaskId[]>([]);
   const [area, setArea] = useState(false);
   const [ready, setReady] = useState(false);
   const [canStore, setCanStore] = useState(true);
@@ -60,7 +42,6 @@ export function FirepointHome({ demoLiveSources = false }: { demoLiveSources?: b
     // Read device state after hydration, so server HTML and first client render match.
     queueMicrotask(() => {
       if (!active) return;
-      setChecks(loadChecks());
       try { setArea(localStorage.getItem(AREA_KEY) === "glenoaks-canyon"); }
       catch { setCanStore(false); }
       setOffline(!navigator.onLine);
@@ -78,13 +59,6 @@ export function FirepointHome({ demoLiveSources = false }: { demoLiveSources?: b
       window.removeEventListener("offline", update);
     };
   }, []);
-
-  function toggleTask(id: TaskId) {
-    const next = checks.includes(id) ? checks.filter((item) => item !== id) : [...checks, id];
-    setChecks(next);
-    try { localStorage.setItem(CHECKLIST_KEY, JSON.stringify(next)); setCanStore(true); }
-    catch { setCanStore(false); }
-  }
 
   function saveArea() {
     const next = !area;
@@ -153,13 +127,10 @@ export function FirepointHome({ demoLiveSources = false }: { demoLiveSources?: b
           </section>
 
           <section id="prepare" className="prepare-section" aria-labelledby="prepare-heading">
-            <div className="section-kicker">MAKE IT YOURS <span> / 03</span></div>
+            <div className="section-kicker">WHEN THERE’S A FIRE <span> / 03</span></div>
             <div className="prepare-grid">
-              <div className="prepare-aside"><h2 id="prepare-heading">A little ready<br /><em>goes a long way.</em></h2><p>A short starting list. Check items as you do them. Your choices stay in this browser, on this device.</p><div className="aside-decoration" aria-hidden="true">01 — 04<br />TAKE IT AT YOUR PACE</div></div>
-              <div className="checklist-card"><div className="checklist-top"><span>YOUR PREP LIST</span><span aria-live="polite">{ready ? `${checks.length} / ${TASKS.length} done` : "Local to this device"}</span></div>
-                <ul className="checklist">{TASKS.map((task) => <li key={task.id}><label className="task"><input type="checkbox" checked={checks.includes(task.id)} onChange={() => toggleTask(task.id)} disabled={!ready} /><span className="checkbox-art" aria-hidden="true">✓</span><span className="task-copy"><strong>{task.label}</strong><small>{task.detail}</small></span></label></li>)}</ul>
-                <div className="checklist-bottom"><span>Saved only when you check an item.</span>{checks.length > 0 && <button type="button" onClick={() => { setChecks([]); try { localStorage.removeItem(CHECKLIST_KEY); } catch { setCanStore(false); } }}>Reset list</button>}</div>
-              </div>
+              <div className="prepare-aside"><h2 id="prepare-heading">Ready, set,<br /><em>go.</em></h2><p>What to pack before fire season, what to do when a fire is near, and how to leave. Check off your go bag as you pack it. Your choices stay in this browser, on this device.</p><p className="prepare-urgent">If you are in danger, call 911. If officials tell you to leave, go.</p><div className="aside-decoration" aria-hidden="true">READY — SET — GO<br />BASED ON CAL FIRE GUIDANCE</div></div>
+              <FireReadiness onStorage={setCanStore} />
             </div>
             {!canStore && <p className="storage-warning" role="status">Browser storage is unavailable. Changes may be lost when you leave this page.</p>}
           </section>
