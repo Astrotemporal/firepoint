@@ -151,6 +151,18 @@ h2 { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(39px, 4.1v
 .task-copy small { font-size: 12px; line-height: 1.4; color: #66796d; }
 .checklist-bottom { min-height: 49px; font-size: 11px; color: #6c7c70; }
 .checklist-bottom button { background: none; border: 0; text-decoration: underline; font-size: 12px; color: var(--ink); min-height: 44px; }
+.prepare-aside .prepare-urgent { margin-top: 16px; font-weight: 700; color: #8a3f22; }
+.stage-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+.stage-tab { flex: 1; min-height: 48px; border: 1px solid #b9c2b3; background: transparent; color: var(--ink); font-size: 13px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.stage-tab[aria-selected="true"] { background: var(--ink); color: var(--white); border-color: var(--ink); }
+.stage-intro { font-size: 14px; line-height: 1.55; color: var(--muted); padding: 16px 0 4px; }
+.checklist-group { font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; color: #4d6958; padding: 18px 0 2px; border-bottom: 1px solid var(--line); }
+.stage-steps { margin: 0; padding: 0; list-style: none; counter-reset: step; }
+.stage-steps li { counter-increment: step; display: grid; grid-template-columns: 34px 1fr; column-gap: 12px; row-gap: 4px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.stage-steps li::before { content: counter(step, decimal-leading-zero); grid-row: span 2; font-size: 12px; font-weight: 800; color: #b3643f; padding-top: 2px; }
+.stage-steps strong { font-size: 15px; }
+.stage-steps small { font-size: 12px; line-height: 1.45; color: #66796d; }
+.stage-sources { font-size: 11px; line-height: 1.6; color: #6c7c70; padding: 14px 0 6px; }
 .area-section { display: grid; grid-template-columns: 1fr 1fr; gap: 12%; padding: 139px 0 115px; }
 .area-copy h2 { margin-top: 28px; }
 .area-card { border: 1px solid var(--line); padding: 27px 29px; display: flex; flex-direction: column; align-items: start; background: #f1eee4; }
