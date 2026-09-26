@@ -35,7 +35,10 @@ export const AggregationConfigSchema = z.object({
   timeBinSeconds: z.number().int().min(900).max(86_400),
   /** Observations older than this (relative to `now`) are excluded and listed as expired. */
   maxAgeSeconds: z.number().int().min(900).max(7 * 86_400),
-  /** Cells with fewer published observations are withheld, without saying where they are. */
+  /**
+   * Cells with fewer published observations are withheld, without saying where they are.
+   * A threshold is a coarse suppression rule, not a privacy guarantee; each deployment needs its own review.
+   */
   minReportsPerCell: z.number().int().min(2).max(50),
   /** Counts saturate here so that volume cannot visually escalate authority. */
   countCap: z.number().int().min(3).max(100),
@@ -92,7 +95,7 @@ const CountBin = z.enum(["2-3", "4-9", "10+"]);
 /** One coarse cell, one hazard kind, one time bin. No point, no polygon, no name of a person. */
 export const AggregateCellSchema = z.object({
   cellId: z.string().regex(/^cell:[0-9.]+:-?\d+:-?\d+$/),
-  /** [[west, south], [east, north]] of the whole cell; every input point inside is equally likely. */
+  /** [[west, south], [east, north]] of the whole grid cell; nothing finer than the cell is exported. */
   cellBounds: z.tuple([z.tuple([Longitude, Latitude]), z.tuple([Longitude, Latitude])]),
   hazardKind: ObservationHazardKindSchema,
   timeBinStart: Instant,
@@ -111,7 +114,7 @@ export type AggregateCell = z.infer<typeof AggregateCellSchema>;
 export const AGGREGATE_CAVEATS = {
   uncertainty: "Counts are moderated but unverified resident observations. They are not confirmed incidents, boundaries, forecasts, or road status.",
   abuse: "Nothing here proves how many different people reported. Repeated, coordinated, or mistaken reports raise counts; counts confer no official authority.",
-  privacy: "Cells are coarse and small counts are withheld. No exact reporter location, text, identity, or submission time is included.",
+  privacy: "Cells are coarse and small counts are withheld, which limits but does not eliminate re-identification risk. No exact reporter location, text, identity, report id, or submission time is included.",
   notAllClear: "An empty or withheld cell means no published reports met the threshold, never that the place is safe. Follow the issuing agency.",
 } as const;
 const CaveatsSchema = z.object({
@@ -121,15 +124,14 @@ const CaveatsSchema = z.object({
   notAllClear: z.literal(AGGREGATE_CAVEATS.notAllClear),
 }).strict();
 
+/** Public provenance is coarse on purpose: counts by reason, never ids that could be joined to raw reports. */
 const ProvenanceSchema = z.object({
   config: AggregationConfigSchema,
   moderation: ModerationAttestationSchema,
-  /** Sorted ids of every observation offered, before any exclusion. */
-  inputObservationIds: z.array(Id),
-  /** FNV-1a 64-bit over the sorted ids; a change detector, not a cryptographic commitment. */
-  inputDigest: z.object({ algorithm: z.literal("fnv1a-64"), value: z.string().regex(/^[0-9a-f]{16}$/) }).strict(),
-  excluded: z.array(z.object({ id: Id, reason: ExclusionReasonSchema }).strict()),
+  offeredObservationCount: z.number().int().nonnegative(),
   countedObservationCount: z.number().int().nonnegative(),
+  /** How many offered observations each rule excluded. Zero counts are listed so the reader sees the rule ran. */
+  exclusionCounts: z.record(ExclusionReasonSchema, z.number().int().nonnegative()),
   /** Publisher/resident clocks of the counted inputs, never our generation time. */
   sourceTimes: z.object({
     earliestObservedAt: Instant.nullable(),
@@ -168,18 +170,25 @@ export const ObservationAggregateSchema = z.discriminatedUnion("state", [
 ]);
 export type ObservationAggregate = z.infer<typeof ObservationAggregateSchema>;
 
-/** FNV-1a 64-bit with BigInt; deterministic across runtimes, not collision resistant. */
-export function fnv1a64(text: string): string {
-  // BigInt constructor calls, not literals: the project targets ES2017 syntax with an esnext lib.
-  const prime = BigInt("0x100000001b3");
-  const mask = BigInt("0xffffffffffffffff");
-  let hash = BigInt("0xcbf29ce484222325");
-  for (const byte of new TextEncoder().encode(text)) {
-    hash ^= BigInt(byte);
-    hash = (hash * prime) & mask;
-  }
-  return hash.toString(16).padStart(16, "0");
-}
+/**
+ * Private audit sidecar. It names every offered id and why each was excluded, so it can be joined
+ * back to raw reports; that is exactly why it must never be serialized to a UI, public route, log
+ * line, or analytics event. A future publisher keeps it in access-controlled storage or drops it.
+ */
+export const AggregationAuditSchema = z.object({
+  audience: z.literal("private-audit"),
+  generatedAt: Instant,
+  configVersion: z.string().min(1).max(64),
+  /** Sorted ids of every observation offered, before any exclusion. */
+  inputObservationIds: z.array(Id),
+  excluded: z.array(z.object({ id: Id, reason: ExclusionReasonSchema }).strict()),
+  /** Number of (cell, kind, bin) groups withheld for being under the threshold. Locations stay out. */
+  withheldCellCount: z.number().int().nonnegative(),
+}).strict();
+export type AggregationAudit = z.infer<typeof AggregationAuditSchema>;
+
+/** The two halves are separate objects so a caller cannot export one without choosing to. */
+export type AggregationResult = { aggregate: ObservationAggregate; audit: AggregationAudit };
 
 function cellIndex(config: AggregationConfig, point: readonly [number, number]) {
   const [longitude, latitude] = point;
@@ -201,9 +210,10 @@ const round = (value: number) => Number(value.toFixed(6));
 /**
  * Aggregate moderated observations into coarse cells. Pure and deterministic for a given input.
  * Throws on malformed input; returns a `withheld` aggregate (never an empty "published" one)
- * when moderation is missing or nothing meets the threshold.
+ * when moderation is missing or nothing meets the threshold. `aggregate` is the only part that
+ * may ever be published; `audit` carries ids and stays private.
  */
-export function aggregateObservations(rawInput: unknown): ObservationAggregate {
+export function aggregateObservations(rawInput: unknown): AggregationResult {
   const input = AggregationInputSchema.parse(rawInput);
   const { config, moderation, now } = input;
   const nowMs = Date.parse(now);
@@ -231,11 +241,13 @@ export function aggregateObservations(rawInput: unknown): ObservationAggregate {
   const publishedTimes = counted.map((item) => Date.parse(item.publishedAt));
   const observedTimes = counted.flatMap((item) => item.observedAt ? [Date.parse(item.observedAt)] : []);
   const iso = (values: number[], pick: (...v: number[]) => number) => values.length ? new Date(pick(...values)).toISOString() : null;
+  const exclusionCounts = Object.fromEntries(ExclusionReasonSchema.options.map((reason) =>
+    [reason, excluded.filter((item) => item.reason === reason).length])) as Record<ExclusionReason, number>;
   const provenance: z.infer<typeof ProvenanceSchema> = {
-    config, moderation, inputObservationIds,
-    inputDigest: { algorithm: "fnv1a-64", value: fnv1a64(inputObservationIds.join("\n")) },
-    excluded,
+    config, moderation,
+    offeredObservationCount: input.observations.length,
     countedObservationCount: counted.length,
+    exclusionCounts,
     sourceTimes: {
       earliestObservedAt: iso(observedTimes, Math.min), latestObservedAt: iso(observedTimes, Math.max),
       earliestPublishedAt: iso(publishedTimes, Math.min), latestPublishedAt: iso(publishedTimes, Math.max),
@@ -248,8 +260,13 @@ export function aggregateObservations(rawInput: unknown): ObservationAggregate {
     usage: { routingHazardInput: false as const, officialAuthority: false as const, boundaryOrModelEstimate: false as const },
     provenance, caveats: AGGREGATE_CAVEATS,
   };
-  const withheld = (reason: WithheldReason, withheldCellCount: number): ObservationAggregate =>
-    ObservationAggregateSchema.parse({ ...base, state: "withheld", reason, withheldCellCount, cells: [] });
+  const finish = (aggregate: unknown, withheldCellCount: number): AggregationResult => ({
+    aggregate: ObservationAggregateSchema.parse(aggregate),
+    audit: AggregationAuditSchema.parse({ audience: "private-audit", generatedAt: now, configVersion: config.configVersion,
+      inputObservationIds, excluded, withheldCellCount }),
+  });
+  const withheld = (reason: WithheldReason, withheldCellCount: number) =>
+    finish({ ...base, state: "withheld", reason, withheldCellCount, cells: [] }, withheldCellCount);
 
   if (moderation.status !== "attested") return withheld("missing-moderation", 0);
   if (counted.length === 0) return withheld("no-eligible-observations", 0);
@@ -288,5 +305,5 @@ export function aggregateObservations(rawInput: unknown): ObservationAggregate {
     });
   }
   if (cells.length === 0) return withheld("all-cells-below-threshold", withheldCellCount);
-  return ObservationAggregateSchema.parse({ ...base, state: "published", withheldCellCount, cells });
+  return finish({ ...base, state: "published", withheldCellCount, cells }, withheldCellCount);
 }
