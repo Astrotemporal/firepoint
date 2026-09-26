@@ -18,6 +18,8 @@ import { FirePanel } from "./fire-panel";
 import { RouteBar } from "./route-bar";
 import { applyTheme, currentTheme, subscribeTheme, type Theme } from "./theme";
 import { MoonIcon, SunIcon } from "./theme-icons";
+import { LanguageSelect } from "./language-select";
+import { LANGUAGE_LABEL, type Locale } from "@/i18n/locales";
 
 // Mapbox GL touches `window` and WebGL on import, so the map only ever renders in the browser.
 const EvacuationMap = dynamic(() => import("./evacuation-map").then((mod) => mod.EvacuationMap), {
@@ -42,7 +44,7 @@ function subscribeOnline(onChange: () => void) {
 const startIdentity = (fix: LocationFix) => (fix.source === "gps" ? "gps" : `${fix.source}:${fix.lat},${fix.lng}`);
 
 /** The homepage: fire marks and directions on one full-screen map, with the route bar underneath. */
-export function MapScreen() {
+export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
   const [tracker] = useState(() => new LocationTracker());
   const [planner] = useState(() => new RoutePlanner<LocationFix>({
     getRoute, shelters: SHELTERS, zones: SAFE_ZONES, isOnline: () => navigator.onLine,
@@ -138,6 +140,7 @@ export function MapScreen() {
           onClear={() => { save([]); setHint("All marks cleared."); }}
         />
         <div className="map-actions">
+          <LanguageSelect current={locale} label={LANGUAGE_LABEL[locale]} returnTo="/" className="map-lang-select" />
           <button type="button" className="theme-toggle" onClick={() => applyTheme(theme === "dark" ? "light" : "dark", true)}
             aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"} title={theme === "dark" ? "Light mode" : "Dark mode"}>
             {theme === "dark" ? <SunIcon /> : <MoonIcon />}
