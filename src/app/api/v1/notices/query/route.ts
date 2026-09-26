@@ -1,6 +1,7 @@
 import { asNwsNoticeFeed, unconfiguredNwsFeed } from "@/domain/notice-feed";
 import { fetchNwsActiveAlerts } from "@/server/nws";
 import { PRIVATE_HEADERS as PRIVATE, readPlaceQuery } from "@/server/place-query";
+import { demoLiveSourcesEnabled, pausedSourceResponse } from "@/server/live-query-gate";
 
 export const runtime = "nodejs";
 
@@ -8,6 +9,7 @@ export const runtime = "nodejs";
 export async function POST(request: Request): Promise<Response> {
   const input = await readPlaceQuery(request);
   if ("error" in input) return input.error;
+  if (!demoLiveSourcesEnabled()) return pausedSourceResponse(PRIVATE);
   const generatedAt = new Date().toISOString();
   const userAgent = process.env.NWS_USER_AGENT?.trim();
   if (!userAgent) {

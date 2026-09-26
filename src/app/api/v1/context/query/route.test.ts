@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ContextFeedSchema } from "@/domain/contracts";
 import { POST } from "./route";
 
@@ -7,6 +7,7 @@ const body = JSON.stringify({ point: [-118.25, 34.15], userInitiated: true });
 function request(payload = body, contentType = "application/json") {
   return new Request(endpoint, { method: "POST", headers: { "Content-Type": contentType }, body: payload });
 }
+beforeEach(() => { vi.stubEnv("FIREPOINT_DEMO_LIVE_SOURCES", "enabled"); });
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 // Deliberately synthetic upstream responses, routed by publisher host.
@@ -24,6 +25,16 @@ function upstream(overrides: Partial<Record<"calfire" | "nifc" | "airnow", Respo
 }
 
 describe("fire and air context route", () => {
+  it("does not contact publishers when public live queries are paused", async () => {
+    vi.stubEnv("FIREPOINT_DEMO_LIVE_SOURCES", "");
+    const upstream = vi.fn(); vi.stubGlobal("fetch", upstream);
+    const response = await POST(request());
+    expect(response.status).toBe(503);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(await response.json()).toMatchObject({ error: expect.stringContaining("paused") });
+    expect(upstream).not.toHaveBeenCalled();
+  });
+
   it("refuses invalid input without contacting any publisher", async () => {
     const fetcher = upstream(); vi.stubGlobal("fetch", fetcher);
     expect((await POST(request("not json"))).status).toBe(400);

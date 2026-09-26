@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { StandingHazard } from "@/domain/contracts";
-import { formatDate, formatTime, hazardStatus } from "./live-sources";
+import { NO_ALL_CLEAR_COPY, formatDate, formatTime, hazardStatus } from "./live-sources";
+
+describe("source results warning", () => {
+  it("cannot invert the all-clear warning with a double negative", () => {
+    expect(NO_ALL_CLEAR_COPY).toBe("Nothing listed here is an all-clear.");
+    expect(NO_ALL_CLEAR_COPY).not.toMatch(/not an all-clear/);
+  });
+});
 
 describe("formatDate", () => {
   it("includes the year so old map editions are not mistaken for recent ones", () => {

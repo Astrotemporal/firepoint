@@ -96,6 +96,8 @@ function sourceLink(url: string, label: string) {
   return <a href={url} target="_blank" rel="noopener noreferrer">{label} <span aria-hidden="true">↗</span></a>;
 }
 
+export const NO_ALL_CLEAR_COPY = "Nothing listed here is an all-clear.";
+
 export function LiveSources() {
   const [lookup, setLookup] = useState<Lookup>({ phase: "idle" });
   const busy = lookup.phase === "locating" || lookup.phase === "loading";
@@ -150,7 +152,7 @@ export function LiveSources() {
         {lookup.phase === "no-location" && <p className="live-note">Location wasn’t shared, so nothing was checked. You can check central Glendale instead.</p>}
         {lookup.phase === "loading" && <p className="live-note">Checking public sources for {lookup.place.label}…</p>}
         {done && <div className="live-results">
-          <p className="live-note">Results for {done.place.label}. <strong>Nothing listed here is not an all-clear.</strong> Missing or unavailable sources mean unknown, not safe.</p>
+          <p className="live-note">Results for {done.place.label}. <strong>{NO_ALL_CLEAR_COPY}</strong> Missing or unavailable sources mean unknown, not safe.</p>
 
           <ul className="live-sources" aria-label="Source status">
             {checks.map((check) => <SourceRow key={check.sourceKey} check={check} />)}
