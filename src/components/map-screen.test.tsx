@@ -33,7 +33,7 @@ describe("map screen", () => {
   it("puts directions on the same screen as the fire marks", () => {
     const html = renderToStaticMarkup(<MapScreen />);
     expect(html).toContain('class="fire-token"');
-    expect(html).toContain('class="ev-bar"');
+    expect(html).toContain('class="ev-bar ev-sheet');
     expect(html).toContain("Allow location access to see routes from where you are.");
   });
 

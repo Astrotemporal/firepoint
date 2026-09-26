@@ -6,7 +6,7 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Newer main pushes must cancel older captures before an older image can publish last.
+# Captures are read-only artifacts. Newer runs cancel older ones for the same ref.
 concurrency:
   group: firepoint-preview-${{ github.ref }}
   cancel-in-progress: true
@@ -16,9 +16,8 @@ permissions:
 
 jobs:
   screenshot:
-    # Bot's own preview commit must not trigger another preview run.
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,32 +32,9 @@ jobs:
       - name: Capture static UI (no live feed or tile request)
         run: node scripts/capture-preview.mjs
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: firepoint-preview
           path: docs/preview/*.png
-
-  publish:
-    # PR code runs with read-only permissions. Only trusted main pushes may commit an image.
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
-    needs: screenshot
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/download-artifact@v4
-        with:
-          name: firepoint-preview
-          path: docs/preview
-      - name: Commit refreshed screenshots on main
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add docs/preview/mobile.png docs/preview/desktop.png
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m 'docs: refresh app preview [skip ci]'
-          git fetch origin main
-          git rebase origin/main
-          git push origin HEAD:main
+          if-no-files-found: ignore
+          retention-days: 14

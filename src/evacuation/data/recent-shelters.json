@@ -1,0 +1,482 @@
+{
+  "about": "Evacuation centers and shelters opened for recent disasters in and around Glendale, CA. A reference for the hackathon. These are PAST activations: none is known to be open now, and a site that sheltered people before may not be used next time. Check Glendale Alerts, Alert LA County, 211 LA or redcross.org/shelter for what is open.",
+  "checkedOn": "2026-09-26",
+  "coordinates": "US Census geocoder (Public_AR_Current) unless an entry's notes say otherwise. kmFromGlendaleCityHall is straight-line distance from 613 E Broadway.",
+  "kinds": {
+    "evacuation-center": "A site the City or County announced as an evacuation center or evacuation shelter.",
+    "red-cross-shelter": "An emergency shelter the American Red Cross announced.",
+    "animal-shelter-small": "Took small animals during the incident.",
+    "animal-shelter-large": "Took large animals (horses, livestock) during the incident."
+  },
+  "notIncluded": "The Sandy Fire shelter at Rancho Santa Susana Community Park, Simi Valley (May 2026) was left out: it is in Ventura County and its Red Cross page now returns 404. Distant January 2025 animal shelters (Lancaster, Palmdale, Castaic, Downey, Baldwin Park, Gardena, Agoura Hills, Industry Hills, Pico Rivera) are listed in the CAL FIRE updates cited here.",
+  "shelters": [
+    {
+      "id": "los-altos-high-school",
+      "name": "Los Altos High School",
+      "address": "15325 Los Robles Ave, Hacienda Heights, CA 91745",
+      "lat": 34.0071,
+      "lng": -117.97702,
+      "kmFromGlendaleCityHall": 29.4,
+      "kind": "red-cross-shelter",
+      "incident": "Palos Fire (La Habra Heights)",
+      "openedOn": "2026-09-14",
+      "closedOn": null,
+      "operator": "American Red Cross",
+      "pets": null,
+      "notes": null,
+      "sources": [
+        {
+          "publisher": "American Red Cross Los Angeles Region",
+          "title": "Red Cross opens an emergency shelter at Los Altos High School (Palos Fire)",
+          "date": "2026-09-14",
+          "url": "https://www.redcross.org/local/california/los-angeles/about-us/news-and-events/press-releases/red-cross-opens-an-emergency-shelter-at-los-altos-high-school.html"
+        }
+      ]
+    },
+    {
+      "id": "antelope-valley-ymca",
+      "name": "Antelope Valley YMCA",
+      "address": "43001 10th St W, Lancaster, CA 93534",
+      "lat": 34.66317,
+      "lng": -118.14787,
+      "kmFromGlendaleCityHall": 58.2,
+      "kind": "red-cross-shelter",
+      "incident": "Summit Fire (near Lancaster)",
+      "openedOn": "2026-07-10",
+      "closedOn": "2026-07-12",
+      "operator": "American Red Cross",
+      "pets": "Domestic pets welcome in a travel carrier or crate; limited pet capacity at Palmdale Animal Care Center, 38550 Sierra Hwy, Palmdale.",
+      "notes": null,
+      "sources": [
+        {
+          "publisher": "American Red Cross Los Angeles",
+          "title": "Summit Fire: Red Cross opens evacuation shelter at Antelope Valley YMCA",
+          "date": "2026-07-10",
+          "url": "https://www.redcross.org/local/california/los-angeles/about-us/news-and-events/press-releases/summit-fire--red-cross-opens-evacuation-point-at-antelope-valley.html"
+        },
+        {
+          "publisher": "American Red Cross Los Angeles",
+          "title": "Red Cross LA closes Summit Fire evacuation center",
+          "date": "2026-07-12",
+          "url": "https://www.redcross.org/local/california/los-angeles/about-us/news-and-events/press-releases/red-cross-la-closes-summit-fire-evacuation-center.html"
+        }
+      ]
+    },
+    {
+      "id": "pecan-recreation-center",
+      "name": "Pecan Recreation Center",
+      "address": "145 S Pecan St, Los Angeles, CA 90033",
+      "lat": 34.04687,
+      "lng": -118.2218,
+      "kmFromGlendaleCityHall": 11.4,
+      "kind": "red-cross-shelter",
+      "incident": "Boyle Heights industrial fire",
+      "openedOn": "2026-06-19",
+      "closedOn": null,
+      "operator": "American Red Cross",
+      "pets": null,
+      "notes": "Opened for people affected by the fire or poor air quality.",
+      "sources": [
+        {
+          "publisher": "American Red Cross Los Angeles Region",
+          "title": "Red Cross opens two emergency shelters in response to the Boyle Heights industrial fire",
+          "date": "2026-06-19",
+          "url": "https://www.redcross.org/local/california/los-angeles/about-us/news-and-events/press-releases/red-cross-opens-two-emergency-shelters--in-response-to-the-boyle.html"
+        }
+      ]
+    },
+    {
+      "id": "city-terrace-park",
+      "name": "City Terrace Park",
+      "address": "1126 N Hazard Ave, Los Angeles, CA 90063",
+      "lat": 34.05098,
+      "lng": -118.17894,
+      "kmFromGlendaleCityHall": 12.4,
+      "kind": "red-cross-shelter",
+      "incident": "Boyle Heights industrial fire",
+      "openedOn": "2026-06-19",
+      "closedOn": null,
+      "operator": "American Red Cross",
+      "pets": null,
+      "notes": "Opened for people affected by the fire or poor air quality.",
+      "sources": [
+        {
+          "publisher": "American Red Cross Los Angeles Region",
+          "title": "Red Cross opens two emergency shelters in response to the Boyle Heights industrial fire",
+          "date": "2026-06-19",
+          "url": "https://www.redcross.org/local/california/los-angeles/about-us/news-and-events/press-releases/red-cross-opens-two-emergency-shelters--in-response-to-the-boyle.html"
+        }
+      ]
+    },
+    {
+      "id": "pacific-community-center",
+      "name": "Pacific Community Center",
+      "address": "501 S Pacific Ave, Glendale, CA 91204",
+      "lat": 34.13971,
+      "lng": -118.26447,
+      "kmFromGlendaleCityHall": 1.7,
+      "kind": "evacuation-center",
+      "incident": "Eaton Fire (Chevy Chase and Glenoaks canyon evacuations)",
+      "openedOn": "2025-01",
+      "closedOn": null,
+      "operator": "City of Glendale",
+      "pets": null,
+      "notes": "The only Glendale site in this file confirmed for the January 2025 fires. Also one of the app's stub shelters in src/evacuation/data/glendale.ts.",
+      "sources": [
+        {
+          "publisher": "Glendale News-Press",
+          "title": "As Fires Rage, Glendale Residents Return Home",
+          "date": "2025-01-11",
+          "url": "https://outlooknewspapers.com/glendalenewspress/as-fires-rage-glendale-residents-return-home/article_5dc6fdc0-cf7a-11ef-badf-6b06897e2df4.html"
+        }
+      ]
+    },
+    {
+      "id": "pasadena-convention-center",
+      "name": "Pasadena Convention Center",
+      "address": "300 E Green St, Pasadena, CA 91101",
+      "lat": 34.14365,
+      "lng": -118.14521,
+      "kmFromGlendaleCityHall": 9.5,
+      "kind": "evacuation-center",
+      "incident": "Eaton Fire; also listed in Palisades Fire updates",
+      "openedOn": "2025-01",
+      "closedOn": null,
+      "operator": null,
+      "pets": "Humane Society on site to board small pets; service animals allowed inside.",
+      "notes": "Parking at 155 E Green St (enter from Marengo Ave). Coordinates from OpenStreetMap; the Census geocoder did not match this address.",
+      "sources": [
+        {
+          "publisher": "CAL FIRE",
+          "title": "Eaton Fire: Incident Update, 01/09/2025 1:34 PM",
+          "date": "2025-01-09",
+          "url": "https://www.fire.ca.gov/incidents/2025/1/7/eaton-fire/updates/ffc11339-c101-43d2-a6f7-5a224df02e09"
+        },
+        {
+          "publisher": "CAL FIRE",
+          "title": "Eaton Fire: Incident Update, 01/16/2025 10:27 AM",
+          "date": "2025-01-16",
+          "url": "https://www.fire.ca.gov/incidents/2025/1/7/eaton-fire/updates/217d4175-7c5b-4f38-b733-5e58911a5ca9"
+        },
+        {
+          "publisher": "CAL FIRE",
+          "title": "Palisades Fire: Incident Update, 01/23/2025 6:28 AM",
+          "date": "2025-01-23",
+          "url": "https://www.fire.ca.gov/incidents/2025/1/7/palisades-fire/updates/238eb85e-6431-4d98-a800-bb08913541d6"
+        }
+      ]
+    },
+    {
+      "id": "arcadia-community-center",
+      "name": "Arcadia Community Center",
+      "address": "375 Campus Dr, Arcadia, CA 91007",
+      "lat": 34.13122,
+      "lng": -118.04529,
+      "kmFromGlendaleCityHall": 18.8,
+      "kind": "evacuation-center",
+      "incident": "Eaton Fire",
+      "openedOn": "2025-01",
+      "closedOn": null,
+      "operator": null,
+      "pets": null,
+      "notes": null,
+      "sources": [
+        {
+          "publisher": "CAL FIRE",
+          "title": "Eaton Fire: Incident Update, 01/09/2025 1:34 PM",
+          "date": "2025-01-09",
+          "url": "https://www.fire.ca.gov/incidents/2025/1/7/eaton-fire/updates/ffc11339-c101-43d2-a6f7-5a224df02e09"
+        }
+      ]
+    },
+    {
+      "id": "ritchie-valens-recreation-center",
+      "name": "Ritchie Valens Recreation Center",
+      "address": "10736 Laurel Canyon Blvd, Pacoima, CA 91331",
+      "lat": 34.26536,
+      "lng": -118.439,
+      "kmFromGlendaleCityHall": 22.0,
+      "kind": "evacuation-center",
+      "incident": "Hurst Fire",
+      "openedOn": "2025-01",
+      "closedOn": null,
+      "operator": null,
+      "pets": null,
+      "notes": null,
+      "sources": [
+        {
+          "publisher": "CAL FIRE",
+          "title": "Hurst Fire: Incident Update, 01/11/2025 6:24 AM",
+          "date": "2025-01-11",
+          "url": "https://www.fire.ca.gov/incidents/2025/1/7/hurst-fire/updates/56ee763d-20ef-4a46-8099-0b60a3e3b52f"
+        }
+      ]
+    },
+    {
+      "id": "van-nuys-sherman-oaks-recreation-center",
+      "name": "Van Nuys/Sherman Oaks Recreation Center",
+      "address": "14201 Huston St, Sherman Oaks, CA 91423",
+      "lat": 34.15948,
+      "lng": -118.44113,
+      "kmFromGlendaleCityHall": 17.8,
+      "kind": "evacuation-center",
+      "incident": "Palisades Fire",
+      "openedOn": "2025-01",
+      "closedOn": null,
+      "operator": null,
+      "pets": null,
+      "notes": null,
+      "sources": [
+        {
+          "publisher": "CAL FIRE",
+          "title": "Palisades Fire: Incident Update, 01/23/2025 6:28 AM",
+          "date": "2025-01-23",
+          "url": "https://www.fire.ca.gov/incidents/2025/1/7/palisades-fire/updates/238eb85e-6431-4d98-a800-bb08913541d6"
+        }
+      ]
+    },
+    {
+      "id": "westwood-recreation-center",
+      "name": "Westwood Recreation Center",
+      "address": "1350 S Sepulveda Blvd, Los Angeles, CA 90025",
+      "lat": 34.0529,
+      "lng": -118.44867,
+      "kmFromGlendaleCityHall": 21.2,
+      "kind": "evacuation-center",
+      "incident": "Palisades Fire; also listed in Eaton Fire updates",
+      "openedOn": "2025-01",
+      "closedOn": null,
+      "operator": null,
+      "pets": null,
+      "notes": null,
+      "sources": [
+        {
+          "publisher": "CAL FIRE",
+          "title": "Eaton Fire: Incident Update, 01/09/2025 1:34 PM",
+          "date": "2025-01-09",
+          "url": "https://www.fire.ca.gov/incidents/2025/1/7/eaton-fire/updates/ffc11339-c101-43d2-a6f7-5a224df02e09"
+        },
+        {
+          "publisher": "CAL FIRE",
+          "title": "Palisades Fire: Incident Update, 01/23/2025 6:28 AM",
+          "date": "2025-01-23",
+          "url": "https://www.fire.ca.gov/incidents/2025/1/7/palisades-fire/updates/238eb85e-6431-4d98-a800-bb08913541d6"
+        }
+      ]
+    },
+    {
+      "id": "stoner-recreation-center",
+      "name": "Stoner Recreation Center",
+      "address": "1835 Stoner Ave, Los Angeles, CA 90025",
+      "lat": 34.03886,
+      "lng": -118.45335,
+      "kmFromGlendaleCityHall": 22.4,
+      "kind": "evacuation-center",
+      "incident": "Palisades Fire",
+      "openedOn": "2025-01",
+      "closedOn": null,
+      "operator": null,
+      "pets": null,
+      "notes": null,
+      "sources": [
+        {
+          "publisher": "CAL FIRE",
+          "title": "Palisades Fire: Incident Update, 01/23/2025 6:28 AM",
+          "date": "2025-01-23",
+          "url": "https://www.fire.ca.gov/incidents/2025/1/7/palisades-fire/updates/238eb85e-6431-4d98-a800-bb08913541d6"
+        }
+      ]
+    },
+    {
+      "id": "el-camino-real-charter-high-school",
+      "name": "El Camino Real Charter High School",
+      "address": "5440 Valley Circle Blvd, Woodland Hills, CA 91367",
+      "lat": 34.16974,
+      "lng": -118.64372,
+      "kmFromGlendaleCityHall": 36.5,
+      "kind": "evacuation-center",
+      "incident": "Eaton Fire list (serving the January 2025 LA fires)",
+      "openedOn": "2025-01",
+      "closedOn": null,
+      "operator": null,
+      "pets": "Also listed as a small-animal shelter.",
+      "notes": null,
+      "sources": [
+        {
+          "publisher": "CAL FIRE",
+          "title": "Eaton Fire: Incident Update, 01/09/2025 1:34 PM",
+          "date": "2025-01-09",
+          "url": "https://www.fire.ca.gov/incidents/2025/1/7/eaton-fire/updates/ffc11339-c101-43d2-a6f7-5a224df02e09"
+        },
+        {
+          "publisher": "CAL FIRE",
+          "title": "Hurst Fire: Incident Update, 01/11/2025 6:24 AM",
+          "date": "2025-01-11",
+          "url": "https://www.fire.ca.gov/incidents/2025/1/7/hurst-fire/updates/56ee763d-20ef-4a46-8099-0b60a3e3b52f"
+        }
+      ]
+    },
+    {
+      "id": "pomona-fairplex",
+      "name": "Pomona Fairplex",
+      "address": "1101 W McKinley Ave, Pomona, CA 91768",
+      "lat": 34.08041,
+      "lng": -117.76592,
+      "kmFromGlendaleCityHall": 45.0,
+      "kind": "evacuation-center",
+      "incident": "Eaton and Palisades fires",
+      "openedOn": "2025-01",
+      "closedOn": null,
+      "operator": null,
+      "pets": "Gate 3 takes small and large animals.",
+      "notes": "The Palisades update lists the evacuation shelter at Gate 3, 601 W McKinley Ave.",
+      "sources": [
+        {
+          "publisher": "CAL FIRE",
+          "title": "Eaton Fire: Incident Update, 01/09/2025 1:34 PM",
+          "date": "2025-01-09",
+          "url": "https://www.fire.ca.gov/incidents/2025/1/7/eaton-fire/updates/ffc11339-c101-43d2-a6f7-5a224df02e09"
+        },
+        {
+          "publisher": "CAL FIRE",
+          "title": "Eaton Fire: Incident Update, 01/16/2025 10:27 AM",
+          "date": "2025-01-16",
+          "url": "https://www.fire.ca.gov/incidents/2025/1/7/eaton-fire/updates/217d4175-7c5b-4f38-b733-5e58911a5ca9"
+        },
+        {
+          "publisher": "CAL FIRE",
+          "title": "Palisades Fire: Incident Update, 01/23/2025 6:28 AM",
+          "date": "2025-01-23",
+          "url": "https://www.fire.ca.gov/incidents/2025/1/7/palisades-fire/updates/238eb85e-6431-4d98-a800-bb08913541d6"
+        }
+      ]
+    },
+    {
+      "id": "pasadena-humane",
+      "name": "Pasadena Humane",
+      "address": "361 S Raymond Ave, Pasadena, CA 91105",
+      "lat": 34.13956,
+      "lng": -118.14889,
+      "kmFromGlendaleCityHall": 9.2,
+      "kind": "animal-shelter-small",
+      "incident": "Eaton Fire",
+      "openedOn": "2025-01",
+      "closedOn": null,
+      "operator": "Pasadena Humane",
+      "pets": null,
+      "notes": "Listed by CAL FIRE with ZIP 91103; the Census geocoder matched ZIP 91105.",
+      "sources": [
+        {
+          "publisher": "CAL FIRE",
+          "title": "Eaton Fire: Incident Update, 01/09/2025 1:34 PM",
+          "date": "2025-01-09",
+          "url": "https://www.fire.ca.gov/incidents/2025/1/7/eaton-fire/updates/ffc11339-c101-43d2-a6f7-5a224df02e09"
+        },
+        {
+          "publisher": "CAL FIRE",
+          "title": "Eaton Fire: Incident Update, 01/16/2025 10:27 AM",
+          "date": "2025-01-16",
+          "url": "https://www.fire.ca.gov/incidents/2025/1/7/eaton-fire/updates/217d4175-7c5b-4f38-b733-5e58911a5ca9"
+        }
+      ]
+    },
+    {
+      "id": "los-angeles-equestrian-center",
+      "name": "Los Angeles Equestrian Center",
+      "address": "480 W Riverside Dr, Burbank, CA 91506",
+      "lat": 34.16129,
+      "lng": -118.3098,
+      "kmFromGlendaleCityHall": 5.9,
+      "kind": "animal-shelter-large",
+      "incident": "Eaton, Hurst and Palisades fires",
+      "openedOn": "2025-01",
+      "closedOn": null,
+      "operator": null,
+      "pets": null,
+      "notes": "At capacity as of 2025-01-12, per the Palisades update.",
+      "sources": [
+        {
+          "publisher": "CAL FIRE",
+          "title": "Eaton Fire: Incident Update, 01/09/2025 1:34 PM",
+          "date": "2025-01-09",
+          "url": "https://www.fire.ca.gov/incidents/2025/1/7/eaton-fire/updates/ffc11339-c101-43d2-a6f7-5a224df02e09"
+        },
+        {
+          "publisher": "CAL FIRE",
+          "title": "Palisades Fire: Incident Update, 01/23/2025 6:28 AM",
+          "date": "2025-01-23",
+          "url": "https://www.fire.ca.gov/incidents/2025/1/7/palisades-fire/updates/238eb85e-6431-4d98-a800-bb08913541d6"
+        }
+      ]
+    },
+    {
+      "id": "hansen-dam-horse-park",
+      "name": "Hansen Dam Horse Park",
+      "address": "11127 Orcas Ave, Lake View Terrace, CA 91342",
+      "lat": 34.27019,
+      "lng": -118.36888,
+      "kmFromGlendaleCityHall": 17.7,
+      "kind": "animal-shelter-large",
+      "incident": "Palisades Fire",
+      "openedOn": "2025-01",
+      "closedOn": null,
+      "operator": null,
+      "pets": null,
+      "notes": "Listed as the alternative when the LA Equestrian Center was full.",
+      "sources": [
+        {
+          "publisher": "CAL FIRE",
+          "title": "Palisades Fire: Incident Update, 01/23/2025 6:28 AM",
+          "date": "2025-01-23",
+          "url": "https://www.fire.ca.gov/incidents/2025/1/7/palisades-fire/updates/238eb85e-6431-4d98-a800-bb08913541d6"
+        }
+      ]
+    },
+    {
+      "id": "crescenta-valley-high-school",
+      "name": "Crescenta Valley High School",
+      "address": "2900 Community Ave, La Crescenta, CA 91214",
+      "lat": 34.22368,
+      "lng": -118.24221,
+      "kmFromGlendaleCityHall": 8.6,
+      "kind": "evacuation-center",
+      "incident": "La Tuna Canyon Fire",
+      "openedOn": "2017-09",
+      "closedOn": null,
+      "operator": "City of Glendale with the American Red Cross",
+      "pets": "Pets welcome; Pasadena Humane on site.",
+      "notes": "Glendale's consolidated evacuation center for the La Tuna Canyon Fire. Showers available. City community centers opened as cooling stations.",
+      "sources": [
+        {
+          "publisher": "City of Glendale",
+          "title": "Glendale Announces Mandatory Emergency Evacuations (La Tuna Canyon Fire)",
+          "date": "2017-09-02",
+          "url": "https://www.glendaleca.gov/Home/Components/News/News/5441/"
+        }
+      ]
+    },
+    {
+      "id": "glendale-adult-recreation-center",
+      "name": "Adult Recreation Center",
+      "address": "201 E Colorado St, Glendale, CA 91205",
+      "lat": 34.14266,
+      "lng": -118.25379,
+      "kmFromGlendaleCityHall": 0.7,
+      "kind": "evacuation-center",
+      "incident": "Brush fire in Chevy Chase and Glenoaks canyons",
+      "openedOn": "2013-05-03",
+      "closedOn": null,
+      "operator": "City of Glendale",
+      "pets": null,
+      "notes": "Also used as a cooling station during the 2017 La Tuna Canyon Fire.",
+      "sources": [
+        {
+          "publisher": "Glendale Police Department",
+          "title": "Fire Update (Bulletin 13-37)",
+          "date": "2013-05-03",
+          "url": "https://www.glendaleca.gov/Home/Components/News/News/298/"
+        }
+      ]
+    }
+  ]
+}
