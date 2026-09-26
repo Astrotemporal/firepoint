@@ -1,6 +1,7 @@
 "use client";
 
-import { useId, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useId, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
+import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
 import { useSheet } from "./use-sheet";
 import {
   compassDirection, directionsUrl, formatDuration, formatMiles, formatShortDistance,
@@ -105,7 +106,7 @@ export function RouteBar(props: RouteBarProps) {
               </ul>
             ) : (
               <button type="button" className="ev-escape-cta" onClick={requestEscape} aria-label={t.escapeLabel}>
-                <span aria-hidden="true">🚗</span> {t.escape}
+                <EscapeFire /> {t.escape}
               </button>
             )}
             {danger ?? status}
@@ -128,6 +129,41 @@ export function RouteBar(props: RouteBarProps) {
     </section>
   );
 }
+
+const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
+function subscribeReducedMotion(onChange: () => void) {
+  const query = window.matchMedia(REDUCED_MOTION);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
+/** The brand's animated fire (as in the preloader and fire marks) on the Escape button; still under reduced motion. */
+function EscapeFire() {
+  const still = useSyncExternalStore(subscribeReducedMotion, () => window.matchMedia(REDUCED_MOTION).matches, () => false);
+  const [player, setPlayer] = useState<DotLottie | null>(null);
+  // Pause rather than remount, so the animation file is fetched once.
+  useEffect(() => {
+    if (!player) return;
+    const apply = () => (still ? player.pause() : player.play());
+    apply();
+    // Autoplay starts once the file loads, so apply again then.
+    player.addEventListener("load", apply);
+    return () => player.removeEventListener("load", apply);
+  }, [player, still]);
+  return (
+    <span className="ev-escape-fire" aria-hidden="true">
+      <DotLottieReact src="/animations/fire.lottie" loop autoplay={!still} dotLottieRefCallback={setPlayer} />
+    </span>
+  );
+}
+
+const FALLBACK_COPY = {
+  denied: "From Glendale City Hall · Location off",
+  prompt: "From Glendale City Hall",
+  unavailable: "Couldn’t find your location. Routes start from Glendale City Hall for now.",
+  insecure: "Location needs a secure (https://) page. Routes start from Glendale City Hall.",
+  unsupported: "This browser can’t share location. Routes start from Glendale City Hall.",
+} as const;
 
 function StatusLine({ location, outsideAreaMeters, online, pending, onUseLocation, onManualLocation, onEditing }: RouteBarProps & {
   onEditing: (editing: boolean) => void;

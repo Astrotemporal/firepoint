@@ -124,6 +124,12 @@ describe("RouteBar", () => {
       expect(html.match(/class="ev-row-main" aria-expanded/g)).toHaveLength(1); // only the shelter row toggles
     });
 
+    it("brands the ESCAPE button with the animated fire instead of a car", () => {
+      const cta = render(notRequested).match(/<button[^>]*class="ev-escape-cta".*?<\/button>/)?.[0] ?? "";
+      expect(cta).toContain('class="ev-escape-fire"');
+      expect(cta).not.toContain("🚗");
+    });
+
     it("does not compute or highlight an escape route just because a start location exists", () => {
       // No request has happened yet; the plan carries no escape route to show.
       const html = render(notRequested);
