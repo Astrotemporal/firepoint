@@ -1,6 +1,6 @@
 # Firepoint shared contract (v1)
 
-This is a **new contract authored for Firepoint**, not the earlier Trigger Point model/scenario schema. The executable source of truth is [`src/domain/contracts.ts`](../src/domain/contracts.ts); its tests use conspicuously synthetic values and never reach the UI. Import Zod validators at network/storage boundaries and derive types with `z.infer`. There is no public reporting service, standing evacuation-zone lookup, GIS backend adapter, or official city partnership. Present source adapters handle NWS point-filtered weather alerts plus CAL FIRE incidents, NIFC/WFIGS perimeters and AirNow observations (see [Fire and air context](#fire-and-air-context)). The resident page calls both routes only after an explicit button press.
+This is a **new contract authored for Firepoint**, not the earlier Trigger Point model/scenario schema. The executable source of truth is [`src/domain/contracts.ts`](../src/domain/contracts.ts); its tests use conspicuously synthetic values and never reach the UI. Import Zod validators at network/storage boundaries and derive types with `z.infer`. There is no public reporting service, standing evacuation-zone lookup, or official city partnership (the GIS adapter reads mapped hazard zones only; see [Mapped hazard zones](#mapped-hazard-zones)). Present source adapters handle NWS point-filtered weather alerts plus CAL FIRE incidents, NIFC/WFIGS perimeters and AirNow observations (see [Fire and air context](#fire-and-air-context)). The resident page calls both routes only after an explicit button press.
 
 ## Client flow
 
@@ -44,6 +44,15 @@ For UI teammate tasks: create loading, unavailable, stale, expired, outside-cove
 | `airnow-current-observations` | AirNow current reporting-area observations (`AirQualityReadingSchema`) | A 0.1°-snapped point; the key stays server-side | `preliminary: true` always. Negative "no data" AQI values are omitted. `not-configured` without `AIRNOW_API_KEY`. |
 
 Each source produces its own check even when it fails. The route answers 200 when at least one source succeeded and 503 when none did; in both cases, read `sourceChecks` before interpreting empty lists. The resident panel rounds a one-time device location to three decimals before sending it and never stores it.
+
+## Mapped hazard zones
+
+`POST /api/v1/hazards/query` takes the same `PlaceQuerySchema` body and returns a `StandingHazardFeedSchema` (one `glendale-gis-hazards` source check plus seven `StandingHazardSchema` items: wildfire, flood, fault-rupture, liquefaction, landslide, dam-inundation, debris-flow). It calls the hackathon-hosted [Glendale GIS MCP](https://github.com/HackerFund/GlendaleGisMcp) `hazards_at_location` tool server-side with `Authorization: Bearer $GLENDALE_GIS_MCP_KEY`; without a key the check is `not-configured` and no request is made.
+
+- These are **regulatory reference maps from a dated snapshot**, never current conditions, evacuation zones or a property safety rating. `sourceAsOf` is the snapshot fetch time; `origin.updatedAt` is the publisher's last edit of that layer; `origin.issuer` is the agency (CAL FIRE, FEMA, CGS, DWR, USGS).
+- `lookup: outside` means "not in a mapped zone", which is **not** "no hazard"; each item's `caveat` carries the server's notes and disclaimer. CAL FIRE `NonWildland` is unzoned, not safe.
+- A point outside Glendale plus about 2 km gives `lookup: unavailable, coverage: out-of-bounds` for every layer and a check status of `outside-coverage`. A rejected key (401) or rate limit (429) is `down` with a named detail.
+- The hazard layers' reuse terms still need the per-source review in [source policy](source-policy.md) before resident launch.
 
 ## Storage boundary
 

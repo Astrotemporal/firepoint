@@ -155,6 +155,7 @@ export type EvacuationZone = z.infer<typeof EvacuationZoneSchema>;
 /** Standing mapped designation, NOT today's event, forecast, or property safety rating. */
 export const StandingHazardSchema = z.object({
   kind: z.literal("standing-hazard"),
+  hazard: z.enum(["wildfire", "flood", "fault-rupture", "liquefaction", "landslide", "dam-inundation", "debris-flow"]),
   dataset: z.string().min(1),
   classification: z.string().nullable(),
   lookup: z.enum(["inside", "outside", "unavailable"]),
@@ -167,6 +168,16 @@ export const StandingHazardSchema = z.object({
   }
 });
 export type StandingHazard = z.infer<typeof StandingHazardSchema>;
+
+/** Mapped hazard designations at a point from a dated snapshot. Never current conditions. */
+export const StandingHazardFeedSchema = z.object({
+  version: WireVersion,
+  generatedAt: Instant,
+  sourceChecks: z.array(SourceCheckSchema).length(1),
+  hazards: z.array(StandingHazardSchema),
+  allClear: z.literal(false),
+});
+export type StandingHazardFeed = z.infer<typeof StandingHazardFeedSchema>;
 
 /** Publication means moderation, not official confirmation. No private reporter data here. */
 export const PublishedObservationSchema = z.object({

@@ -3,8 +3,11 @@
 import { useState } from "react";
 import {
   ContextFeedSchema,
+  StandingHazardFeedSchema,
   NoticeFeedSchema,
   type ContextFeed,
+  type StandingHazard,
+  type StandingHazardFeed,
   type NoticeFeed,
   type SourceCheck,
 } from "@/domain/contracts";
@@ -18,7 +21,7 @@ type Lookup =
   | { phase: "locating" }
   | { phase: "no-location" }
   | { phase: "loading"; place: Place }
-  | { phase: "done"; place: Place; notices: Result<NoticeFeed>; context: Result<ContextFeed> };
+  | { phase: "done"; place: Place; notices: Result<NoticeFeed>; context: Result<ContextFeed>; hazards: Result<StandingHazardFeed> };
 
 const GLENDALE: Place = {
   label: "central Glendale (a general reference point, not your address)",
@@ -27,6 +30,15 @@ const GLENDALE: Place = {
 const TIME = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/Los_Angeles", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short",
 });
+
+const DATE = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", year: "numeric", month: "short", day: "numeric" });
+
+/** Calendar date with the year, for map editions that may be months or years old. */
+export function formatDate(value: string | null | undefined): string {
+  if (!value) return "date not given";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "date not given" : DATE.format(date);
+}
 
 /** Local display time with an explicit zone; unknown stays unknown. */
 export function formatTime(value: string | null | undefined): string {
@@ -65,6 +77,21 @@ function SourceRow({ check }: { check: SourceCheck }) {
   );
 }
 
+const HAZARD_LABEL: Record<StandingHazard["hazard"], string> = {
+  wildfire: "Fire hazard severity", flood: "FEMA flood zone", "fault-rupture": "Earthquake fault zone",
+  liquefaction: "Liquefaction zone", landslide: "Earthquake landslide zone", "dam-inundation": "Dam inundation area",
+  "debris-flow": "Post-fire debris flow",
+};
+
+/** Plain wording for a lookup; "not in a mapped zone" is never phrased as safe. */
+export function hazardStatus(hazard: StandingHazard): string {
+  if (hazard.lookup === "unavailable") return "not available here";
+  // Every place has some FEMA zone; the zone itself is the answer.
+  if (hazard.hazard === "flood" && hazard.lookup === "inside" && hazard.classification) return hazard.classification;
+  if (hazard.lookup === "inside") return hazard.classification ? `inside (${hazard.classification})` : "inside a mapped zone";
+  return hazard.classification ? `not in a mapped zone (${hazard.classification})` : "not in a mapped zone";
+}
+
 function sourceLink(url: string, label: string) {
   return <a href={url} target="_blank" rel="noopener noreferrer">{label} <span aria-hidden="true">↗</span></a>;
 }
@@ -75,11 +102,12 @@ export function LiveSources() {
 
   async function run(place: Place) {
     setLookup({ phase: "loading", place });
-    const [notices, context] = await Promise.all([
+    const [notices, context, hazards] = await Promise.all([
       query("/api/v1/notices/query", place.point, NoticeFeedSchema),
       query("/api/v1/context/query", place.point, ContextFeedSchema),
+      query("/api/v1/hazards/query", place.point, StandingHazardFeedSchema),
     ]);
-    setLookup({ phase: "done", place, notices, context });
+    setLookup({ phase: "done", place, notices, context, hazards });
   }
 
   function useMyLocation() {
@@ -100,15 +128,17 @@ export function LiveSources() {
   const checks = done ? [
     ...(done.notices.state === "received" ? done.notices.value.sourceChecks : []),
     ...(done.context.state === "received" ? done.context.value.sourceChecks : []),
+    ...(done.hazards.state === "received" ? done.hazards.value.sourceChecks : []),
   ] : [];
   const notices = done?.notices.state === "received" ? done.notices.value.notices : [];
   const context = done?.context.state === "received" ? done.context.value : null;
+  const hazardFeed = done?.hazards.state === "received" ? done.hazards.value : null;
 
   return (
     <div className="live-panel" aria-labelledby="live-heading">
       <div className="live-head">
         <h3 id="live-heading">What public sources report right now</h3>
-        <p>Checks weather alerts, reported fire incidents, mapped fire perimeters and air quality only when you ask. It does not check evacuation orders or your zone.</p>
+        <p>Checks weather alerts, reported fire incidents, mapped fire perimeters, air quality and Glendale hazard maps only when you ask. It does not check evacuation orders or your zone.</p>
         <div className="live-actions">
           <button type="button" className="area-button" onClick={() => void run(GLENDALE)} disabled={busy}>Check central Glendale <span aria-hidden="true">→</span></button>
           <button type="button" className="live-secondary" onClick={useMyLocation} disabled={busy}>Use my location once</button>
@@ -126,6 +156,7 @@ export function LiveSources() {
             {checks.map((check) => <SourceRow key={check.sourceKey} check={check} />)}
             {done.notices.state === "unavailable" && <li className="live-source"><div><strong>National Weather Service</strong><small>Could not be reached from Firepoint.</small></div><span className="status-tag status-down">UNAVAILABLE</span></li>}
             {done.context.state === "unavailable" && <li className="live-source"><div><strong>Fire and air sources</strong><small>Could not be reached from Firepoint.</small></div><span className="status-tag status-down">UNAVAILABLE</span></li>}
+            {done.hazards.state === "unavailable" && <li className="live-source"><div><strong>Glendale hazard maps</strong><small>Could not be reached from Firepoint.</small></div><span className="status-tag status-down">UNAVAILABLE</span></li>}
           </ul>
 
           {notices.length > 0 && <section className="live-group" aria-label="Weather alerts">
@@ -166,6 +197,16 @@ export function LiveSources() {
               <small>{reading.reportingArea} · observed {formatTime(reading.observedAt)} · {sourceLink("https://www.airnow.gov/", "AirNow")}</small>
             </li>)}</ul>
             <p className="live-caveat">{context.airQuality[0]?.caveat}</p>
+          </section>}
+
+          {hazardFeed && hazardFeed.hazards.some((h) => h.lookup !== "unavailable") && <section className="live-group" aria-label="Mapped hazard zones">
+            <h4>Mapped hazard zones (reference maps, not current conditions)</h4>
+            <ul>{hazardFeed.hazards.map((hazard) => <li key={hazard.hazard} className="live-item">
+              <strong>{HAZARD_LABEL[hazard.hazard]}: {hazardStatus(hazard)}</strong>
+              <small>{hazard.dataset}{hazard.origin.issuer ? ` · ${hazard.origin.issuer}` : ""}{hazard.origin.updatedAt ? ` · map edited ${formatDate(hazard.origin.updatedAt)}` : ""} · {sourceLink(hazard.origin.recordUrl, "Source layer")}</small>
+              <small>{hazard.caveat}</small>
+            </li>)}</ul>
+            <p className="live-caveat">From the Glendale GIS snapshot of {formatTime(hazardFeed.sourceChecks[0]?.sourceAsOf)}. These regulatory maps describe long-term mapped hazard, not today’s conditions, your evacuation zone, or whether a building is safe.</p>
           </section>}
         </div>}
       </div>
