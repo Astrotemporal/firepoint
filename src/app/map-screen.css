@@ -3,7 +3,7 @@
 .ev-shell {
   --ev-surface: var(--white); --ev-ink: var(--ink); --ev-text: #33413a; --ev-muted: #4a5a52; --ev-line: var(--line); --ev-edge: #c9cfc4;
   --ev-map-bg: #dfe3da; --ev-map-stripe: #d6dbd0; --ev-float-edge: var(--ink); --ev-float-hover: var(--lime);
-  --ev-button-bg: var(--ink); --ev-button-ink: #fff; --ev-start: var(--ink); --ev-warn: #5c2d06;
+  --ev-button-bg: var(--ink); --ev-button-ink: #fff; --ev-you: #007aff; --ev-warn: #5c2d06;
   --ev-escape-ink: #9a3412; --ev-escape-bg: #9a3412; --ev-escape-hover: #7c2d12;
   --ev-shelter-ink: #1e40af; --ev-shelter-bg: #1e40af; --ev-shelter-hover: #1e3a8a;
   --ev-danger-bg: #fee2e2; --ev-danger-ink: #6b1010; --ev-danger-edge: #b91c1c; --ev-danger-text: #8f1414;
@@ -13,7 +13,7 @@
   color-scheme: dark;
   --ev-surface: #17211f; --ev-ink: #eef2ea; --ev-text: #c9d3cb; --ev-muted: #a3b3a8; --ev-line: #2c3a36; --ev-edge: #33443f;
   --ev-map-bg: #0f1716; --ev-map-stripe: #16211f; --ev-float-edge: #33443f; --ev-float-hover: #22302d;
-  --ev-button-bg: #d7ebac; --ev-button-ink: #18312e; --ev-start: #d7ebac; --ev-warn: #f3a37f;
+  --ev-button-bg: #d7ebac; --ev-button-ink: #18312e; --ev-you: #0a84ff; --ev-warn: #f3a37f;
   --ev-escape-ink: #fdba74; --ev-escape-bg: #c2410c; --ev-escape-hover: #9a3412;
   --ev-shelter-ink: #93c5fd; --ev-shelter-bg: #1d4ed8; --ev-shelter-hover: #1e40af;
   --ev-danger-bg: #3b1212; --ev-danger-ink: #fecaca; --ev-danger-edge: #ef4444; --ev-danger-text: #fca5a5;
@@ -33,18 +33,21 @@
 .ev-float-button:hover { background: var(--ev-float-hover); }
 .ev-round { padding: 0; border-radius: 50%; width: 48px; }
 .ev-round svg { width: 20px; height: 20px; }
-/* Google-Maps-style "my location" button, bottom-right above the Mapbox attribution. */
-.ev-locate { position: absolute; right: 12px; bottom: 40px; width: 52px; height: 52px; }
-.ev-locate-icon { width: 20px; height: 20px; border-radius: 50%; border: 3px solid #1a73e8; position: relative; }
-.ev-locate-icon::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: #1a73e8; }
+/* "My location" sits up the right edge, under the theme/prep actions and zoom buttons; the fire owns the bottom corner. */
+.ev-locate { position: absolute; right: 16px; top: calc(144px + env(safe-area-inset-top, 0px)); width: 48px; height: 48px; min-height: 48px; min-width: 48px; border: 0; box-shadow: 0 2px 6px rgba(24, 49, 46, .18), 0 8px 24px rgba(24, 49, 46, .12); }
+.ev-locate-icon { width: 20px; height: 20px; border-radius: 50%; border: 3px solid var(--ev-you); position: relative; }
+.ev-locate-icon::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--ev-you); }
 /* Zoom buttons sit under the theme/prep actions; phones pinch to zoom, so they are hidden there. */
 .ev-shell .mapboxgl-ctrl-top-right { top: calc(64px + env(safe-area-inset-top, 0px)); right: 6px; }
-@media (max-width: 650px) { .ev-shell .mapboxgl-ctrl-top-right .mapboxgl-ctrl-group { display: none; } }
+@media (max-width: 650px) { .ev-shell .mapboxgl-ctrl-top-right .mapboxgl-ctrl-group { display: none; } .ev-locate { right: 12px; top: calc(76px + env(safe-area-inset-top, 0px)); } }
 
-/* Blue location dot with a soft pulse, like Google Maps. */
-.ev-you { width: 20px; height: 20px; border-radius: 50%; background: #1a73e8; border: 3px solid #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .25), 0 0 0 0 rgba(26, 115, 232, .45); animation: ev-pulse 2s ease-out infinite; }
-@keyframes ev-pulse { to { box-shadow: 0 0 0 1px rgba(0, 0, 0, .25), 0 0 0 16px rgba(26, 115, 232, 0); } }
-.ev-start { width: 22px; height: 22px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--ev-start); border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .35); }
+/* Apple Maps-style blue dot in a white ring. Live GPS pulses; a chosen or fallback start stays still. */
+.ev-you, .ev-start { width: 22px; height: 22px; border-radius: 50%; background: var(--ev-you); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .35); }
+.ev-you { animation: ev-pulse 2s ease-out infinite; }
+@keyframes ev-pulse {
+  from { box-shadow: 0 1px 4px rgba(0, 0, 0, .35), 0 0 0 0 rgba(0, 122, 255, .4); }
+  to { box-shadow: 0 1px 4px rgba(0, 0, 0, .35), 0 0 0 18px rgba(0, 122, 255, 0); }
+}
 
 /* Marker pins: green = open, gray = full/closed, orange = evacuation point. */
 .ev-pin { padding: 0; border: 0; background: none; cursor: pointer; }

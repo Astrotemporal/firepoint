@@ -41,7 +41,7 @@ describe("RouteBar", () => {
     expect(html).toMatch(/aria-expanded="false"/);
     expect(html).toContain("Location approximate");
     expect(html).toContain("Unverified: confirm it’s open");
-    expect(html).toContain("Demo: simulated fire, unverified shelters.");
+    expect(html).toContain("Hide simulated fire");
   });
 
   it("lists the escape route first near a hazard, the shelter first otherwise", () => {
@@ -92,10 +92,10 @@ describe("RouteBar", () => {
     expect(render({ hazards: [] })).toContain("this is not an all-clear");
   });
 
-  it("says fire marks are private, not reports, and that routes avoid them", () => {
+  it("treats a nearby fire mark like a hazard, without calling it simulated", () => {
     const mark = { ...SIMULATED_HAZARDS[0], id: "mark-1", label: "Fire mark 1", simulated: false, userMark: true };
     const html = render({ hazards: [mark], threat: { hazard: mark, edgeMeters: 400 }, escapeFirst: true });
-    expect(html).toContain("Fire marks stay on this device and are not reports; routes avoid them.");
     expect(html).toContain("Fire mark 1 is 0.2 mi away. Take the escape route.");
+    expect(html).toContain("Show simulated fire");
   });
 });

@@ -72,9 +72,7 @@ export function RouteBar(props: RouteBarProps) {
         </ul>
       )}
       <p className="ev-note">
-        {simulated ? "Demo: simulated fire, unverified shelters. " : "Shelters are unverified. "}
-        Fire marks stay on this device and are not reports; routes avoid them. Live fire data isn’t connected, so this
-        is not an all-clear. Follow official orders; to report a fire, call 911.{" "}
+        Live fire data isn’t connected, so this is not an all-clear. Follow official orders; to report a fire, call 911.{" "}
         <button type="button" className="ev-link-button" onClick={props.onToggleSimulated}>
           {simulated ? "Hide simulated fire" : "Show simulated fire"}
         </button>
