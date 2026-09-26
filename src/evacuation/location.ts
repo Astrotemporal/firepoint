@@ -12,7 +12,8 @@ export type LocationFix = LatLng & {
   label: string | null;
 };
 
-export type FallbackReason = "denied" | "unavailable" | "unsupported" | "insecure";
+/** `prompt`: the browser can still ask (a tap shows its prompt). `denied`: blocked, so asking shows nothing. */
+export type FallbackReason = "denied" | "prompt" | "unavailable" | "unsupported" | "insecure";
 
 export type LocationState =
   | { status: "idle"; fix: null }
@@ -37,12 +38,16 @@ export function isApproximate(fix: LocationFix | null): boolean {
 type GeolocationLike = Pick<Geolocation, "watchPosition" | "clearWatch">;
 type PositionLike = { coords: { latitude: number; longitude: number; accuracy: number } };
 type PositionErrorLike = { code: number };
+type PermissionStatusLike = Pick<PermissionStatus, "state" | "addEventListener" | "removeEventListener">;
 export type LocationEnvironment = {
   geolocation?: GeolocationLike;
   secureContext: boolean;
+  queryPermission?: () => Promise<PermissionStatusLike>;
 };
 
 const PERMISSION_DENIED = 1;
+/** A denial faster than this came back without a prompt: the browser or the system blocks location. */
+const INSTANT_DENIAL_MS = 500;
 const IDLE: LocationState = { status: "idle", fix: null };
 
 function browserEnvironment(): LocationEnvironment {
@@ -50,13 +55,14 @@ function browserEnvironment(): LocationEnvironment {
   return {
     geolocation: "geolocation" in navigator ? navigator.geolocation : undefined,
     secureContext: window.isSecureContext,
+    queryPermission: navigator.permissions?.query ? () => navigator.permissions.query({ name: "geolocation" }) : undefined,
   };
 }
 
 /**
- * Live location as an external store (for useSyncExternalStore). The page calls `activate()` on
- * load, which shows the browser's own permission prompt, like a maps app. Positions stay in
- * memory; nothing here persists them.
+ * Live location as an external store (for useSyncExternalStore). On load it watches only if the site
+ * may already use location; otherwise it waits for a tap (`start()`), because browsers show their
+ * permission prompt reliably only for a tap. Positions stay in memory; nothing here persists them.
  */
 export class LocationTracker {
   private state: LocationState = IDLE;
@@ -64,6 +70,9 @@ export class LocationTracker {
   private watchId: number | null = null;
   private geolocation: GeolocationLike | null = null;
   private resumeWatch = false;
+  private permission: PermissionStatusLike | null = null;
+  private unlistenPermission: (() => void) | null = null;
+  private requestedAt = 0;
 
   constructor(private readonly environment: () => LocationEnvironment = browserEnvironment) {}
 
@@ -74,14 +83,16 @@ export class LocationTracker {
 
   getSnapshot = () => this.state;
 
-  /** On page load: start watching (prompting if needed), or restart a watch paused by `stop()`. */
+  /** On page load: restart a watch paused by `stop()`, or check the permission (see `onPermissionChange`). */
   activate(): void {
+    const environment = this.environment();
     if (this.resumeWatch && this.geolocation) {
       this.resumeWatch = false;
       this.watch(this.geolocation);
-    } else if (this.state.status === "idle") {
-      this.start();
+    } else if (this.state.status === "idle" && (!environment.queryPermission || !environment.secureContext || !environment.geolocation)) {
+      this.start(); // No permission to read (or location can't work): ask now, or explain why not.
     }
+    this.listenToPermission();
   }
 
   /** Begin watching; also the "Use my location" / "Try again" action. */
@@ -90,6 +101,7 @@ export class LocationTracker {
     if (!environment.secureContext) return this.fallback("insecure");
     if (!environment.geolocation) return this.fallback("unsupported");
     this.geolocation = environment.geolocation;
+    this.requestedAt = Date.now();
     this.set({ status: "locating", fix: null, attempt: 1 });
     this.watch(environment.geolocation);
   }
@@ -105,7 +117,40 @@ export class LocationTracker {
   stop(): void {
     this.resumeWatch = this.watchId !== null;
     this.clearWatch();
+    this.unlistenPermission?.();
+    this.unlistenPermission = null;
   }
+
+  private listenToPermission(): void {
+    const query = this.environment().queryPermission;
+    if (!query || this.unlistenPermission) return;
+    let active = true;
+    this.unlistenPermission = () => {
+      active = false;
+      this.permission?.removeEventListener("change", this.onPermissionChange);
+      this.permission = null;
+    };
+    query().then((status) => {
+      if (!active) return;
+      this.permission = status;
+      status.addEventListener("change", this.onPermissionChange);
+      this.onPermissionChange();
+    }).catch(() => { if (this.state.status === "idle") this.start(); });
+  }
+
+  private onPermissionChange = () => {
+    const permission = this.permission?.state;
+    const current = this.state;
+    if (current.status === "idle") {
+      if (permission === "granted") this.start();
+      else if (permission) this.fallback(permission === "denied" ? "denied" : "prompt");
+    } else if (current.status === "fallback") {
+      // Allowed in settings: start now, no reload needed.
+      if (permission === "granted" && (current.reason === "denied" || current.reason === "prompt")) this.start();
+      else if (permission === "prompt" && current.reason === "denied") this.fallback("prompt");
+      else if (permission === "denied" && current.reason === "prompt") this.fallback("denied");
+    }
+  };
 
   private watch(geolocation: GeolocationLike): void {
     this.clearWatch();
@@ -129,7 +174,9 @@ export class LocationTracker {
   private onError = (error: PositionErrorLike) => {
     if (error.code === PERMISSION_DENIED) {
       this.clearWatch();
-      return this.fallback("denied");
+      // Closing the prompt also reports "denied" but leaves the permission at "prompt", so it can be asked again.
+      const closed = this.permission?.state === "prompt" && Date.now() - this.requestedAt > INSTANT_DENIAL_MS;
+      return this.fallback(closed ? "prompt" : "denied");
     }
     // Timeout or position unavailable. A watch keeps running after these errors, so an existing
     // fix is kept, and a fallback upgrades itself when a fix eventually arrives.
