@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AreaMap } from "@/components/area-map";
 import { LiveSources } from "@/components/live-sources";
+import { registerServiceWorker } from "@/lib/service-worker";
 
 const CHECKLIST_KEY = "firepoint.prep.v1";
 const AREA_KEY = "firepoint.area.v1";
@@ -69,9 +70,7 @@ export function FirepointHome({ demoLiveSources = false }: { demoLiveSources?: b
     const update = () => setOffline(!navigator.onLine);
     window.addEventListener("online", update);
     window.addEventListener("offline", update);
-    if ("serviceWorker" in navigator && window.isSecureContext) {
-      navigator.serviceWorker.register("/sw.js").catch(() => { /* Offline install is optional. */ });
-    }
+    registerServiceWorker();
     return () => {
       active = false;
       window.removeEventListener("online", update);
