@@ -88,6 +88,46 @@ try {
       console.log(`${name}: /prepare OK`);
     } finally { await context.close(); }
   }
+
+  // Service worker migration: an old prototype cache is purged on the first successful online update, the public
+  // shell is what gets cached, and an offline "/" serves that shell (or the offline page), never the prototype.
+  {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await context.addInitScript(async () => {
+      if (!("caches" in window) || sessionStorage.getItem("seeded")) return;
+      sessionStorage.setItem("seeded", "1");
+      const cache = await caches.open("firepoint-shell-v4");
+      await cache.put("/", new Response('<main class="map-screen ev-shell"><button class="ev-escape-cta">Escape</button></main>', { headers: { "content-type": "text/html" } }));
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto(base + "/", { waitUntil: "load" });
+      const supported = await page.evaluate(() => "serviceWorker" in navigator && window.isSecureContext);
+      if (!supported) {
+        console.log("sw: service workers unsupported in this context; migration not exercised");
+      } else {
+        await page.evaluate(() => navigator.serviceWorker.ready);
+        // Give install (precache) and activate (purge) a moment to settle.
+        let names = [];
+        for (let attempt = 0; attempt < 40; attempt += 1) {
+          names = await page.evaluate(() => caches.keys());
+          if (names.includes("firepoint-shell-v5") && !names.includes("firepoint-shell-v4")) break;
+          await page.waitForTimeout(250);
+        }
+        check(!names.includes("firepoint-shell-v4"), `sw: old prototype cache survived the update: ${names.join(", ")}`);
+        check(names.includes("firepoint-shell-v5"), `sw: new shell cache missing: ${names.join(", ")}`);
+        const cachedHome = await page.evaluate(async () => (await (await caches.open("firepoint-shell-v5")).match("/"))?.text() ?? null);
+        check(cachedHome !== null && cachedHome.includes("ev-shell-static") && !cachedHome.includes("ev-escape-cta"), "sw: cached homepage is not the public shell");
+        await context.setOffline(true);
+        await page.goto(base + "/", { waitUntil: "domcontentloaded" });
+        const offlineHtml = await page.content();
+        check(!offlineHtml.includes("ev-escape-cta"), "sw: offline homepage shows the prototype");
+        check(offlineHtml.includes("ev-shell-static") || offlineHtml.includes("offline"), "sw: offline homepage is neither the public shell nor the offline page");
+        await context.setOffline(false);
+        console.log(`sw: migration OK — caches now ${names.join(", ")}; offline "/" serves ${offlineHtml.includes("ev-shell-static") ? "the public shell" : "the offline page"}`);
+      }
+    } finally { await context.close(); }
+  }
 } finally { await browser.close(); }
 
 if (failures.length) {
