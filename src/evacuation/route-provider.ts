@@ -64,6 +64,8 @@ export type MapboxDirectionsOptions = {
   profile?: "driving-traffic" | "driving";
   fetcher?: typeof fetch;
   timeoutMs?: number;
+  /** Language for turn-by-turn step text (a Mapbox-supported code). */
+  language?: string;
 };
 
 const lngLat = (point: LatLng) => `${point.lng.toFixed(6)},${point.lat.toFixed(6)}`;
@@ -77,6 +79,7 @@ export function createMapboxDirectionsProvider({
   profile = "driving-traffic",
   fetcher = (input, init) => fetch(input, init),
   timeoutMs = 10_000,
+  language = "en",
 }: MapboxDirectionsOptions = {}): GetRoute {
   return async (from, to, { signal } = {}) => {
     if (!token) throw new RouteUnavailableError("Mapbox token is not configured", "not-configured");
@@ -87,7 +90,7 @@ export function createMapboxDirectionsProvider({
       geometries: "geojson",
       overview: "full",
       steps: "true",
-      language: "en",
+      language,
     });
     let response: Response;
     try {
@@ -105,3 +108,12 @@ const activeProvider: GetRoute = createMapboxDirectionsProvider();
 
 /** The one routing entry point used by the app. */
 export const getRoute: GetRoute = (from, to, options) => activeProvider(from, to, options);
+
+const localized = new Map<string, GetRoute>();
+/** Routing with step text in another language; English uses the shared `getRoute`. */
+export function getRouteIn(language: string): GetRoute {
+  if (language === "en") return getRoute;
+  let provider = localized.get(language);
+  if (!provider) localized.set(language, provider = createMapboxDirectionsProvider({ language }));
+  return provider;
+}
