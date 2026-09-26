@@ -17,6 +17,8 @@ export type PlannerState<O extends LatLng = LatLng> = {
   plan: RoutePlan<O> | null;
   /** A recompute is scheduled or in flight; the previous plan stays visible meanwhile. */
   pending: boolean;
+  /** The user asked for the escape leg; until then it is never computed. */
+  escapeRequested: boolean;
 };
 
 type PlanInput = {
@@ -26,23 +28,33 @@ type PlanInput = {
   zones: readonly SafeZone[];
   getRoute: GetRoute;
   offline: boolean;
+  /** Skip the escape leg entirely (no network call) until the user asks for it. */
+  escapeRequested: boolean;
   signal?: AbortSignal;
 };
 
-/** Both routes at once. Offline, skip the provider and return straight-line targets. */
-export async function planRoutes({ origin, hazards, shelters, zones, getRoute, offline, signal }: PlanInput) {
+/**
+ * Both routes at once. Offline, skip the provider and return straight-line targets. The escape
+ * leg is only computed when `escapeRequested`; the shelter leg is always automatic.
+ */
+export async function planRoutes(
+  { origin, hazards, shelters, zones, getRoute, offline, escapeRequested, signal }: PlanInput,
+) {
   if (offline) {
     const nearest = rankShelters(origin, shelters, hazards)[0]?.shelter;
-    const zone = pickEscapePoint(origin, zones, hazards);
     const shelter: ShelterPick = nearest
       ? { kind: "routing-unavailable", shelter: nearest, reason: "offline" }
       : { kind: "no-shelter" };
+    if (!escapeRequested) return { shelter, escape: { kind: "not-requested" } as EscapePick };
+    const zone = pickEscapePoint(origin, zones, hazards);
     const escape: EscapePick = zone ? { kind: "routing-unavailable", zone, reason: "offline" } : { kind: "no-zone" };
     return { shelter, escape };
   }
   const [shelter, escape] = await Promise.all([
     pickShelter(origin, shelters, hazards, getRoute, { signal }),
-    pickEscapeRoute(origin, zones, hazards, getRoute, { signal }),
+    escapeRequested
+      ? pickEscapeRoute(origin, zones, hazards, getRoute, { signal })
+      : Promise.resolve<EscapePick>({ kind: "not-requested" }),
   ]);
   return { shelter, escape };
 }
@@ -75,10 +87,11 @@ export type RoutePlannerOptions = {
  * straight-line guidance.
  */
 export class RoutePlanner<O extends LatLng = LatLng> {
-  private state: PlannerState<O> = { plan: null, pending: false };
+  private state: PlannerState<O> = { plan: null, pending: false, escapeRequested: false };
   private readonly listeners = new Set<() => void>();
   private origin: O | null = null;
   private hazards: readonly Hazard[] = [];
+  private escapeRequested = false;
   private lastRun: { origin: LatLng; hazardsKey: string; at: number } | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private timerDueAt = 0;
@@ -121,6 +134,22 @@ export class RoutePlanner<O extends LatLng = LatLng> {
     if (this.origin) this.schedule(0);
   }
 
+  /** Ask for the escape leg: computes now if a start location exists, and stays current after. */
+  requestEscape(): void {
+    if (this.escapeRequested) return;
+    this.escapeRequested = true;
+    this.set({ ...this.state, escapeRequested: true });
+    if (this.origin) this.schedule(0);
+  }
+
+  /** Stop computing/showing the escape leg; it disappears immediately, without waiting on a run. */
+  clearEscape(): void {
+    if (!this.escapeRequested) return;
+    this.escapeRequested = false;
+    const plan = this.state.plan && { ...this.state.plan, escape: { kind: "not-requested" } as EscapePick };
+    this.set({ ...this.state, plan, escapeRequested: false });
+  }
+
   /** Cancel pending work (unmount). A later `update()` starts fresh. */
   stop(): void {
     if (this.timer !== null) clearTimeout(this.timer);
@@ -152,8 +181,11 @@ export class RoutePlanner<O extends LatLng = LatLng> {
     const hazards = this.hazards;
     const key = hazardsKey(hazards);
     const offline = !this.isOnline();
+    const escapeRequested = this.escapeRequested;
     this.lastRun = { origin, hazardsKey: key, at: this.now() };
-    if (offline && this.state.plan?.hazardsKey === key) {
+    // A fresh escape request needs its own run even when hazards haven't changed since the last one.
+    const escapeSatisfied = !escapeRequested || this.state.plan?.escape.kind !== "not-requested";
+    if (offline && this.state.plan?.hazardsKey === key && escapeSatisfied) {
       this.set({ ...this.state, pending: false });
       return;
     }
@@ -164,9 +196,15 @@ export class RoutePlanner<O extends LatLng = LatLng> {
     this.set({ ...this.state, pending: true });
     try {
       const { shelters, zones, getRoute } = this.options;
-      const result = await planRoutes({ origin, hazards, shelters, zones, getRoute, offline, signal: controller.signal });
+      const result = await planRoutes({ origin, hazards, shelters, zones, getRoute, offline, escapeRequested, signal: controller.signal });
       if (id !== this.runId) return;
-      this.set({ plan: { origin, hazardsKey: key, ...result, computedAt: this.now() }, pending: this.timer !== null });
+      // A clear during the request wins over a route that already came back.
+      const escape = this.escapeRequested ? result.escape : ({ kind: "not-requested" } as EscapePick);
+      this.set({
+        ...this.state,
+        plan: { origin, hazardsKey: key, shelter: result.shelter, escape, computedAt: this.now() },
+        pending: this.timer !== null,
+      });
     } catch {
       if (id !== this.runId) return;
       // Only an abort reaches here; routing failures are returned as plan states.
