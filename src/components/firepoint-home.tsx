@@ -22,8 +22,8 @@ const LINKS = [
     index: "01",
     label: "Glendale Alerts",
     purpose: "Sign up to receive city emergency messages.",
-    url: "https://public.alertsense.com/SignUp/Default.aspx?regionid=1916",
-    domain: "AlertSense · city enrollment",
+    url: "https://www.glendaleca.gov/government/departments/fire-department/other/emergency-preparedness-response/city-wide-emergency-communications",
+    domain: "City of Glendale · official page",
   },
   {
     index: "02",
@@ -49,7 +49,7 @@ function loadChecks(): TaskId[] {
   } catch { return []; }
 }
 
-export function FirepointHome() {
+export function FirepointHome({ demoLiveSources = false }: { demoLiveSources?: boolean } = {}) {
   const [checks, setChecks] = useState<TaskId[]>([]);
   const [area, setArea] = useState(false);
   const [ready, setReady] = useState(false);
@@ -132,7 +132,10 @@ export function FirepointHome() {
                 <p className="status-caption">For current decisions, follow emergency officials and their published instructions.</p>
               </div>
             </div>
-            <LiveSources />
+            {demoLiveSources ? <LiveSources /> : <section className="live-panel" aria-label="Live source checks paused">
+              <h3>Live source checks are paused</h3>
+              <p>Firepoint has not completed source-rights, caching, rate-limit and monitoring checks. No live feed was checked here. Use the official agency links below for current information.</p>
+            </section>}
           </section>
 
           <section id="official" className="official-section" aria-labelledby="official-heading">

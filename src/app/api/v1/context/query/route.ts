@@ -3,6 +3,7 @@ import { fetchAirNowObservations, type AirNowResult } from "@/server/airnow";
 import { fetchCalFireIncidents } from "@/server/calfire";
 import { fetchNifcPerimeters } from "@/server/nifc";
 import { PRIVATE_HEADERS as PRIVATE, readPlaceQuery } from "@/server/place-query";
+import { demoLiveSourcesEnabled, pausedSourceResponse } from "@/server/live-query-gate";
 
 export const runtime = "nodejs";
 
@@ -17,6 +18,7 @@ const RADIUS_KM = 80;
 export async function POST(request: Request): Promise<Response> {
   const input = await readPlaceQuery(request);
   if ("error" in input) return input.error;
+  if (!demoLiveSourcesEnabled()) return pausedSourceResponse(PRIVATE);
   const { point } = input.query;
   const generatedAt = new Date().toISOString();
   const apiKey = process.env.AIRNOW_API_KEY?.trim();
