@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from "react";
 import type { FireMark } from "@/domain/fire-marks";
 import { GLENDALE_CITY_HALL } from "@/evacuation/data/glendale";
 import type { LocationFix } from "@/evacuation/location";
-import { markLabel } from "@/evacuation/marks";
 import type { RoutePlan } from "@/evacuation/route-planner";
 import {
   DESTINATION_HAZARD_BUFFER_METERS, destinationPoint, escapeHeading, isShelterAvailable, pointInHazard,
@@ -14,6 +13,7 @@ import {
 import type { Hazard, LatLng, SafeZone, Shelter } from "@/evacuation/types";
 import { MAPBOX_STYLES, MAPBOX_TOKEN } from "@/lib/mapbox";
 import { createPin, removePin, type PinHandlers, type PinView } from "./fire-pins";
+import { useMapText } from "./map-text";
 
 /** What the screen needs from the map (dropping a fire mark), kept independent of the map library. */
 export type MapHandle = {
@@ -75,7 +75,7 @@ function pinElement(className: string, glyph: string, label: string): HTMLButton
   return element;
 }
 
-function addLayers(map: MapboxMap): void {
+function addLayers(map: MapboxMap, simulatedLabel: string): void {
   for (const id of ["hazards", "accuracy", "routes"]) map.addSource(id, { type: "geojson", data: EMPTY });
   // A person's own fire marks are shaded lighter than hazards from the feed.
   map.addLayer({ id: "hazards-fill", type: "fill", source: "hazards", paint: { "fill-color": "#ef4444", "fill-opacity": ["case", ["get", "mark"], 0.16, 0.28] } });
@@ -109,7 +109,7 @@ function addLayers(map: MapboxMap): void {
   // Drawn last, over the routes. A plain label instead of a popup, so the demo fire is never mistaken for a real one.
   map.addLayer({
     id: "hazards-label", type: "symbol", source: "hazards", filter: ["all", ["get", "simulated"], ["!", ["get", "mark"]]],
-    layout: { "text-field": "Simulated fire", "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"], "text-size": 13 },
+    layout: { "text-field": simulatedLabel, "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"], "text-size": 13 },
     paint: { "text-color": COLORS.hazard, "text-halo-color": "#ffffff", "text-halo-width": 1.5 },
   });
 }
@@ -124,8 +124,9 @@ function planTargets(plan: RoutePlan | null): { shelter: Shelter | null; zone: S
 }
 
 export function EvacuationMap(props: EvacuationMapProps) {
+  const t = useMapText();
   if (!MAPBOX_TOKEN) {
-    return <MapNotice text="Map unavailable: no Mapbox token is configured. Routes below still work as straight-line directions." />;
+    return <MapNotice text={t.noMapToken} />;
   }
   return <MapboxView {...props} />;
 }
@@ -137,6 +138,9 @@ function MapNotice({ text }: { text: string }) {
 function MapboxView({
   dark, origin, hazards, shelters, zones, plan, centerKey, fitKey, marks, onReady, onMoveMark, onRemoveMark,
 }: EvacuationMapProps) {
+  const t = useMapText();
+  // Read by the one-time map setup below; the language only changes with a page reload.
+  const textRef = useRef(t);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
   const pinsRef = useRef(new Map<string, PinView>());
@@ -175,7 +179,7 @@ function MapboxView({
     // A new style drops our sources and layers, so they are rebuilt (and refilled by the effects) after each one.
     map.on("style.load", () => {
       everLoaded = true;
-      addLayers(map);
+      addLayers(map, textRef.current.simulatedFire);
       setLoaded((count) => count + 1);
     });
     map.on("error", () => { if (!everLoaded) setFailed(true); });
@@ -229,13 +233,13 @@ function MapboxView({
       if (!live.has(id)) { removePin(view); views.delete(id); }
     });
     marks.forEach((mark, index) => {
-      const view = views.get(mark.id) ?? createPin(mark.id, map, pinHandlers);
+      const view = views.get(mark.id) ?? createPin(mark.id, map, pinHandlers, { note: t.pinPrivate, remove: t.removeMark });
       views.set(mark.id, view);
       view.marker.setLngLat([mark.lng, mark.lat]);
-      view.title.textContent = markLabel(index);
-      view.pin.setAttribute("aria-label", `${markLabel(index)}. Drag to move, press Enter for options.`);
+      view.title.textContent = t.fireMark(index + 1);
+      view.pin.setAttribute("aria-label", t.pinLabel(t.fireMark(index + 1)));
     });
-  }, [marks]);
+  }, [marks, t]);
 
   const targets = planTargets(plan);
   const shelterTargetId = targets.shelter?.id ?? null;
@@ -254,27 +258,27 @@ function MapboxView({
         const nearHazard = hazards.some((hazard) => pointInHazard(shelter, hazard, DESTINATION_HAZARD_BUFFER_METERS));
         const element = pinElement(
           `${open ? "ev-pin-open" : "ev-pin-closed"}${shelter.id === shelterTargetId ? " ev-pin-chosen" : ""}`,
-          "⌂", `Shelter: ${shelter.name} (${open ? "open" : shelter.status})`,
+          "⌂", t.shelterPin(shelter.name, t.shelterStatus[open ? "open" : shelter.status]),
         );
         element.addEventListener("click", (event) => {
           event.stopPropagation();
-          show(shelter, [shelter.name, shelter.address, `Status: ${shelter.status}${shelter.verified ? "" : " (unverified)"}`,
-            nearHazard ? "Within 1 km of a hazard: not used for routing." : ""]);
+          show(shelter, [shelter.name, shelter.address, t.shelterStatusLine(t.shelterStatus[shelter.status], shelter.verified),
+            nearHazard ? t.shelterNearHazard : ""]);
         });
         return new Marker({ element, anchor: "bottom" }).setLngLat(toLngLat(shelter));
       }),
       ...zones.map((zone) => {
-        const element = pinElement(`ev-pin-zone${zone.id === zoneTargetId ? " ev-pin-chosen" : ""}`, "➜", `Evacuation point: ${zone.name}`);
+        const element = pinElement(`ev-pin-zone${zone.id === zoneTargetId ? " ev-pin-chosen" : ""}`, "➜", t.zonePin(zone.name));
         element.addEventListener("click", (event) => {
           event.stopPropagation();
-          show(zone, [zone.name, zone.description, "General evacuation point, not a shelter."]);
+          show(zone, [zone.name, zone.description, t.zoneNote]);
         });
         return new Marker({ element, anchor: "bottom" }).setLngLat(toLngLat(zone));
       }),
     ];
     markers.forEach((marker) => marker.addTo(map));
     return () => markers.forEach((marker) => marker.remove());
-  }, [shelters, zones, hazards, shelterTargetId, zoneTargetId, loaded]);
+  }, [shelters, zones, hazards, shelterTargetId, zoneTargetId, loaded, t]);
 
   useEffect(() => {
     const source = mapRef.current?.getSource<GeoJSONSource>("routes");
@@ -317,9 +321,9 @@ function MapboxView({
       element.setAttribute("role", "img");
       youRef.current = new Marker({ element, anchor: "center" }).setLngLat(toLngLat(origin)).addTo(map);
     }
-    youRef.current.getElement().setAttribute("aria-label", gps ? "Your location" : `Routes start here: ${origin.label ?? "chosen location"}`);
+    youRef.current.getElement().setAttribute("aria-label", gps ? t.yourLocation : t.routesStartHere(origin.label ?? t.chosenLocation));
     youRef.current.setLngLat(toLngLat(origin));
-  }, [origin, loaded]);
+  }, [origin, loaded, t]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -349,9 +353,9 @@ function MapboxView({
         ref={containerRef}
         className="ev-map"
         role="region"
-        aria-label="Map of your location, routes, hazards, and shelters. The same information is listed below the map."
+        aria-label={t.mapLabel}
       />
-      {failed && <MapNotice text="The map couldn’t load. Check your connection; routes below still work." />}
+      {failed && <MapNotice text={t.mapFailed} />}
     </>
   );
 }
