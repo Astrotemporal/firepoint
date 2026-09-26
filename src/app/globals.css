@@ -108,6 +108,26 @@ h2 { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(39px, 4.1v
 .status-icon { width: 20px; height: 20px; line-height: 18px; text-align: center; border: 1px solid #ab5335; color: #ab5335; border-radius: 50%; font-size: 13px; font-weight: bold; }
 .status-tag { white-space: nowrap; font-size: 10px; font-weight: 800; letter-spacing: .06em; background: #f4e4d8; color: #86452b; padding: 8px; }
 .status-caption { font-size: 13px; line-height: 1.5; color: var(--muted); margin-top: 14px; }
+.live-panel { padding: 48px 0 72px; border-bottom: 1px solid var(--line); }
+.live-head h3 { margin: 0; font-size: 26px; letter-spacing: -.6px; }
+.live-head p { margin-top: 12px; max-width: 640px; font-size: 15px; line-height: 1.6; color: var(--muted); }
+.live-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 28px; }
+.live-actions .area-button { margin-top: 0; }
+.live-secondary { min-height: 49px; padding: 0 17px; background: transparent; color: var(--ink); border: 1px solid var(--ink); font-weight: 700; font-size: 13px; }
+.live-secondary:hover { background: var(--white); }
+.live-secondary:disabled { opacity: .6; cursor: not-allowed; }
+.live-note { margin-top: 24px; font-size: 14px; line-height: 1.6; }
+.live-results ul { list-style: none; margin: 0; padding: 0; }
+.live-sources { margin-top: 18px; border-top: 1px solid var(--ink); }
+.live-source { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding: 10px 0; }
+.live-source strong,.live-item strong { display: block; font-size: 15px; }
+.live-source small,.live-item small { display: block; margin-top: 4px; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.status-ok { background: var(--lime); color: var(--ink); }
+.live-group { margin-top: 34px; }
+.live-group h4 { margin: 0 0 8px; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.live-item { padding: 14px 0; border-bottom: 1px solid var(--line); }
+.live-item a { font-weight: 700; color: var(--ink); text-underline-offset: 3px; }
+.live-caveat { margin-top: 12px; font-size: 13px; line-height: 1.5; color: var(--muted); max-width: 720px; }
 .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 35px; margin: 25px 0 38px; }
 .section-heading h2 { flex: 1; }
 .section-heading h2 em,.prepare-aside h2 em { color: #66816a; }

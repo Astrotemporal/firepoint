@@ -13,6 +13,14 @@ describe("Firepoint home safety states", () => {
     expect(html).toContain("Approximate neighborhood name only");
   });
 
+  it("offers live source checks only on request, and says what they do not cover", () => {
+    const html = renderToStaticMarkup(<FirepointHome />);
+    expect(html).toContain("Check central Glendale");
+    expect(html).toContain("Use my location once");
+    expect(html).toContain("does not check evacuation orders");
+    expect(html).not.toContain("status-ok");
+  });
+
   it("sends people to named official providers, not guessed internal feeds", () => {
     const html = renderToStaticMarkup(<FirepointHome />);
     expect(html).toContain("public.alertsense.com/SignUp/Default.aspx?regionid=1916");
