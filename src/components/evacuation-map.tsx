@@ -87,13 +87,10 @@ function addLayers(map: MapboxMap, theme: MapTheme): void {
   const sketch = privateMarkPaint(theme);
   map.addLayer({ id: "private-mark-halos-fill", type: "fill", source: "private-mark-halos",
     paint: { "fill-color": sketch.fill, "fill-opacity": PRIVATE_MARK_STYLE.fillOpacity } });
-  // Same dash rhythm and radius label as the /prepare defensible-space figure; a different unit and meaning.
+  // Same dash rhythm as the /prepare defensible-space figure; a different unit and meaning. No on-canvas text:
+  // a map label cannot carry lang="en" in ES/HY, so the lang="en" legend and popup explain the ring instead.
   map.addLayer({ id: "private-mark-halos-outline", type: "line", source: "private-mark-halos",
     paint: { "line-color": sketch.stroke, "line-opacity": PRIVATE_MARK_STYLE.strokeOpacity, "line-width": 2, "line-dasharray": [...RING_DASH] } });
-  map.addLayer({ id: "private-mark-halos-label", type: "symbol", source: "private-mark-halos",
-    layout: { "symbol-placement": "line", "text-field": ["get", "label"], "text-size": 11, "text-letter-spacing": 0.05,
-      "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"], "text-rotation-alignment": "map", "text-pitch-alignment": "viewport" },
-    paint: { "text-color": sketch.stroke, "text-opacity": 0.9, "text-halo-color": sketch.labelHalo, "text-halo-width": 1.2 } });
   map.addLayer({ id: "accuracy-fill", type: "fill", source: "accuracy", paint: { "fill-color": COLORS.you, "fill-opacity": 0.12 } });
   map.addLayer({ id: "accuracy-line", type: "line", source: "accuracy", paint: { "line-color": COLORS.you, "line-opacity": 0.4, "line-width": 1 } });
   const lineLayout = { "line-join": "round", "line-cap": "round" } as const;
@@ -233,7 +230,7 @@ function MapboxView({
     if (!loaded || !source) return;
     // Each halo is its own single ring; `ringStack` only supplies the shared dash/label convention.
     source.setData({ type: "FeatureCollection", features: ringStack(privateMarkHalos(marks)).map((edge) =>
-      circle(edge.ring.center, edge.radius, { kind: edge.ring.kind, id: edge.ring.id, label: edge.label, dashed: edge.dashed })) });
+      circle(edge.ring.center, edge.radius, { kind: edge.ring.kind, id: edge.ring.id, dashed: edge.dashed })) });
   }, [marks, loaded]);
 
   // Mapbox markers live outside React, so sync them with the stored marks by id.

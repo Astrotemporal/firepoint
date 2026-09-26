@@ -40,6 +40,13 @@ describe("private mark visual policy: neutral grey, independent of counts", () =
     expect(css).not.toMatch(/\.ring-legend[^\n]*#(b91c1c|f87171|ef4444)/);
   });
 
+  it("draws no on-canvas text for private halos: the lang=\"en\" legend and popup carry the words", () => {
+    const map = readFileSync(new URL("../components/evacuation-map.tsx", import.meta.url), "utf8");
+    expect(map).not.toContain("private-mark-halos-label");
+    expect(map).not.toContain('"text-field"');
+    expect(privateMarkPaint("light")).not.toHaveProperty("labelHalo");
+  });
+
   it("renders one identical grey legend whether one or many marks exist: no colour step, no aggregate UI", () => {
     const props = { ready: true, hint: null, map: { current: null }, onPlace: () => {}, onHint: () => {}, onClear: () => {} };
     const legend = (count: number) => renderToStaticMarkup(<FirePanel {...props} count={count} />).match(/<p class="ring-legend"[\s\S]*?<\/p>/)?.[0];
