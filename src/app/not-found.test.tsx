@@ -15,6 +15,8 @@ const text = html.replace(/<[^>]+>/g, " ").replace(/&#x27;|&#39;/g, "'").replace
 describe("404 page", () => {
   it("says the address is off the map and names the status code", () => {
     expect(html).toMatch(/<main[^>]*class="not-found/);
+    // English-only page: marked so a Spanish or Armenian document language doesn't mislabel it.
+    expect(html).toMatch(/<main lang="en"/);
     expect(text).toContain("404");
     expect(text).toMatch(/Off the\s+map\./i);
   });

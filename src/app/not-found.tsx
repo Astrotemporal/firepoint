@@ -19,7 +19,7 @@ const ROUTE = "M 40 300 C 110 240, 150 350, 210 280 S 300 170, 340 220 S 400 300
 
 export default function NotFound() {
   return (
-    <main className={`not-found ${sans.variable} ${serif.variable}`}>
+    <main lang="en" className={`not-found ${sans.variable} ${serif.variable}`}>
       <div className="nf-inner">
         <section className="nf-copy">
           <p className="nf-kicker"><span className="nf-kicker-line" />404 · Route not found</p>

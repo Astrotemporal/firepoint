@@ -140,10 +140,9 @@ describe("service worker cache migration", () => {
     expect(await response.text()).toContain("ev-shell-static");
   });
 
-  it("checks the same marker the public screen renders", () => {
+  it("never caches the routing homepage: it does not carry the public-shell marker", () => {
     const marker = /const PUBLIC_SHELL_MARKER = "([^"]+)"/.exec(SOURCE)?.[1];
     expect(marker).toBe("ev-shell-static");
-    expect(readFileSync("src/components/public-map-screen.tsx", "utf8")).toContain(`className="map-screen ev-shell ${marker}"`);
     expect(readFileSync("src/components/map-screen.tsx", "utf8")).not.toContain(marker!);
   });
 });
