@@ -27,20 +27,22 @@ function render(overrides: Partial<RouteBarProps> = {}) {
   return renderToStaticMarkup(
     <RouteBar
       location={{ status: "tracking", fix: gps }} origin={gps} outsideAreaMeters={null} hazards={SYNTHETIC_HAZARDS}
-      threat={null} escapeFirst={false} plan={plan} pending={false} online appleMaps={false} escapeRequested
+      threat={null} escapeFirst={false} plan={plan} pending={false} online escapeRequested
       onUseLocation={noop} onManualLocation={noop} onRetryRoutes={noop}
-      onRequestEscape={noop} onClearEscape={noop}
+      onRequestEscape={noop} onClearEscape={noop} onGo={noop}
       {...overrides}
     />,
   );
 }
 
 describe("RouteBar", () => {
-  it("shows both routes compactly with distance, time, a Go link, and (collapsed) steps", () => {
+  it("shows both routes compactly with distance, time, an in-app Go button, and (collapsed) steps", () => {
     const html = render();
     expect(html).toContain('<span class="ev-row-summary">Pacific Community Center</span><span class="ev-row-sub"><strong>4 min</strong> · 1.5 mi</span>');
     expect(html).toMatch(/toward Burbank via SR-134<\/span><span class="ev-row-sub"><strong>9 min<\/strong> · 1.5 mi/);
-    expect(html).toContain("https://www.google.com/maps/dir/?api=1&amp;destination=34.139830,-118.264780&amp;travelmode=driving");
+    // Go starts navigation in the app: a button, never a link out to Apple or Google Maps.
+    expect(html).toContain('<button type="button" class="ev-go ev-go-shelter">Go<span class="ev-sr-only">: start directions to Pacific Community Center</span></button>');
+    expect(html).not.toMatch(/maps\.apple\.com|google\.com\/maps/);
     expect(html).toContain("Turn left onto North Isabel Street.");
     expect(html).toMatch(/aria-expanded="false"/);
     expect(html).toContain("Location approximate");

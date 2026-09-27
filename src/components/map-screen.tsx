@@ -2,10 +2,9 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { MARKS_KEY, MAX_MARKS, addMark, createMark, moveMark, parseMarks, type FireMark } from "@/domain/fire-marks";
 import { GLENDALE_CITY_HALL, SAFE_ZONES, SERVICE_RADIUS_METERS, SHELTERS } from "@/evacuation/data/glendale";
-import { isAppleMobile } from "@/evacuation/format";
 import { getActiveHazards, subscribeToHazards } from "@/evacuation/hazards";
 import { DEFAULT_FIX, LocationTracker, type LocationFix } from "@/evacuation/location";
 import { selectRoutingHazards } from "@/evacuation/marks";
@@ -16,6 +15,10 @@ import { registerServiceWorker } from "@/lib/service-worker";
 import type { MapHandle } from "./evacuation-map";
 import { FirePanel } from "./fire-panel";
 import { RouteBar } from "./route-bar";
+import { NavigationPanel } from "./navigation-panel";
+import { Navigator, type NavKind, type NavTarget } from "@/evacuation/navigation";
+import type { MapNavigation } from "./evacuation-map";
+import type { Route } from "@/evacuation/types";
 import { applyTheme, currentTheme, subscribeTheme, type Theme } from "./theme";
 import { MoonIcon, SunIcon } from "./theme-icons";
 import { LanguageSelect } from "./language-select";
@@ -32,7 +35,6 @@ const EvacuationMap = dynamic(() => import("./evacuation-map").then((mod) => mod
 /** Within this distance of a hazard's edge, the escape route is listed first. */
 const ESCAPE_PRIORITY_METERS = 3_000;
 
-const subscribeNever = () => () => {};
 function subscribeOnline(onChange: () => void) {
   window.addEventListener("online", onChange);
   window.addEventListener("offline", onChange);
@@ -45,6 +47,28 @@ function subscribeOnline(onChange: () => void) {
 /** Stable per start location: GPS movement keeps one identity; a new address or fallback is a new one. */
 const startIdentity = (fix: LocationFix) => (fix.source === "gps" ? "gps" : `${fix.source}:${fix.lat},${fix.lng}`);
 
+function useWakeLock(active: boolean) {
+  useEffect(() => {
+    if (!active || !("wakeLock" in navigator)) return;
+    let lock: WakeLockSentinel | null = null;
+    let cancelled = false;
+    const acquire = () => {
+      if (document.visibilityState !== "visible") return;
+      navigator.wakeLock.request("screen").then((sentinel) => {
+        if (cancelled) void sentinel.release();
+        else lock = sentinel;
+      }).catch(() => { /* Not allowed (battery saver, iframe): navigation still works. */ });
+    };
+    acquire();
+    document.addEventListener("visibilitychange", acquire);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", acquire);
+      void lock?.release();
+    };
+  }, [active]);
+}
+
 /** The homepage: fire marks and directions on one full-screen map, with the route bar underneath. */
 export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
   const t = mapText(locale);
@@ -52,11 +76,15 @@ export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
   const [planner] = useState(() => new RoutePlanner<LocationFix>({
     getRoute: getRouteIn(DIRECTIONS_LANGUAGE[locale]), shelters: SHELTERS, zones: SAFE_ZONES, isOnline: () => navigator.onLine,
   }));
+  const [navigator_] = useState(() => new Navigator({
+    getRoute: getRouteIn(DIRECTIONS_LANGUAGE[locale]), isOnline: () => navigator.onLine,
+  }));
   const location = useSyncExternalStore(tracker.subscribe, tracker.getSnapshot, tracker.getSnapshot);
+  const nav = useSyncExternalStore(navigator_.subscribe, navigator_.getSnapshot, navigator_.getSnapshot);
+  const navigating = nav.target !== null;
   const { plan, pending, escapeRequested } = useSyncExternalStore(planner.subscribe, planner.getSnapshot, planner.getSnapshot);
   const stubHazards = useSyncExternalStore(subscribeToHazards, getActiveHazards, getActiveHazards);
   const online = useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true);
-  const appleMaps = useSyncExternalStore(subscribeNever, () => isAppleMobile(navigator), () => false);
   // <html data-theme> is set before paint by the layout's theme script.
   const theme = useSyncExternalStore<Theme>(subscribeTheme, currentTheme, () => "light");
   const [locateCount, setLocateCount] = useState(0);
@@ -94,14 +122,45 @@ export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
   }, [tracker]);
   useEffect(() => () => planner.stop(), [planner]);
   useEffect(() => {
-    if (origin) planner.update(origin, hazards);
-  }, [planner, origin, hazards]);
+    if (origin && !navigating) planner.update(origin, hazards);
+  }, [planner, origin, hazards, navigating]);
+  useEffect(() => {
+    if (navigating && fix?.source === "gps") navigator_.update(fix, fix.accuracyMeters, hazards);
+  }, [navigator_, navigating, fix, hazards]);
+  useEffect(() => () => navigator_.stop(), [navigator_]);
+  useWakeLock(navigating);
   useEffect(() => {
     if (online) planner.refresh();
   }, [planner, online]);
   useEffect(registerServiceWorker, []);
 
   const onReady = useCallback((map: MapHandle | null) => { mapRef.current = map; }, []);
+
+  function startNavigation(kind: NavKind) {
+    const pick = kind === "escape" ? plan?.escape : plan?.shelter;
+    let target: NavTarget | null = null;
+    let route: Route | null = null;
+    if (pick && "zone" in pick) target = { kind, name: pick.zone.name, destination: { lat: pick.zone.lat, lng: pick.zone.lng } };
+    if (pick && "shelter" in pick) target = { kind, name: pick.shelter.name, destination: { lat: pick.shelter.lat, lng: pick.shelter.lng } };
+    if (!target) return;
+    if (pick?.kind === "route") route = pick.route;
+    navigator_.start(target, route);
+    // Guidance needs the device position: a typed address or City Hall fallback switches to GPS here.
+    if (fix?.source === "gps") navigator_.update(fix, fix.accuracyMeters, hazards);
+    else tracker.start();
+  }
+
+  const mapNavigation = useMemo<MapNavigation | null>(() => {
+    if (!nav.target) return null;
+    const center = nav.position && nav.progress && nav.progress.offRouteMeters < 30 ? nav.progress.snapped : nav.position;
+    return {
+      path: nav.route?.path ?? (nav.position ? [nav.position, nav.target.destination] : []),
+      // No road route: the dashed straight-line style, same as the drawer's offline guide lines.
+      kind: nav.route ? nav.target.kind : nav.target.kind === "escape" ? "escape-guide" : "shelter-guide",
+      center,
+      bearing: nav.route && nav.progress ? nav.progress.headingDegrees : 0,
+    };
+  }, [nav]);
 
   function save(next: FireMark[]) {
     setMarks(next);
@@ -133,15 +192,15 @@ export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
       <div className="ev-map-area">
         <EvacuationMap
           dark={theme === "dark"} origin={origin} hazards={hazards} shelters={SHELTERS} zones={SAFE_ZONES} plan={plan}
-          centerKey={centerKey} fitKey={fitKey} marks={marks} onReady={onReady}
+          centerKey={centerKey} fitKey={fitKey} marks={marks} onReady={onReady} navigation={mapNavigation}
           onMoveMark={(id, lat, lng) => save(moveMark(marks, id, lat, lng))}
           onRemoveMark={(id) => { save(marks.filter((mark) => mark.id !== id)); setHint(t.markRemoved); }}
         />
-        <FirePanel
+        {!navigating && <FirePanel
           ready={ready} count={marks.length} hint={hint} map={mapRef} onPlace={place} onHint={setHint}
           onClear={() => { save([]); setHint(t.marksCleared); }}
-        />
-        <div className="map-actions">
+        />}
+        {!navigating && <div className="map-actions">
           <LanguageSelect current={locale} label={LANGUAGE_LABEL[locale]} returnTo="/" className="map-lang-select" />
           <button type="button" className="theme-toggle" onClick={() => applyTheme(theme === "dark" ? "light" : "dark", true)}
             aria-label={theme === "dark" ? t.switchToLight : t.switchToDark} title={theme === "dark" ? t.lightMode : t.darkMode}>
@@ -151,8 +210,8 @@ export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
             <span className="brand-mark" aria-hidden="true"><span /></span>
             <span>{t.prepLink} <span aria-hidden="true">↗</span></span>
           </Link>
-        </div>
-        {origin && (
+        </div>}
+        {origin && !navigating && (
           <button type="button" className="ev-float-button ev-round ev-locate"
             onClick={() => (askLocation ? tracker.start() : setLocateCount((n) => n + 1))}
             aria-label={askLocation ? t.shareMyLocation : origin.source === "gps" ? t.centerOnMe : t.centerOnStart}>
@@ -161,7 +220,9 @@ export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
         )}
         {!canStore && <p className="map-storage-warning" role="status">{t.storageWarning}</p>}
       </div>
-      <RouteBar
+      {navigating ? (
+        <NavigationPanel state={nav} location={location} onEnd={() => navigator_.stop()} />
+      ) : <RouteBar
         location={location}
         origin={origin}
         outsideAreaMeters={outsideArea ? metersFromGlendale : null}
@@ -171,14 +232,14 @@ export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
         plan={plan}
         pending={pending}
         online={online}
-        appleMaps={appleMaps}
         escapeRequested={escapeRequested}
         onUseLocation={() => tracker.start()}
         onManualLocation={(place) => tracker.setManual(place, place.label)}
         onRetryRoutes={() => planner.refresh()}
         onRequestEscape={() => { if (!origin || askLocation) tracker.start(); planner.requestEscape(); }}
         onClearEscape={() => planner.clearEscape()}
-      />
+        onGo={startNavigation}
+      />}
     </main>
     </MapTextProvider>
   );
