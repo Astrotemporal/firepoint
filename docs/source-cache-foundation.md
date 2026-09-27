@@ -109,10 +109,21 @@ authorization to a caller; an authenticated operator/service policy must bind
 that scope before any route or worker can use the adapter.
 
 `db/tests/source-scope-integrity.sql` contains synthetic Postgres negative
-checks. Run it only in a disposable Postgres database after applying 0100 and
-0101 there; it rolls back its fixtures. Existing production rows must be
-audited before applying 0101, since its constraints intentionally reject
-incorrect legacy references. PostgreSQL integration and concurrent-transaction
-checks must run in CI before adapter development or any production migration.
+checks; it rolls back its fixtures. The GitHub Actions `source-sql-integrity`
+job applies 0100 and 0101 to a disposable Postgres service, runs that fixture,
+and checks a concurrent pair of successful fetches. It never contacts Neon.
+A snapshot generation must be the next numbered generation and must still
+point to the latest complete generation at **insert time**, not just at fetch
+start. A retraction can use only the latest later complete generation; historic
+rows and attempts cannot be deleted/reinserted to rewrite a snapshot.
+
+**0101 is not idempotent.** It is a one-time draft migration, not an app startup
+script. Its preflight aborts if any fetch attempt, generation, or record already
+exists, or if registry issuer labels are blank or padded. A database with such
+rows requires a separately reviewed audit/backfill migration; do not re-run
+0101 or work around the preflight. The synthetic CI test is not a production
+migration approval. A future adapter still needs read/write Zod validation,
+authorization, concurrency tests against its actual transactions, and rights
+review before any shared database rollout.
 No publisher feed, Neon connection, polling, UI, or community-report table is
 involved. **This is not a durable source-cache implementation.**

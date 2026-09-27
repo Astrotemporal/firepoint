@@ -2,6 +2,21 @@
 -- Applied after 0100_source_snapshots.sql; no community tables are referenced.
 BEGIN;
 
+-- This proposal cannot safely reinterpret legacy rows. A deployment with any
+-- previous source attempts/generations/records needs a separate audited backfill.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM source_fetch_attempt) OR
+     EXISTS (SELECT 1 FROM source_generation) OR
+     EXISTS (SELECT 1 FROM source_record) THEN
+    RAISE EXCEPTION '0101 requires empty source attempt/generation/record tables; audit legacy rows first';
+  END IF;
+  IF EXISTS (SELECT 1 FROM source_registry WHERE issuer = '' OR issuer <> btrim(issuer)) THEN
+    RAISE EXCEPTION '0101 requires exact, nonblank source issuer labels';
+  END IF;
+END;
+$$;
+
 -- An issuer label is an authority boundary, not an editable display field.
 CREATE OR REPLACE FUNCTION source_registry_issuer_immutable()
 RETURNS trigger LANGUAGE plpgsql AS $$
@@ -19,6 +34,8 @@ CREATE TRIGGER source_registry_issuer_scope_immutable
 
 ALTER TABLE source_registry ADD CONSTRAINT source_registry_issuer_scope_key
   UNIQUE (id, tenant_id, jurisdiction_id, issuer);
+ALTER TABLE source_generation ADD CONSTRAINT source_generation_one_fetch_key
+  UNIQUE (fetch_attempt_id);
 ALTER TABLE source_generation ADD CONSTRAINT source_generation_complete_scope_key
   UNIQUE (id, source_registry_id, tenant_id, jurisdiction_id, complete_snapshot);
 ALTER TABLE source_generation ADD CONSTRAINT source_generation_issuer_scope_key
@@ -107,6 +124,8 @@ DECLARE
   attempt_row source_fetch_attempt%ROWTYPE;
   registry source_registry%ROWTYPE;
   previous_generation source_generation%ROWTYPE;
+  latest_complete_id uuid;
+  latest_number integer;
 BEGIN
   SELECT * INTO registry FROM source_registry WHERE id = NEW.source_registry_id
     AND tenant_id = NEW.tenant_id AND jurisdiction_id = NEW.jurisdiction_id FOR UPDATE;
@@ -123,6 +142,20 @@ BEGIN
      (attempt_row.status = 'succeeded-empty' AND NEW.record_count <> 0) OR
      (attempt_row.status = 'succeeded-non-empty' AND NEW.record_count = 0) THEN
     RAISE EXCEPTION 'generation does not match a successful fetch';
+  END IF;
+  -- The source registry row lock serializes overlapping successful attempts.
+  -- A fetch started before a competing complete generation must retry, never
+  -- fork stale last-good lineage or claim an older generation number.
+  SELECT id INTO latest_complete_id FROM source_generation
+    WHERE source_registry_id = NEW.source_registry_id AND tenant_id = NEW.tenant_id
+      AND jurisdiction_id = NEW.jurisdiction_id AND complete_snapshot = true
+    ORDER BY generation_number DESC LIMIT 1;
+  SELECT max(generation_number) INTO latest_number FROM source_generation
+    WHERE source_registry_id = NEW.source_registry_id AND tenant_id = NEW.tenant_id
+      AND jurisdiction_id = NEW.jurisdiction_id;
+  IF attempt_row.last_good_generation_id IS DISTINCT FROM latest_complete_id OR
+     NEW.generation_number <> coalesce(latest_number, 0) + 1 THEN
+    RAISE EXCEPTION 'stale or forked source generation';
   END IF;
   IF NEW.previous_complete_generation_id IS DISTINCT FROM attempt_row.last_good_generation_id THEN
     RAISE EXCEPTION 'previous complete generation differs from fetch last-good';
@@ -145,7 +178,31 @@ CREATE TRIGGER source_generation_guard_trigger BEFORE INSERT ON source_generatio
 -- A row cannot be marked missing when the retracting complete snapshot contains it.
 CREATE OR REPLACE FUNCTION source_record_retraction_absence_guard()
 RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE
+  latest_complete_id uuid;
+  retracting_number integer;
+  record_number integer;
 BEGIN
+  IF NEW.retracted_by_generation_id IS NOT NULL THEN
+    -- Same lock used by generation insertion: no retroactive retraction if
+    -- another complete generation was committed while this request waited.
+    PERFORM 1 FROM source_registry WHERE id = NEW.source_registry_id
+      AND tenant_id = NEW.tenant_id AND jurisdiction_id = NEW.jurisdiction_id FOR UPDATE;
+    SELECT id INTO latest_complete_id FROM source_generation
+      WHERE source_registry_id = NEW.source_registry_id AND tenant_id = NEW.tenant_id
+        AND jurisdiction_id = NEW.jurisdiction_id AND complete_snapshot = true
+      ORDER BY generation_number DESC LIMIT 1;
+    SELECT generation_number INTO retracting_number FROM source_generation
+      WHERE id = NEW.retracted_by_generation_id AND source_registry_id = NEW.source_registry_id
+        AND tenant_id = NEW.tenant_id AND jurisdiction_id = NEW.jurisdiction_id AND complete_snapshot = true;
+    SELECT generation_number INTO record_number FROM source_generation
+      WHERE id = NEW.generation_id AND source_registry_id = NEW.source_registry_id
+        AND tenant_id = NEW.tenant_id AND jurisdiction_id = NEW.jurisdiction_id;
+    IF NEW.retracted_by_generation_id IS DISTINCT FROM latest_complete_id OR
+       retracting_number IS NULL OR record_number IS NULL OR retracting_number <= record_number THEN
+      RAISE EXCEPTION 'retraction requires latest later complete source generation';
+    END IF;
+  END IF;
   -- Serialize record insertion and retraction against the same complete
   -- generation; otherwise two concurrent transactions could both see absence.
   PERFORM 1 FROM source_generation
@@ -232,7 +289,9 @@ BEGIN
      NEW.provenance_expires_at IS DISTINCT FROM parent.expires_at OR
      NEW.provenance_complete_snapshot IS DISTINCT FROM parent.complete_snapshot OR
      NEW.provenance_last_good_generation_id IS DISTINCT FROM parent.previous_complete_generation_id OR
-     NEW.provenance_fetch_failure_kind IS NOT NULL THEN
+     NEW.provenance_fetch_failure_kind IS NOT NULL OR
+     NEW.provenance_fetch_failure_message IS NOT NULL OR
+     NEW.provenance_fetch_failure_retryable IS NOT NULL THEN
     RAISE EXCEPTION 'source record provenance differs from generation';
   END IF;
   RETURN NEW;
@@ -270,5 +329,20 @@ CREATE CONSTRAINT TRIGGER source_generation_count_guard_trigger
 CREATE CONSTRAINT TRIGGER source_record_count_guard_trigger
   AFTER INSERT OR DELETE ON source_record DEFERRABLE INITIALLY DEFERRED
   FOR EACH ROW EXECUTE FUNCTION source_generation_record_count_guard();
+
+-- Neither failures nor immutable historic records can be erased and replaced
+-- with a different payload that happens to have the same generation row count.
+CREATE OR REPLACE FUNCTION prevent_source_cache_delete()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'source cache history cannot be deleted';
+END;
+$$;
+CREATE TRIGGER source_registry_no_delete BEFORE DELETE ON source_registry
+  FOR EACH ROW EXECUTE FUNCTION prevent_source_cache_delete();
+CREATE TRIGGER source_fetch_attempt_no_delete BEFORE DELETE ON source_fetch_attempt
+  FOR EACH ROW EXECUTE FUNCTION prevent_source_cache_delete();
+CREATE TRIGGER source_record_no_delete BEFORE DELETE ON source_record
+  FOR EACH ROW EXECUTE FUNCTION prevent_source_cache_delete();
 
 COMMIT;
