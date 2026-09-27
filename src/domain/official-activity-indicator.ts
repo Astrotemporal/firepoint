@@ -10,7 +10,7 @@ import { PerimeterGeometrySchema, PointSchema } from "./contracts";
  */
 
 const Instant = z.iso.datetime({ offset: true });
-const SourceUrl = z.url();
+const SourceUrl = z.url().refine((url) => new URL(url).protocol === "https:", "sourceUrl must use HTTPS");
 
 export const OFFICIAL_ACTIVITY_INDICATOR_LEGEND =
   "Official active notice · follow issuing agency source" as const;
