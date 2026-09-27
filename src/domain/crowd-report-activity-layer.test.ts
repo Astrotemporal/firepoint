@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { aggregateObservations } from "./observation-aggregate";
 import {
-  CROWD_REPORT_ACTIVITY_LEGEND, CROWD_REPORT_ACTIVITY_STYLE, crowdReportActivityLayer,
+  CROWD_REPORT_ACTIVITY_LEGEND, CROWD_REPORT_ACTIVITY_STYLE, crowdReportActivityLayer, unreviewedReportActivityLayer,
 } from "./crowd-report-activity-layer";
 import { officialActivityIndicatorLayer } from "./official-activity-indicator";
 
@@ -97,5 +97,77 @@ describe("crowdsourced report activity layer", () => {
     expect(officialActivityIndicatorLayer([aggregate(25)], { now, maxAgeSeconds: 3600 })).toEqual({
       state: "empty", reason: "malformed", layer: null,
     });
+  });
+});
+
+
+describe("unreviewed report activity layer", () => {
+  const unreviewedInput = {
+    version: 1,
+    kind: "unreviewed-report-activity",
+    generatedAt: "2026-01-01T02:00:00Z",
+    allClear: false,
+    verification: "unreviewed",
+    uniqueReporterDedupe: "not-possible",
+    producer: {
+      system: "synthetic-server-aggregator",
+      configVersion: "synthetic-unreviewed-v0",
+      retentionPolicyVersion: "synthetic-retention-v0",
+      consentPolicyVersion: "synthetic-consent-v0",
+    },
+    usage: { routingHazardInput: false, officialAuthority: false, boundaryOrModelEstimate: false },
+    cells: [{
+      cellId: "synthetic-cell-1",
+      cellBounds: [[0.12, 0.64], [0.14, 0.66]],
+      hazardKind: "smoke",
+      timeBinStart: "2026-01-01T01:00:00Z",
+      timeBinEnd: "2026-01-01T02:00:00Z",
+      reportCount: 3,
+      countSaturated: false,
+      verification: "unreviewed",
+    }],
+  };
+
+  it("supports a separate yellow policy for server-produced 3+ unreviewed coarse-cell counts", () => {
+    const result = unreviewedReportActivityLayer(unreviewedInput, { now: "2026-01-01T02:01:00Z", maxAgeSeconds: 3600 });
+    expect(result.state).toBe("ready");
+    if (result.state !== "ready") return;
+    expect(result.layer.legend).toBe(CROWD_REPORT_ACTIVITY_LEGEND);
+    expect(result.layer.officialAuthority).toBe(false);
+    expect(result.layer.routeCoupling).toBe(false);
+    expect(result.layer.boundaryOrRadius).toBe(false);
+    expect(result.layer.source).toMatchObject({
+      label: "server-produced unreviewed report activity",
+      configVersion: "synthetic-unreviewed-v0",
+      uniqueReporterDedupe: "not-possible",
+    });
+    expect(result.layer.badges[0]).toMatchObject({
+      center: { lng: 0.13, lat: 0.65 },
+      reportCount: 3,
+      verification: "unreviewed",
+      label: "3+ unreviewed reports",
+      detail: "3+ unreviewed reports — may be repeats, not a confirmed hazard",
+      style: CROWD_REPORT_ACTIVITY_STYLE,
+    });
+    expect(result.layer.mapbox.layers[0].paint["circle-stroke-color"]).toBe("#facc15");
+    expect(JSON.stringify(result.layer)).not.toContain("synthetic-report-");
+  });
+
+  it("fails closed for unreviewed counts below threshold, raw-looking locations, stale data, and official color escalation", () => {
+    expect(unreviewedReportActivityLayer({ ...unreviewedInput, cells: [{ ...unreviewedInput.cells[0], reportCount: 2 }] }, {
+      now: "2026-01-01T02:01:00Z", maxAgeSeconds: 3600,
+    })).toEqual({ state: "empty", reason: "malformed", layer: null });
+    expect(unreviewedReportActivityLayer({ ...unreviewedInput, cells: [{ ...unreviewedInput.cells[0], approximatePoint: [0.123456, 0.654321] }] }, {
+      now: "2026-01-01T02:01:00Z", maxAgeSeconds: 3600,
+    })).toEqual({ state: "empty", reason: "malformed", layer: null });
+    expect(unreviewedReportActivityLayer(unreviewedInput, { now: "2026-01-01T04:00:01Z", maxAgeSeconds: 3600 })).toEqual({
+      state: "empty", reason: "stale", layer: null,
+    });
+    const ready = unreviewedReportActivityLayer({ ...unreviewedInput, cells: [{ ...unreviewedInput.cells[0], reportCount: 20, countSaturated: true }] }, {
+      now: "2026-01-01T02:01:00Z", maxAgeSeconds: 3600,
+    });
+    expect(ready.state).toBe("ready");
+    if (ready.state !== "ready") return;
+    expect(JSON.stringify(ready.layer)).not.toContain("#dc2626");
   });
 });
