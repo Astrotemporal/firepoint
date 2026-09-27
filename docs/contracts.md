@@ -43,7 +43,7 @@ For UI teammate tasks: create loading, unavailable, stale, expired, outside-cove
 | `nifc-current-perimeters` | NIFC/WFIGS current perimeters (`FirePerimeterSchema`, Polygon/MultiPolygon) | A coarse envelope centred on a 0.1°-snapped point | `polygonCapturedAt` is the publisher's mapping time, distinct from `retrievedAt`. Types: wildfire, prescribed, complex, unknown. A truncated page (`exceededTransferLimit`) is `down`, not a partial result. |
 | `airnow-current-observations` | AirNow current reporting-area observations (`AirQualityReadingSchema`) | A 0.1°-snapped point; the key stays server-side | `preliminary: true` always. Negative "no data" AQI values are omitted. `not-configured` without `AIRNOW_API_KEY`. |
 
-Each source produces its own check even when it fails. The route answers 200 when at least one source succeeded and 503 when none did; in both cases, read `sourceChecks` before interpreting empty lists. The resident panel rounds a one-time device location to three decimals before sending it and never stores it.
+Each source produces its own check even when it fails. The route answers 200 when at least one source succeeded and 503 when none did; in both cases, read `sourceChecks` before interpreting empty lists. The former resident source panel (removed from `/prepare` in PR #14; production queries are paused) rounded a one-time device location to three decimals before sending it and never stored it; keep that rule for any future caller.
 
 ## Mapped hazard zones
 
