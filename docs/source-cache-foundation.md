@@ -115,7 +115,20 @@ and checks a concurrent pair of successful fetches. It never contacts Neon.
 A snapshot generation must be the next numbered generation and must still
 point to the latest complete generation at **insert time**, not just at fetch
 start. A retraction can use only the latest later complete generation; historic
-rows and attempts cannot be deleted/reinserted to rewrite a snapshot.
+rows and attempts cannot be deleted/reinserted to rewrite a snapshot. Registry
+issuer inserts must have a nonblank, exact label (no surrounding ECMAScript
+trim whitespace); the SQL CHECK remains active after migration preflight.
+
+`source_registry.source_url` is the canonical registry endpoint or source page.
+`source_generation.source_url` **may differ**: it is the HTTPS URL cited for
+that specific published snapshot/vintage. Records must copy the generation's
+URL and issuer exactly. The schema does **not** prove that a differing URL is
+actually controlled by the issuer or covered by storage rights. A future
+adapter must verify publisher URL lineage/allowlists and rights before it
+writes, and must not use a plausible HTTPS URL alone as proof of authority.
+The registry issuer must be the actual issuing authority, not an aggregator
+name; multi-issuer feeds need separately verified issuer registries or a later
+explicit multi-issuer contract. Never label the aggregator as an order issuer.
 
 **0101 is not idempotent.** It is a one-time draft migration, not an app startup
 script. Its preflight aborts if any fetch attempt, generation, or record already

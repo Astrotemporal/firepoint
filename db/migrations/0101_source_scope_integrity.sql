@@ -11,7 +11,7 @@ BEGIN
      EXISTS (SELECT 1 FROM source_record) THEN
     RAISE EXCEPTION '0101 requires empty source attempt/generation/record tables; audit legacy rows first';
   END IF;
-  IF EXISTS (SELECT 1 FROM source_registry WHERE issuer = '' OR issuer <> btrim(issuer)) THEN
+  IF EXISTS (SELECT 1 FROM source_registry WHERE issuer = '' OR issuer <> btrim(issuer, E' \t\n\r\f\v\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff')) THEN
     RAISE EXCEPTION '0101 requires exact, nonblank source issuer labels';
   END IF;
 END;
@@ -32,6 +32,10 @@ $$;
 CREATE TRIGGER source_registry_issuer_scope_immutable
   BEFORE UPDATE ON source_registry FOR EACH ROW EXECUTE FUNCTION source_registry_issuer_immutable();
 
+-- Persistent insert/update guard, not just a one-time preflight. The explicit
+-- whitespace set mirrors ECMAScript String.trim used by SourceIssuerScopeSchema.
+ALTER TABLE source_registry ADD CONSTRAINT source_registry_issuer_concrete
+  CHECK (issuer <> '' AND issuer = btrim(issuer, E' \t\n\r\f\v\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff'));
 ALTER TABLE source_registry ADD CONSTRAINT source_registry_issuer_scope_key
   UNIQUE (id, tenant_id, jurisdiction_id, issuer);
 ALTER TABLE source_generation ADD CONSTRAINT source_generation_one_fetch_key

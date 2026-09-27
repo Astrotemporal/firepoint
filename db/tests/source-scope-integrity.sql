@@ -28,6 +28,34 @@ VALUES
  ARRAY['shelter-status'], 'validated-complete-for-scope','storage-approved',true,'not-all-clear',false,
  'synthetic fixture','2026-09-27T00:00:00Z','2026-09-27T00:00:00Z');
 
+-- Persistent CHECK rejects later registry inserts too (not just 0101 preflight).
+CREATE FUNCTION assert_bad_source_issuer(bad text)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE violated text;
+BEGIN
+  INSERT INTO source_registry
+  (id, tenant_id, jurisdiction_id, source_key, registry_class, display_name,
+   issuer, source_url, record_kinds, coverage_status, rights_status, empty_ok,
+   empty_result_meaning, production_auto_polling_enabled, notes, created_at, updated_at)
+  SELECT '01010101-0101-4101-8101-010101010101', tenant_id, jurisdiction_id,
+   'bad-issuer', registry_class, display_name, bad, source_url, record_kinds,
+   coverage_status, rights_status, empty_ok, empty_result_meaning,
+   production_auto_polling_enabled, notes, created_at, updated_at
+  FROM source_registry WHERE id='11111111-1111-4111-8111-111111111111';
+  RAISE EXCEPTION 'expected persistent issuer check rejection';
+EXCEPTION WHEN check_violation THEN
+  GET STACKED DIAGNOSTICS violated = CONSTRAINT_NAME;
+  IF violated <> 'source_registry_issuer_concrete' THEN
+    RAISE EXCEPTION 'wrong issuer rejection constraint: %', violated;
+  END IF;
+END;
+$$;
+SELECT assert_bad_source_issuer('');
+SELECT assert_bad_source_issuer(' ');
+SELECT assert_bad_source_issuer(' Padded');
+SELECT assert_bad_source_issuer('Padded ');
+SELECT assert_bad_source_issuer(E'\tTab');
+SELECT assert_bad_source_issuer(U&'\00A0Nonbreaking');
 INSERT INTO source_fetch_attempt
 (id, source_registry_id, tenant_id, jurisdiction_id, status, started_at, rows_seen, rows_accepted,
  complete_snapshot, empty_ok)
@@ -68,6 +96,22 @@ VALUES ('f0000000-0000-4000-8000-000000000000','11111111-1111-4111-8111-11111111
  '2026-09-27T01:03:00Z')$sql$, 'stale or forked source generation');
 SELECT assert_source_rejected($sql$DELETE FROM source_record
   WHERE id='55555555-5555-4555-8555-555555555555'$sql$, 'source cache history cannot be deleted');
+SELECT assert_source_rejected($sql$WITH removed AS (
+  DELETE FROM source_record WHERE id='55555555-5555-4555-8555-555555555555'
+  RETURNING id, source_registry_id, generation_id, tenant_id, jurisdiction_id,
+    upstream_record_id, kind, status, name, provenance_issuer,
+    provenance_source_url, provenance_source_vintage, provenance_fetched_at,
+    provenance_complete_snapshot, created_at
+) INSERT INTO source_record (
+  id, source_registry_id, generation_id, tenant_id, jurisdiction_id,
+  upstream_record_id, kind, status, name, provenance_issuer,
+  provenance_source_url, provenance_source_vintage, provenance_fetched_at,
+  provenance_complete_snapshot, created_at
+) SELECT id, source_registry_id, generation_id, tenant_id, jurisdiction_id,
+  upstream_record_id, kind, status, 'changed same-count payload', provenance_issuer,
+  provenance_source_url, provenance_source_vintage, provenance_fetched_at,
+  provenance_complete_snapshot, created_at FROM removed$sql$,
+  'source cache history cannot be deleted');
 SELECT assert_source_rejected($sql$DELETE FROM source_fetch_attempt
   WHERE id='ffffffff-ffff-4fff-8fff-ffffffffffff'$sql$, 'source cache history cannot be deleted');
 SELECT assert_source_rejected($sql$UPDATE source_registry SET issuer='Other Agency'
