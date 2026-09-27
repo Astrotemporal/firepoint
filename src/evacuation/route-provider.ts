@@ -6,7 +6,7 @@ import type { GetRoute, LatLng, Route, Turn } from "./types";
 /*
  * Routing provider boundary. The app only calls `getRoute`; to change providers, write another
  * GetRoute that returns the same `Route` shape and change `activeProvider` below
- * (see README "Swapping the routing provider").
+ * (see docs/architecture.md "Swapping the routing provider").
  */
 
 export class RouteUnavailableError extends Error {

@@ -2,6 +2,7 @@
   "name": "firepoint",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "predev": "node scripts/copy-map-worker.mjs",
     "dev": "next dev",
