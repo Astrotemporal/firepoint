@@ -38,6 +38,17 @@ describe("Mapbox Directions provider", () => {
       turn("roundabout", "sideways"), turn("arrive", "right"),
     ] }] }] });
     expect(route.steps.map((s) => s.turn)).toEqual(["depart", "slight-right", "uturn", "straight", undefined, "arrive"]);
+    expect(route.arrivesOnMotorway).toBeUndefined();
+  });
+
+  it("notes a route that ends on a freeway, from the road class of the step before arrival", () => {
+    const onRoad = (classes?: string[]) => ({ ...step("x", 100), intersections: [{}, { classes }] });
+    const ending = (classes?: string[]) => parseMapboxDirections({ ...payload, routes: [{ ...payload.routes[0], legs: [{ steps: [
+      onRoad(), onRoad(classes), step("You have arrived at your destination.", 0),
+    ] }] }] });
+    expect(ending(["motorway"]).arrivesOnMotorway).toBe(true);
+    expect(ending(["toll"]).arrivesOnMotorway).toBeUndefined();
+    expect(ending(undefined).arrivesOnMotorway).toBeUndefined();
   });
 
   it("POSTs coordinates in the body, not the URL, with traffic-aware alternatives", async () => {

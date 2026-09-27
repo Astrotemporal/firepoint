@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { guideContent } from "@/domain/guide-content";
 import { ENGLISH_ONLY_NOTICE, publicScreenLocalized } from "@/domain/public-screen-copy";
-import { SAFE_ZONES, SHELTERS } from "@/evacuation/data/glendale";
+import { SHELTERS } from "@/evacuation/data/glendale";
 import { GUIDE_ES } from "@/domain/wildfire-guide.es";
 import { GUIDE_HY } from "@/domain/wildfire-guide.hy";
 import type { Locale } from "@/i18n/locales";
@@ -21,7 +21,7 @@ const PROTOTYPE_MARKERS = [
   "ev-escape-cta", "Escape", "ev-bar", "ev-sheet", "ev-go", "Nearest shelter", "Escape route", "Go</a>",
   "Allow location access", "Use my location", "ev-ask-button", "Enter address", "Routes start from", "ev-locate", "routes avoid",
   ...SHELTERS.map((shelter) => shelter.name),
-  ...SAFE_ZONES.map((zone) => zone.name),
+  "Escape mark", "to safety", "fire danger zone",
 ];
 
 describe("public homepage (release gate off)", () => {

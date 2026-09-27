@@ -47,12 +47,12 @@ describe("private mark visual policy: neutral grey, independent of counts", () =
     expect(privateMarkPaint("light")).not.toHaveProperty("labelHalo");
   });
 
-  it("renders one identical grey legend whether one or many marks exist: no colour step, no aggregate UI", () => {
+  it("shows the same fire panel whether one or many marks exist: no colour step, no aggregate UI", () => {
     const props = { ready: true, hint: null, map: { current: null }, onPlace: () => {}, onHint: () => {}, onClear: () => {} };
-    const legend = (count: number) => renderToStaticMarkup(<FirePanel {...props} count={count} />).match(/<p class="ring-legend"[\s\S]*?<\/p>/)?.[0];
-    expect(legend(1)).toContain("grey ring around each mark");
-    expect(legend(1)).toBe(legend(3));
-    expect(legend(3)).toBe(legend(20));
-    for (const html of [legend(3), legend(20)]) expect(html).not.toMatch(/\d+ reports|activity|cell|verified|#(b91c1c|ef4444|f87171)/);
+    // Marks are drawn on the map as fire areas (red, as before the grey halos); the panel carries no legend.
+    const panel = (count: number) => renderToStaticMarkup(<FirePanel {...props} count={count} />).replace(/\d+ marks?/g, "N marks");
+    expect(panel(1)).not.toContain("ring-legend");
+    expect(panel(3)).toBe(panel(20));
+    for (const html of [panel(3), panel(20)]) expect(html).not.toMatch(/\d+ reports|activity|cell|verified/);
   });
 });

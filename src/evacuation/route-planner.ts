@@ -1,8 +1,7 @@
-import {
-  haversine, pickEscapePoint, pickEscapeRoute, pickShelter, rankShelters,
-  type EscapePick, type ShelterPick,
-} from "./routing";
-import type { GetRoute, Hazard, LatLng, SafeZone, Shelter } from "./types";
+import { offlineEscape, pickEscapeRoute, type EscapePick } from "./escape";
+import { haversine, pickShelter, rankShelters, type ShelterPick } from "./routing";
+import type { GetRoute, Hazard, LatLng, Shelter } from "./types";
+import type { WildlandIndex } from "./wildland";
 
 export type RoutePlan<O extends LatLng = LatLng> = {
   origin: O;
@@ -21,11 +20,13 @@ export type PlannerState<O extends LatLng = LatLng> = {
   escapeRequested: boolean;
 };
 
+const NOT_REQUESTED: EscapePick = { kind: "not-requested" };
+
 type PlanInput = {
   origin: LatLng;
   hazards: readonly Hazard[];
+  wildland?: WildlandIndex | null;
   shelters: readonly Shelter[];
-  zones: readonly SafeZone[];
   getRoute: GetRoute;
   offline: boolean;
   /** Skip the escape leg entirely (no network call) until the user asks for it. */
@@ -38,23 +39,19 @@ type PlanInput = {
  * leg is only computed when `escapeRequested`; the shelter leg is always automatic.
  */
 export async function planRoutes(
-  { origin, hazards, shelters, zones, getRoute, offline, escapeRequested, signal }: PlanInput,
+  { origin, hazards, wildland = null, shelters, getRoute, offline, escapeRequested, signal }: PlanInput,
 ) {
+  const context = { hazards, wildland };
   if (offline) {
     const nearest = rankShelters(origin, shelters, hazards)[0]?.shelter;
     const shelter: ShelterPick = nearest
       ? { kind: "routing-unavailable", shelter: nearest, reason: "offline" }
       : { kind: "no-shelter" };
-    if (!escapeRequested) return { shelter, escape: { kind: "not-requested" } as EscapePick };
-    const zone = pickEscapePoint(origin, zones, hazards);
-    const escape: EscapePick = zone ? { kind: "routing-unavailable", zone, reason: "offline" } : { kind: "no-zone" };
-    return { shelter, escape };
+    return { shelter, escape: escapeRequested ? offlineEscape(origin, context) : NOT_REQUESTED };
   }
   const [shelter, escape] = await Promise.all([
     pickShelter(origin, shelters, hazards, getRoute, { signal }),
-    escapeRequested
-      ? pickEscapeRoute(origin, zones, hazards, getRoute, { signal })
-      : Promise.resolve<EscapePick>({ kind: "not-requested" }),
+    escapeRequested ? pickEscapeRoute(origin, context, getRoute, { signal }) : Promise.resolve(NOT_REQUESTED),
   ]);
   return { shelter, escape };
 }
@@ -70,7 +67,8 @@ export function hazardsKey(hazards: readonly Hazard[]): string {
 export type RoutePlannerOptions = {
   getRoute: GetRoute;
   shelters: readonly Shelter[];
-  zones: readonly SafeZone[];
+  /** Mapped high-hazard wildland: part of the danger zone escape marks must be outside of. */
+  wildland?: WildlandIndex | null;
   isOnline?: () => boolean;
   /** Wait after the first qualifying change; later GPS ticks in that window join the same run. */
   debounceMs?: number;
@@ -146,7 +144,7 @@ export class RoutePlanner<O extends LatLng = LatLng> {
   clearEscape(): void {
     if (!this.escapeRequested) return;
     this.escapeRequested = false;
-    const plan = this.state.plan && { ...this.state.plan, escape: { kind: "not-requested" } as EscapePick };
+    const plan = this.state.plan && { ...this.state.plan, escape: NOT_REQUESTED };
     this.set({ ...this.state, plan, escapeRequested: false });
   }
 
@@ -195,11 +193,11 @@ export class RoutePlanner<O extends LatLng = LatLng> {
     const id = ++this.runId;
     this.set({ ...this.state, pending: true });
     try {
-      const { shelters, zones, getRoute } = this.options;
-      const result = await planRoutes({ origin, hazards, shelters, zones, getRoute, offline, escapeRequested, signal: controller.signal });
+      const { shelters, getRoute, wildland } = this.options;
+      const result = await planRoutes({ origin, hazards, wildland, shelters, getRoute, offline, escapeRequested, signal: controller.signal });
       if (id !== this.runId) return;
       // A clear during the request wins over a route that already came back.
-      const escape = this.escapeRequested ? result.escape : ({ kind: "not-requested" } as EscapePick);
+      const escape = this.escapeRequested ? result.escape : NOT_REQUESTED;
       this.set({
         ...this.state,
         plan: { origin, hazardsKey: key, shelter: result.shelter, escape, computedAt: this.now() },

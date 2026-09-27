@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { SAFE_ZONES, SHELTERS } from "@/evacuation/data/glendale";
+import { SHELTERS } from "@/evacuation/data/glendale";
+import type { EscapeMark } from "@/evacuation/escape";
 import { SYNTHETIC_HAZARDS } from "../../tests/fixtures/synthetic-fire";
 import { DEFAULT_FIX, type LocationFix } from "@/evacuation/location";
 import type { RoutePlan } from "@/evacuation/route-planner";
@@ -16,10 +17,15 @@ const route: Route = {
   ],
 };
 const gps: LocationFix = { lat: 34.14662, lng: -118.24825, accuracyMeters: 450, source: "gps", label: null };
+/** A person's own fire mark, the only kind of fire the app shows. */
+const fireMark = { ...SYNTHETIC_HAZARDS[0], id: "mark-1", label: "Fire mark 1", simulated: false, userMark: true };
+const threat = { hazard: fireMark, edgeMeters: 900 };
+/** Synthetic escape mark on a road southwest of the start, outside the danger zone. */
+const mark: EscapeMark = { lat: 34.1308, lng: -118.2601, meters: 2100, fireMeters: 1750 };
 const plan: RoutePlan<LocationFix> = {
   origin: gps, hazardsKey: "", computedAt: 1,
   shelter: { kind: "route", shelter: SHELTERS[1], route },
-  escape: { kind: "route", zone: SAFE_ZONES[1], route: { ...route, durationSeconds: 540 } },
+  escape: { kind: "route", mark, route: { ...route, durationSeconds: 540 }, threat, secondsToSafety: 240 },
 };
 const noop = () => {};
 
@@ -39,10 +45,13 @@ describe("RouteBar", () => {
   it("shows both routes compactly with distance, time, an in-app Go button, and (collapsed) steps", () => {
     const html = render();
     expect(html).toContain('<span class="ev-row-summary">Pacific Community Center</span><span class="ev-row-sub"><strong>4 min</strong> · 1.5 mi</span>');
-    expect(html).toMatch(/toward Burbank via SR-134<\/span><span class="ev-row-sub"><strong>9 min<\/strong> · 1.5 mi/);
+    expect(html).toMatch(/Head southwest to safety<\/span><span class="ev-row-sub"><strong>9 min<\/strong> · 1.5 mi/);
     // Go starts navigation in the app: a button, never a link out to Apple or Google Maps.
     expect(html).toContain('<button type="button" class="ev-go ev-go-shelter">Go<span class="ev-sr-only">: start directions to Pacific Community Center</span></button>');
+    expect(html).toContain('<button type="button" class="ev-go ev-go-escape">Go<span class="ev-sr-only">: start directions to Escape mark</span></button>');
     expect(html).not.toMatch(/maps\.apple\.com|google\.com\/maps/);
+    expect(html).toContain("Escape mark 1.1 mi from Fire mark 1, outside the fire danger zone");
+    expect(html).toContain("Out of the fire danger zone in about 4 min.");
     expect(html).toContain("Turn left onto North Isabel Street.");
     expect(html).toMatch(/aria-expanded="false"/);
     expect(html).toContain("Location approximate");
@@ -85,16 +94,31 @@ describe("RouteBar", () => {
     expect(html).toContain("No safe shelter route — follow evacuation route.");
   });
 
-  it("near the fire with no clear road, points away from it and offers no link into it", () => {
-    const sparrHeights: LocationFix = { ...SHELTERS[2], accuracyMeters: null, source: "manual", label: "Sparr Heights" };
+  it("near the fire with no clear road, points away from it and offers no link or line into it", () => {
+    const sparrHeights: LocationFix = { ...SHELTERS[3], accuracyMeters: null, source: "manual", label: "Sparr Heights" };
+    const near = { hazard: SYNTHETIC_HAZARDS[0], edgeMeters: 86 };
     const html = render({
-      location: { status: "manual", fix: sparrHeights }, origin: sparrHeights,
-      threat: { hazard: SYNTHETIC_HAZARDS[0], edgeMeters: 86 }, escapeFirst: true,
-      plan: { ...plan, origin: sparrHeights, escape: { kind: "no-safe-route", zone: SAFE_ZONES[1] } },
+      location: { status: "manual", fix: sparrHeights }, origin: sparrHeights, threat: near, escapeFirst: true,
+      plan: { ...plan, origin: sparrHeights, escape: { kind: "no-safe-route", bearing: 10, threat: near } },
     });
     expect(html).toContain("less than 0.1 mi away");
     expect(html).toContain("Head north, away from SYNTHETIC TEST fire · Verdugo Mountains");
-    expect(html).not.toContain("destination=34.180800,-118.309000");
+    expect(html).toContain("Every road route out passes close to the fire.");
+    expect(html).not.toContain("ev-go-escape");
+  });
+
+  it("without a road route, names the direction to the escape mark and hands the mark to the maps app", () => {
+    const html = render({ online: false, plan: { ...plan, escape: { kind: "routing-unavailable", mark, reason: "offline", threat } } });
+    expect(html).toContain('Head southwest to safety</span><span class="ev-row-sub">1.3 mi straight-line');
+    expect(html).toContain('class="ev-go ev-go-escape">Go<span class="ev-sr-only">: start directions to Escape mark');
+    expect(html).toContain("Outside the fire danger zone: more than 1.0 mi from any marked fire");
+  });
+
+  it("says so when there is no fire to escape, or the start is already outside the danger zone", () => {
+    expect(render({ plan: { ...plan, escape: { kind: "no-fire" } } })).toContain("No fire marked.");
+    const safe = render({ plan: { ...plan, escape: { kind: "already-safe", threat: { ...threat, edgeMeters: 3000 } } } });
+    expect(safe).toContain("You’re outside the fire danger zone, 1.9 mi from Fire mark 1.");
+    expect(safe).not.toContain("ev-go-escape");
   });
 
   it("offers one button that asks for location, and an address instead", () => {
@@ -122,13 +146,21 @@ describe("RouteBar", () => {
     expect(render({ hazards: [] })).toContain("this is not an all-clear");
   });
 
-  it("labels private halos as sketches and never treats an empty incident feed as an all-clear", () => {
+  it("labels private halos as sketches, and never treats an empty incident feed as an all-clear", () => {
     const html = render({ hazards: [], threat: null, escapeFirst: false, escapeRequested: false,
       plan: { ...plan, escape: { kind: "not-requested" } } });
     expect(html).toContain('lang="en"');
-    expect(html).toContain("Dashed grey private mark halos are sketches, not reports, fire extents, evacuation zones or routing hazards.");
+    expect(html).toContain("The shaded red areas are your private fire marks: sketches, not reports or measured fire extents.");
     expect(html).toContain("this is not an all-clear");
     expect(html).not.toContain("Take the escape route.");
+  });
+
+  it("treats a nearby fire mark like a hazard, without calling it simulated", () => {
+    const mark = { ...SYNTHETIC_HAZARDS[0], id: "mark-1", label: "Fire mark 1", simulated: false, userMark: true };
+    const near = { hazard: mark, edgeMeters: 400 };
+    const html = render({ hazards: [mark], threat: near, escapeFirst: true, plan: { ...plan, escape: { ...plan.escape, threat: near } as typeof plan.escape } });
+    expect(html).toContain("Fire mark 1 is 0.2 mi away. Take the escape route.");
+    expect(html).not.toMatch(/simulated/i);
   });
 
   describe("escape route on request", () => {
@@ -137,8 +169,8 @@ describe("RouteBar", () => {
     it("shows an ESCAPE button and no escape route content before it's requested", () => {
       const html = render(notRequested);
       expect(html).toMatch(/<button[^>]*class="ev-escape-cta"[^>]*aria-label="Escape: get an escape route"[^>]*>.*Escape<\/button>/);
-      expect(html).not.toContain("toward Burbank via SR-134");
-      expect(html).not.toContain("destination=34.180800"); // no Go link for the (unrequested) escape zone
+      expect(html).not.toContain("to safety");
+      expect(html).not.toContain("ev-go-escape"); // no Go link for an (unrequested) escape route
       expect(html.match(/class="ev-row-main" aria-expanded/g)).toHaveLength(1); // only the shelter row toggles
     });
 
@@ -156,7 +188,7 @@ describe("RouteBar", () => {
 
     it("shows the full escape route, with a Clear control, once requested", () => {
       const html = render(); // default: escapeRequested + a resolved plan.escape
-      expect(html).toContain("toward Burbank via SR-134");
+      expect(html).toContain("Head southwest to safety");
       expect(html).toContain("<strong>9 min</strong>");
       expect(html).toContain("Hide escape route");
       expect(html.match(/class="ev-row-main" aria-expanded/g)).toHaveLength(2);

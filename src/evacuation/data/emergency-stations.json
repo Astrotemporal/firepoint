@@ -1,0 +1,721 @@
+{
+  "checkedOn": "2026-09-26",
+  "note": "Police and fire stations in and around Glendale. Not designated shelters: fire stations are often unstaffed while crews are out on a fire. Coordinates as cited per entry. fireHazardZone is the CAL FIRE Fire Hazard Severity Zone (2025 LRA map) at the station's point, from the Glendale GIS MCP server; null means the point falls outside that server's coverage area (Glendale plus ~2 km), not that no hazard exists.",
+  "stations": [
+    {
+      "id": "burbank-fire-station-11",
+      "kind": "fire-station",
+      "name": "Burbank Fire Department Station 11 (Headquarters)",
+      "agency": "Burbank Fire Department",
+      "address": "311 E Orange Grove Ave, Burbank, CA 91502",
+      "lat": 34.183458,
+      "lng": -118.30849,
+      "coordinateSource": "National Emergency Response Information System (NERIS) station point (U.S. Census Bureau geocoder had no match for this address)",
+      "fireHazardZone": "NonWildland",
+      "sources": [
+        {
+          "publisher": "National Emergency Response Information System (NERIS), Fire Safety Research Institute (UL Research Institutes)",
+          "title": "Burbank Fire Department stations",
+          "url": "https://neris.fsri.org/departments/FD06037793/stations",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "burbank-fire-station-12",
+      "kind": "fire-station",
+      "name": "Burbank Fire Department Station 12",
+      "agency": "Burbank Fire Department",
+      "address": "644 N Hollywood Way, Burbank, CA 91505",
+      "lat": 34.16165,
+      "lng": -118.343889,
+      "coordinateSource": "U.S. Census Bureau geocoder",
+      "fireHazardZone": null,
+      "sources": [
+        {
+          "publisher": "National Emergency Response Information System (NERIS), Fire Safety Research Institute (UL Research Institutes)",
+          "title": "Burbank Fire Department stations",
+          "url": "https://neris.fsri.org/departments/FD06037793/stations",
+          "date": "2026-09-26"
+        },
+        {
+          "publisher": "U.S. Census Bureau",
+          "title": "Census Geocoder (onelineaddress benchmark: Public_AR_Current)",
+          "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "burbank-fire-station-13",
+      "kind": "fire-station",
+      "name": "Burbank Fire Department Station 13",
+      "agency": "Burbank Fire Department",
+      "address": "2713 Thornton Ave, Burbank, CA 91504",
+      "lat": 34.195613,
+      "lng": -118.341067,
+      "coordinateSource": "U.S. Census Bureau geocoder",
+      "fireHazardZone": null,
+      "sources": [
+        {
+          "publisher": "National Emergency Response Information System (NERIS), Fire Safety Research Institute (UL Research Institutes)",
+          "title": "Burbank Fire Department stations",
+          "url": "https://neris.fsri.org/departments/FD06037793/stations",
+          "date": "2026-09-26"
+        },
+        {
+          "publisher": "U.S. Census Bureau",
+          "title": "Census Geocoder (onelineaddress benchmark: Public_AR_Current)",
+          "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "burbank-fire-station-14",
+      "kind": "fire-station",
+      "name": "Burbank Fire Department Station 14",
+      "agency": "Burbank Fire Department",
+      "address": "2305 W Burbank Blvd, Burbank, CA 91506",
+      "lat": 34.179481,
+      "lng": -118.336075,
+      "coordinateSource": "U.S. Census Bureau geocoder",
+      "fireHazardZone": null,
+      "sources": [
+        {
+          "publisher": "National Emergency Response Information System (NERIS), Fire Safety Research Institute (UL Research Institutes)",
+          "title": "Burbank Fire Department stations",
+          "url": "https://neris.fsri.org/departments/FD06037793/stations",
+          "date": "2026-09-26"
+        },
+        {
+          "publisher": "U.S. Census Bureau",
+          "title": "Census Geocoder (onelineaddress benchmark: Public_AR_Current)",
+          "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "burbank-fire-station-15",
+      "kind": "fire-station",
+      "name": "Burbank Fire Department Station 15",
+      "agency": "Burbank Fire Department",
+      "address": "1420 W Verdugo Ave, Burbank, CA 91506",
+      "lat": 34.168728,
+      "lng": -118.320415,
+      "coordinateSource": "U.S. Census Bureau geocoder",
+      "fireHazardZone": "NonWildland",
+      "sources": [
+        {
+          "publisher": "National Emergency Response Information System (NERIS), Fire Safety Research Institute (UL Research Institutes)",
+          "title": "Burbank Fire Department stations",
+          "url": "https://neris.fsri.org/departments/FD06037793/stations",
+          "date": "2026-09-26"
+        },
+        {
+          "publisher": "U.S. Census Bureau",
+          "title": "Census Geocoder (onelineaddress benchmark: Public_AR_Current)",
+          "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "burbank-fire-station-16",
+      "kind": "fire-station",
+      "name": "Burbank Fire Department Station 16",
+      "agency": "Burbank Fire Department",
+      "address": "1600 N Bel Aire Dr, Burbank, CA 91504",
+      "lat": 34.200156,
+      "lng": -118.312377,
+      "coordinateSource": "U.S. Census Bureau geocoder",
+      "fireHazardZone": null,
+      "sources": [
+        {
+          "publisher": "National Emergency Response Information System (NERIS), Fire Safety Research Institute (UL Research Institutes)",
+          "title": "Burbank Fire Department stations",
+          "url": "https://neris.fsri.org/departments/FD06037793/stations",
+          "date": "2026-09-26"
+        },
+        {
+          "publisher": "U.S. Census Bureau",
+          "title": "Census Geocoder (onelineaddress benchmark: Public_AR_Current)",
+          "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "burbank-police-hq",
+      "kind": "police-station",
+      "name": "Burbank Police Department",
+      "agency": "Burbank Police Department",
+      "address": "200 N 3rd St, Burbank, CA 91502",
+      "lat": 34.182868,
+      "lng": -118.308502,
+      "coordinateSource": "U.S. Census Bureau geocoder",
+      "fireHazardZone": "NonWildland",
+      "sources": [
+        {
+          "publisher": "Los Angeles County",
+          "title": "Services Locator: City Of Burbank Police Department",
+          "url": "https://locator.lacounty.gov/lac/Location/3177618/city-of-burbank-police-department",
+          "date": "2026-09-26"
+        },
+        {
+          "publisher": "U.S. Census Bureau",
+          "title": "Census Geocoder (onelineaddress benchmark: Public_AR_Current)",
+          "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "glendale-fire-station-21",
+      "kind": "fire-station",
+      "name": "Glendale Fire Station 21",
+      "agency": "Glendale Fire Department",
+      "address": "421 Oak St, Glendale, CA 91204",
+      "lat": 34.143766,
+      "lng": -118.26152,
+      "coordinateSource": "City of Glendale GIS fire_stations layer (Glendale GIS MCP snapshot)",
+      "fireHazardZone": "NonWildland",
+      "sources": [
+        {
+          "publisher": "City of Glendale",
+          "title": "Fire Stations GIS layer (Glendale GIS MCP snapshot)",
+          "url": "https://gismap.glendaleca.gov/arcgis/rest/services/Common/FireStations/FeatureServer/0",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "glendale-fire-station-22",
+      "kind": "fire-station",
+      "name": "Glendale Fire Station 22",
+      "agency": "Glendale Fire Department",
+      "address": "1201 S Glendale Ave, Glendale, CA 91205",
+      "lat": 34.131948,
+      "lng": -118.252439,
+      "coordinateSource": "City of Glendale GIS fire_stations layer (Glendale GIS MCP snapshot)",
+      "fireHazardZone": "NonWildland",
+      "sources": [
+        {
+          "publisher": "City of Glendale",
+          "title": "Fire Stations GIS layer (Glendale GIS MCP snapshot)",
+          "url": "https://gismap.glendaleca.gov/arcgis/rest/services/Common/FireStations/FeatureServer/0",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "glendale-fire-station-23",
+      "kind": "fire-station",
+      "name": "Glendale Fire Station 23",
+      "agency": "Glendale Fire Department",
+      "address": "3303 E Chevy Chase Dr, Glendale, CA 91206",
+      "lat": 34.173835,
+      "lng": -118.199848,
+      "coordinateSource": "City of Glendale GIS fire_stations layer (Glendale GIS MCP snapshot)",
+      "fireHazardZone": "Very High",
+      "sources": [
+        {
+          "publisher": "City of Glendale",
+          "title": "Fire Stations GIS layer (Glendale GIS MCP snapshot)",
+          "url": "https://gismap.glendaleca.gov/arcgis/rest/services/Common/FireStations/FeatureServer/0",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "glendale-fire-station-24",
+      "kind": "fire-station",
+      "name": "Glendale Fire Station 24",
+      "agency": "Glendale Fire Department",
+      "address": "1734 Canada Blvd, Glendale, CA 91208",
+      "lat": 34.173285,
+      "lng": -118.228535,
+      "coordinateSource": "City of Glendale GIS fire_stations layer (Glendale GIS MCP snapshot)",
+      "fireHazardZone": "Very High",
+      "sources": [
+        {
+          "publisher": "City of Glendale",
+          "title": "Fire Stations GIS layer (Glendale GIS MCP snapshot)",
+          "url": "https://gismap.glendaleca.gov/arcgis/rest/services/Common/FireStations/FeatureServer/0",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "glendale-fire-station-25",
+      "kind": "fire-station",
+      "name": "Glendale Fire Station 25",
+      "agency": "Glendale Fire Department",
+      "address": "353 N Chevy Chase Dr, Glendale, CA 91206",
+      "lat": 34.151264,
+      "lng": -118.237071,
+      "coordinateSource": "City of Glendale GIS fire_stations layer (Glendale GIS MCP snapshot)",
+      "fireHazardZone": "NonWildland",
+      "sources": [
+        {
+          "publisher": "City of Glendale",
+          "title": "Fire Stations GIS layer (Glendale GIS MCP snapshot)",
+          "url": "https://gismap.glendaleca.gov/arcgis/rest/services/Common/FireStations/FeatureServer/0",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "glendale-fire-station-26",
+      "kind": "fire-station",
+      "name": "Glendale Fire Station 26",
+      "agency": "Glendale Fire Department",
+      "address": "1145 N Brand Blvd, Glendale, CA 91202",
+      "lat": 34.162468,
+      "lng": -118.255465,
+      "coordinateSource": "City of Glendale GIS fire_stations layer (Glendale GIS MCP snapshot)",
+      "fireHazardZone": "NonWildland",
+      "sources": [
+        {
+          "publisher": "City of Glendale",
+          "title": "Fire Stations GIS layer (Glendale GIS MCP snapshot)",
+          "url": "https://gismap.glendaleca.gov/arcgis/rest/services/Common/FireStations/FeatureServer/0",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "glendale-fire-station-27",
+      "kind": "fire-station",
+      "name": "Glendale Fire Station 27",
+      "agency": "Glendale Fire Department",
+      "address": "1127 Western Ave, Glendale, CA 91201",
+      "lat": 34.172234,
+      "lng": -118.289094,
+      "coordinateSource": "City of Glendale GIS fire_stations layer (Glendale GIS MCP snapshot)",
+      "fireHazardZone": "NonWildland",
+      "sources": [
+        {
+          "publisher": "City of Glendale",
+          "title": "Fire Stations GIS layer (Glendale GIS MCP snapshot)",
+          "url": "https://gismap.glendaleca.gov/arcgis/rest/services/Common/FireStations/FeatureServer/0",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "glendale-fire-station-28",
+      "kind": "fire-station",
+      "name": "Glendale Fire Station 28",
+      "agency": "Glendale Fire Department",
+      "address": "4410 New York Ave, Glendale, CA 91214",
+      "lat": 34.230194,
+      "lng": -118.252542,
+      "coordinateSource": "City of Glendale GIS fire_stations layer (Glendale GIS MCP snapshot)",
+      "fireHazardZone": "NonWildland",
+      "sources": [
+        {
+          "publisher": "City of Glendale",
+          "title": "Fire Stations GIS layer (Glendale GIS MCP snapshot)",
+          "url": "https://gismap.glendaleca.gov/arcgis/rest/services/Common/FireStations/FeatureServer/0",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "glendale-fire-station-29",
+      "kind": "fire-station",
+      "name": "Glendale Fire Station 29",
+      "agency": "Glendale Fire Department",
+      "address": "2465 Honolulu Ave, Glendale, CA 91020",
+      "lat": 34.207562,
+      "lng": -118.232896,
+      "coordinateSource": "City of Glendale GIS fire_stations layer (Glendale GIS MCP snapshot)",
+      "fireHazardZone": "NonWildland",
+      "sources": [
+        {
+          "publisher": "City of Glendale",
+          "title": "Fire Stations GIS layer (Glendale GIS MCP snapshot)",
+          "url": "https://gismap.glendaleca.gov/arcgis/rest/services/Common/FireStations/FeatureServer/0",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "glendale-police-hq",
+      "kind": "police-station",
+      "name": "Glendale Police Department",
+      "agency": "Glendale Police Department",
+      "address": "131 N Isabel St, Glendale, CA 91206",
+      "lat": 34.147239,
+      "lng": -118.249407,
+      "coordinateSource": "Centroid of City of Glendale GIS police_stations polygon layer (Glendale GIS MCP snapshot)",
+      "fireHazardZone": "NonWildland",
+      "sources": [
+        {
+          "publisher": "City of Glendale",
+          "title": "Police Station GIS layer (Glendale GIS MCP snapshot)",
+          "url": "https://gismap.glendaleca.gov/arcgis/rest/services/Common/GlendalePoliceStation/FeatureServer/0",
+          "date": "2026-09-26"
+        },
+        {
+          "publisher": "Los Angeles County",
+          "title": "Services Locator: City Of Glendale Police Department",
+          "url": "https://locator.lacounty.gov/lac/Location/3068984/city-of-glendale-police-department",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "lacofd-station-12",
+      "kind": "fire-station",
+      "name": "Los Angeles County Fire Department Station 12 (Altadena)",
+      "agency": "Los Angeles County Fire Department",
+      "address": "2760 N Lincoln Ave, Altadena, CA 91001",
+      "lat": 34.193062,
+      "lng": -118.158664,
+      "coordinateSource": "U.S. Census Bureau geocoder",
+      "fireHazardZone": null,
+      "sources": [
+        {
+          "publisher": "Los Angeles County",
+          "title": "Services Locator: Los Angeles County Fire Department - Station 12",
+          "url": "https://locator.lacounty.gov/fire/Location/3053137/los-angeles-county-fire-department---station-12",
+          "date": "2026-09-26"
+        },
+        {
+          "publisher": "U.S. Census Bureau",
+          "title": "Census Geocoder (onelineaddress benchmark: Public_AR_Current)",
+          "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "lacofd-station-19",
+      "kind": "fire-station",
+      "name": "Los Angeles County Fire Department Station 19 (La Canada Flintridge)",
+      "agency": "Los Angeles County Fire Department",
+      "address": "1729 W Foothill Blvd, La Canada Flintridge, CA 91011",
+      "lat": 34.211203,
+      "lng": -118.214749,
+      "coordinateSource": "U.S. Census Bureau geocoder",
+      "fireHazardZone": "Very High",
+      "sources": [
+        {
+          "publisher": "Los Angeles County",
+          "title": "Services Locator: Los Angeles County Fire Department - Station 19",
+          "url": "https://locator.lacounty.gov/fire/Location/3034444/los-angeles-county-fire-department---station-19",
+          "date": "2026-09-26"
+        },
+        {
+          "publisher": "U.S. Census Bureau",
+          "title": "Census Geocoder (onelineaddress benchmark: Public_AR_Current)",
+          "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "lacofd-station-63",
+      "kind": "fire-station",
+      "name": "Los Angeles County Fire Department Station 63 (La Crescenta)",
+      "agency": "Los Angeles County Fire Department",
+      "address": "4526 Ramsdell Ave, La Crescenta, CA 91214",
+      "lat": 34.227314,
+      "lng": -118.244187,
+      "coordinateSource": "U.S. Census Bureau geocoder",
+      "fireHazardZone": "Very High",
+      "sources": [
+        {
+          "publisher": "Los Angeles County",
+          "title": "Services Locator: Los Angeles County Fire Department - Station 63",
+          "url": "https://locator.lacounty.gov/fire/Location/3032249/los-angeles-county-fire-department---station-63",
+          "date": "2026-09-26"
+        },
+        {
+          "publisher": "U.S. Census Bureau",
+          "title": "Census Geocoder (onelineaddress benchmark: Public_AR_Current)",
+          "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "lacofd-station-82",
+      "kind": "fire-station",
+      "name": "Los Angeles County Fire Department Station 82 (La Canada Flintridge, also Battalion 4 HQ)",
+      "agency": "Los Angeles County Fire Department",
+      "address": "352 W Foothill Blvd, La Canada Flintridge, CA 91011",
+      "lat": 34.19793,
+      "lng": -118.186242,
+      "coordinateSource": "U.S. Census Bureau geocoder",
+      "fireHazardZone": null,
+      "sources": [
+        {
+          "publisher": "Los Angeles County",
+          "title": "Services Locator: Los Angeles County Fire Department - Station 82",
+          "url": "https://locator.lacounty.gov/fire/Location/3069636/los-angeles-county-fire-department---station-82-battalion-4-headquarters",
+          "date": "2026-09-26"
+        },
+        {
+          "publisher": "U.S. Census Bureau",
+          "title": "Census Geocoder (onelineaddress benchmark: Public_AR_Current)",
+          "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "lasd-crescenta-valley-station",
+      "kind": "police-station",
+      "name": "Los Angeles County Sheriff's Department Crescenta Valley Station",
+      "agency": "Los Angeles County Sheriff's Department",
+      "address": "4554 Briggs Ave, La Crescenta, CA 91214",
+      "lat": 34.220316,
+      "lng": -118.23068,
+      "coordinateSource": "U.S. Census Bureau geocoder",
+      "fireHazardZone": "Very High",
+      "sources": [
+        {
+          "publisher": "Los Angeles County Sheriff's Department",
+          "title": "Crescenta Valley Station",
+          "url": "https://lasd.org/crescenta-valley/",
+          "date": "2026-09-26"
+        },
+        {
+          "publisher": "U.S. Census Bureau",
+          "title": "Census Geocoder (onelineaddress benchmark: Public_AR_Current)",
+          "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "lafd-station-42",
+      "kind": "fire-station",
+      "name": "Los Angeles Fire Department Station 42 (Eagle Rock)",
+      "agency": "Los Angeles Fire Department",
+      "address": "2021 Colorado Blvd, Los Angeles, CA 90041",
+      "lat": 34.139346,
+      "lng": -118.210768,
+      "coordinateSource": "U.S. Census Bureau geocoder",
+      "fireHazardZone": "Very High",
+      "sources": [
+        {
+          "publisher": "Los Angeles Fire Department",
+          "title": "Fire Station Directory (May 2021)",
+          "url": "https://lafd.org/sites/default/files/pdf_files/Fire-Station-Directory-May-2021.pdf",
+          "date": "2026-09-26"
+        },
+        {
+          "publisher": "U.S. Census Bureau",
+          "title": "Census Geocoder (onelineaddress benchmark: Public_AR_Current)",
+          "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "lafd-station-44",
+      "kind": "fire-station",
+      "name": "Los Angeles Fire Department Station 44 (Cypress Park / Glassell Park)",
+      "agency": "Los Angeles Fire Department",
+      "address": "1410 Cypress Ave, Los Angeles, CA 90065",
+      "lat": 34.097071,
+      "lng": -118.230829,
+      "coordinateSource": "U.S. Census Bureau geocoder",
+      "fireHazardZone": null,
+      "sources": [
+        {
+          "publisher": "Los Angeles Fire Department",
+          "title": "Fire Station Directory (May 2021)",
+          "url": "https://lafd.org/sites/default/files/pdf_files/Fire-Station-Directory-May-2021.pdf",
+          "date": "2026-09-26"
+        },
+        {
+          "publisher": "U.S. Census Bureau",
+          "title": "Census Geocoder (onelineaddress benchmark: Public_AR_Current)",
+          "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "lafd-station-50",
+      "kind": "fire-station",
+      "name": "Los Angeles Fire Department Station 50 (Atwater Village / Glassell Park)",
+      "agency": "Los Angeles Fire Department",
+      "address": "3036 Fletcher Dr, Los Angeles, CA 90065",
+      "lat": 34.11494,
+      "lng": -118.245648,
+      "coordinateSource": "U.S. Census Bureau geocoder",
+      "fireHazardZone": "NonWildland",
+      "sources": [
+        {
+          "publisher": "Los Angeles Fire Department",
+          "title": "Fire Station Directory (May 2021)",
+          "url": "https://lafd.org/sites/default/files/pdf_files/Fire-Station-Directory-May-2021.pdf",
+          "date": "2026-09-26"
+        },
+        {
+          "publisher": "U.S. Census Bureau",
+          "title": "Census Geocoder (onelineaddress benchmark: Public_AR_Current)",
+          "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "lafd-station-55",
+      "kind": "fire-station",
+      "name": "Los Angeles Fire Department Station 55 (Eagle Rock)",
+      "agency": "Los Angeles Fire Department",
+      "address": "4455 E York Blvd, Los Angeles, CA 90041",
+      "lat": 34.123932,
+      "lng": -118.219395,
+      "coordinateSource": "U.S. Census Bureau geocoder",
+      "fireHazardZone": "Very High",
+      "sources": [
+        {
+          "publisher": "Los Angeles Fire Department",
+          "title": "Fire Station Directory (May 2021)",
+          "url": "https://lafd.org/sites/default/files/pdf_files/Fire-Station-Directory-May-2021.pdf",
+          "date": "2026-09-26"
+        },
+        {
+          "publisher": "U.S. Census Bureau",
+          "title": "Census Geocoder (onelineaddress benchmark: Public_AR_Current)",
+          "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "lafd-station-56",
+      "kind": "fire-station",
+      "name": "Los Angeles Fire Department Station 56 (Silver Lake)",
+      "agency": "Los Angeles Fire Department",
+      "address": "2759 Rowena Ave, Los Angeles, CA 90039",
+      "lat": 34.107488,
+      "lng": -118.264026,
+      "coordinateSource": "U.S. Census Bureau geocoder",
+      "fireHazardZone": "Very High",
+      "sources": [
+        {
+          "publisher": "Los Angeles Fire Department",
+          "title": "Fire Station Directory (May 2021)",
+          "url": "https://lafd.org/sites/default/files/pdf_files/Fire-Station-Directory-May-2021.pdf",
+          "date": "2026-09-26"
+        },
+        {
+          "publisher": "U.S. Census Bureau",
+          "title": "Census Geocoder (onelineaddress benchmark: Public_AR_Current)",
+          "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "lafd-station-74",
+      "kind": "fire-station",
+      "name": "Los Angeles Fire Department Station 74 (Sunland-Tujunga)",
+      "agency": "Los Angeles Fire Department",
+      "address": "7777 Foothill Blvd, Tujunga, CA 91042",
+      "lat": 34.258399,
+      "lng": -118.301888,
+      "coordinateSource": "U.S. Census Bureau geocoder",
+      "fireHazardZone": null,
+      "sources": [
+        {
+          "publisher": "Los Angeles Fire Department",
+          "title": "Fire Station Directory (May 2021)",
+          "url": "https://lafd.org/sites/default/files/pdf_files/Fire-Station-Directory-May-2021.pdf",
+          "date": "2026-09-26"
+        },
+        {
+          "publisher": "U.S. Census Bureau",
+          "title": "Census Geocoder (onelineaddress benchmark: Public_AR_Current)",
+          "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "lapd-northeast-station",
+      "kind": "police-station",
+      "name": "Los Angeles Police Department Northeast Community Police Station",
+      "agency": "Los Angeles Police Department",
+      "address": "3353 San Fernando Rd, Los Angeles, CA 90065",
+      "lat": 34.118581,
+      "lng": -118.24944,
+      "coordinateSource": "U.S. Census Bureau geocoder",
+      "fireHazardZone": "Very High",
+      "sources": [
+        {
+          "publisher": "Los Angeles Police Department",
+          "title": "LAPD Area Stations map",
+          "url": "https://lapdonlinestrgeacc.blob.core.usgovcloudapi.net/lapdonlinemedia/2021/12/LAPD-Area-Stations.pdf",
+          "date": "2026-09-26"
+        },
+        {
+          "publisher": "U.S. Census Bureau",
+          "title": "Census Geocoder (onelineaddress benchmark: Public_AR_Current)",
+          "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "pasadena-fire-station-38",
+      "kind": "fire-station",
+      "name": "Pasadena Fire Department Station 38",
+      "agency": "Pasadena Fire Department",
+      "address": "1150 Linda Vista Ave, Pasadena, CA 91103",
+      "lat": 34.166716,
+      "lng": -118.176338,
+      "coordinateSource": "U.S. Census Bureau geocoder",
+      "fireHazardZone": "Very High",
+      "sources": [
+        {
+          "publisher": "Los Angeles County",
+          "title": "Services Locator: Pasadena Fire Department - Station 38",
+          "url": "https://locator.lacounty.gov/lac/Location/3175723/pasadena-fire-department---station-38",
+          "date": "2026-09-26"
+        },
+        {
+          "publisher": "U.S. Census Bureau",
+          "title": "Census Geocoder (onelineaddress benchmark: Public_AR_Current)",
+          "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+          "date": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "id": "pasadena-police-hq",
+      "kind": "police-station",
+      "name": "Pasadena Police Department",
+      "agency": "Pasadena Police Department",
+      "address": "207 N Garfield Ave, Pasadena, CA 91101",
+      "lat": 34.149432,
+      "lng": -118.144357,
+      "coordinateSource": "U.S. Census Bureau geocoder",
+      "fireHazardZone": null,
+      "sources": [
+        {
+          "publisher": "Los Angeles County",
+          "title": "Services Locator: City Of Pasadena Police Department",
+          "url": "https://locator.lacounty.gov/lac/Location/3175464/city-of-pasadena-police-department",
+          "date": "2026-09-26"
+        },
+        {
+          "publisher": "U.S. Census Bureau",
+          "title": "Census Geocoder (onelineaddress benchmark: Public_AR_Current)",
+          "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
+          "date": "2026-09-26"
+        }
+      ]
+    }
+  ]
+}

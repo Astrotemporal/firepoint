@@ -12,8 +12,9 @@ import {
 import { geocode, type GeocodeResult } from "@/evacuation/geocode";
 import { isApproximate, type LocationFix, type LocationState } from "@/evacuation/location";
 import type { RoutePlan } from "@/evacuation/route-planner";
-import { bearing, escapeHeading, haversine, routeIntersectsHazard } from "@/evacuation/routing";
-import type { Hazard, Route, SafeZone, Shelter } from "@/evacuation/types";
+import { SAFE_DISTANCE_METERS } from "@/evacuation/escape";
+import { bearing, haversine, routeIntersectsHazard } from "@/evacuation/routing";
+import type { Hazard, LatLng, Route, Shelter } from "@/evacuation/types";
 import type { MapText } from "@/i18n/map";
 import { hazardName, useMapText } from "./map-text";
 
@@ -50,7 +51,7 @@ type RowView = {
   sub?: ReactNode;
   danger?: boolean;
   /** Where "Go" starts in-app navigation to; absent when no usable route should be offered. */
-  goTo?: Shelter | SafeZone;
+  goTo?: LatLng & { name: string };
   details: ReactNode;
 };
 
@@ -129,7 +130,7 @@ export function RouteBar(props: RouteBarProps) {
               </ul>
             )}
             <p className="ev-note ev-with-icon"><Icon name="info" /><span>{t.notAllClear}</span></p>
-            <p className="ev-note" lang="en">Dashed grey private mark halos are sketches, not reports, fire extents, evacuation zones or routing hazards. Shelters and escape targets remain unverified.</p>
+            <p className="ev-note" lang="en">The shaded red areas are your private fire marks: sketches, not reports or measured fire extents. Directions treat each one as the fire and lead away from it. Shelters remain unverified.</p>
           </div>
         </div>
       </div>
@@ -349,48 +350,64 @@ function waiting(pending: boolean, text: string, t: MapText): RowView {
   return { title: "", summary: pending ? text : t.waitingForStart, details: null };
 }
 
-function escapeRow({ plan, origin, hazards, online, onRetryRoutes }: RouteBarProps, t: MapText): RowView {
+function escapeRow({ plan, origin, online, onRetryRoutes }: RouteBarProps, t: MapText): RowView {
   const title = t.escapeRoute;
   const pick = plan?.escape;
   // Requested but not yet resolved (no origin yet, or the request is still in flight).
   if (!pick || pick.kind === "not-requested" || !origin) {
     return { title, summary: t.findingWayOut, details: null };
   }
-  if (pick.kind === "no-zone") return { title, summary: t.noEvacuationPoint, details: null };
-  if (pick.kind === "route") {
+  if (pick.kind === "no-fire") return { title, summary: t.noFireMarked, details: null };
+  if (pick.kind === "already-safe") {
     return {
       title,
-      ...splitSummary(t.headToward(t.compass[compassDirection(bearing(origin, pick.zone))], pick.zone.name, formatDuration(pick.route.durationSeconds, t.units))),
-      sub: <TimeAndDistance route={pick.route} />,
-      goTo: pick.zone,
+      summary: t.alreadySafe(hazardName(pick.threat.hazard, t), formatMiles(pick.threat.edgeMeters, t.units)),
+      details: <p className="ev-meta ev-with-icon"><Icon name="info" /><span>{t.keepDistance}</span></p>,
+    };
+  }
+  if (pick.kind === "route") {
+    const { mark, route, threat } = pick;
+    return {
+      title,
+      ...splitSummary(t.headToSafety(t.compass[compassDirection(bearing(origin, mark))], formatDuration(route.durationSeconds, t.units))),
+      sub: <TimeAndDistance route={route} />,
+      goTo: { ...mark, name: t.escapeMarkTitle },
       details: (
         <>
-          <p className="ev-meta ev-with-icon"><Icon name="flag" /><span>{pick.zone.description}</span></p>
-          <Steps route={pick.route} />
+          {pick.secondsToSafety > 0 && (
+            <p className="ev-meta ev-strong">{t.outOfFireZoneIn(formatDuration(pick.secondsToSafety, t.units))}</p>
+          )}
+          <p className="ev-meta ev-with-icon">
+            <Icon name="flag" />
+            <span>{t.escapeMarkDetail(formatMiles(mark.fireMeters, t.units), hazardName(threat.hazard, t))}</span>
+          </p>
+          <Steps route={route} />
         </>
       ),
     };
   }
-  const heading = escapeHeading(origin, pick.zone, hazards);
-  const direction = t.compass[compassDirection(heading.bearing)];
+  if (pick.kind === "routing-unavailable") {
+    // No road route: name the direction and hand the mark to the phone's maps app, which routes by road.
+    const heading = bearing(origin, pick.mark);
+    return {
+      title,
+      ...splitSummary(t.headToSafetyStraight(t.compass[compassDirection(heading)], formatMiles(pick.mark.meters, t.units))),
+      goTo: { ...pick.mark, name: t.escapeMarkTitle },
+      details: (
+        <>
+          <Compass heading={heading} meters={pick.mark.meters} reason={pick.reason} />
+          <p className="ev-meta ev-with-icon"><Icon name="flag" /><span>{t.escapeMarkNote(formatMiles(SAFE_DISTANCE_METERS, t.units))}</span></p>
+          {online && <RetryButton onRetry={onRetryRoutes} />}
+        </>
+      ),
+    };
+  }
+  // Every road route out passes the fire: say which way is away from it, but never draw or link a route through it.
   return {
     title,
-    danger: pick.kind === "no-safe-route",
-    ...(heading.toward === "target"
-      ? splitSummary(t.headTowardStraight(direction, pick.zone.name, formatMiles(haversine(origin, pick.zone), t.units)))
-      : { summary: t.headAway(direction, hazardName(heading.hazard, t)) }),
-    // A maps app would take the same road through the hazard, so only link when routing itself failed.
-    goTo: pick.kind === "routing-unavailable" ? pick.zone : undefined,
-    details: (
-      <>
-        {pick.kind === "no-safe-route" && (
-          <p className="ev-meta ev-danger-text">{t.everyEscapeNearHazard}</p>
-        )}
-        <Compass heading={heading.bearing} meters={heading.toward === "target" ? haversine(origin, pick.zone) : null}
-          reason={pick.kind === "routing-unavailable" ? pick.reason : null} />
-        {online && pick.kind === "routing-unavailable" && <RetryButton onRetry={onRetryRoutes} />}
-      </>
-    ),
+    danger: true,
+    summary: t.headAway(t.compass[compassDirection(pick.bearing)], hazardName(pick.threat.hazard, t)),
+    details: <p className="ev-meta ev-danger-text ev-with-icon"><Icon name="warning" /><span>{t.everyEscapeNearHazard}</span></p>,
   };
 }
 

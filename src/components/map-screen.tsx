@@ -4,13 +4,15 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { MARKS_KEY, MAX_MARKS, addMark, createMark, moveMark, parseMarks, type FireMark } from "@/domain/fire-marks";
-import { GLENDALE_CITY_HALL, SAFE_ZONES, SERVICE_RADIUS_METERS, SHELTERS } from "@/evacuation/data/glendale";
+import { GLENDALE_CITY_HALL, SERVICE_RADIUS_METERS, SHELTERS } from "@/evacuation/data/glendale";
+import { WILDLAND_ZONES } from "@/evacuation/data/wildland";
 import { getActiveHazards, subscribeToHazards } from "@/evacuation/hazards";
 import { DEFAULT_FIX, LocationTracker, type LocationFix } from "@/evacuation/location";
 import { selectRoutingHazards } from "@/evacuation/marks";
-import { RoutePlanner } from "@/evacuation/route-planner";
+import { hazardsKey, RoutePlanner } from "@/evacuation/route-planner";
 import { getRouteIn } from "@/evacuation/route-provider";
 import { haversine, nearestHazard } from "@/evacuation/routing";
+import { createWildlandIndex } from "@/evacuation/wildland";
 import { registerServiceWorker } from "@/lib/service-worker";
 import type { MapHandle } from "./evacuation-map";
 import { FirePanel } from "./fire-panel";
@@ -32,6 +34,9 @@ const EvacuationMap = dynamic(() => import("./evacuation-map").then((mod) => mod
   ssr: false,
   loading: function MapLoading() { return <div className="ev-map map-loading" role="status">{useMapText().loadingMap}</div>; },
 });
+
+/** CAL FIRE High/Very High zones: escape marks are always placed outside them, as well as away from the fire. */
+const WILDLAND = createWildlandIndex(WILDLAND_ZONES);
 
 /** Within this distance of a hazard's edge, the escape route is listed first. */
 const ESCAPE_PRIORITY_METERS = 3_000;
@@ -75,7 +80,8 @@ export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
   const t = mapText(locale);
   const [tracker] = useState(() => new LocationTracker());
   const [planner] = useState(() => new RoutePlanner<LocationFix>({
-    getRoute: getRouteIn(DIRECTIONS_LANGUAGE[locale]), shelters: SHELTERS, zones: SAFE_ZONES, isOnline: () => navigator.onLine,
+    getRoute: getRouteIn(DIRECTIONS_LANGUAGE[locale]), shelters: SHELTERS, wildland: WILDLAND,
+    isOnline: () => navigator.onLine,
   }));
   const [navigator_] = useState(() => new Navigator({
     getRoute: getRouteIn(DIRECTIONS_LANGUAGE[locale]), isOnline: () => navigator.onLine,
@@ -96,8 +102,9 @@ export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
   const [hint, setHint] = useState<string | null>(null);
   const mapRef = useRef<MapHandle | null>(null);
 
-  // Private marks remain visible as pins, but cannot become a reported fire or steer directions.
-  const hazards = selectRoutingHazards({ sourceHazards: stubHazards, privateMarks: marks });
+  // A person's fire marks are the fire the directions steer around (private, never a report), next to the hazard
+  // feed (an empty stub until a vetted source is connected). Memoized so the planner sees one list per change.
+  const hazards = useMemo(() => selectRoutingHazards({ sourceHazards: stubHazards, privateMarks: marks }), [stubHazards, marks]);
   const fix = location.fix;
   const metersFromGlendale = fix?.source === "gps" ? haversine(fix, GLENDALE_CITY_HALL) : 0;
   const outsideArea = metersFromGlendale > SERVICE_RADIUS_METERS;
@@ -130,6 +137,13 @@ export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
   }, [navigator_, navigating, fix, hazards]);
   useEffect(() => () => navigator_.stop(), [navigator_]);
   useWakeLock(navigating);
+  // Route to safety automatically: once a fire is recorded, the escape route is computed from the person's own
+  // location (GPS or a typed address, never the City Hall stand-in) and shown. Hiding it lasts until the fires change.
+  const firesKey = hazardsKey(hazards);
+  const ownStart = origin !== null && origin.source !== "default";
+  useEffect(() => {
+    if (ownStart && firesKey) planner.requestEscape();
+  }, [planner, ownStart, firesKey]);
   useEffect(() => {
     if (online) planner.refresh();
   }, [planner, online]);
@@ -141,7 +155,7 @@ export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
     const pick = kind === "escape" ? plan?.escape : plan?.shelter;
     let target: NavTarget | null = null;
     let route: Route | null = null;
-    if (pick && "zone" in pick) target = { kind, name: pick.zone.name, destination: { lat: pick.zone.lat, lng: pick.zone.lng } };
+    if (pick && "mark" in pick) target = { kind, name: t.escapeMarkTitle, destination: { lat: pick.mark.lat, lng: pick.mark.lng } };
     if (pick && "shelter" in pick) target = { kind, name: pick.shelter.name, destination: { lat: pick.shelter.lat, lng: pick.shelter.lng } };
     if (!target) return;
     if (pick?.kind === "route") route = pick.route;
@@ -192,7 +206,7 @@ export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
       <h1 className="sr-only">{t.screenTitle}</h1>
       <div className="ev-map-area">
         <EvacuationMap
-          dark={theme === "dark"} origin={origin} hazards={hazards} shelters={SHELTERS} zones={SAFE_ZONES} plan={plan}
+          dark={theme === "dark"} origin={origin} hazards={hazards} shelters={SHELTERS} plan={plan}
           centerKey={centerKey} fitKey={fitKey} marks={marks} onReady={onReady} navigation={mapNavigation}
           onMoveMark={(id, lat, lng) => save(moveMark(marks, id, lat, lng))}
           onRemoveMark={(id) => { save(marks.filter((mark) => mark.id !== id)); setHint(t.markRemoved); }}

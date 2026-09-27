@@ -115,7 +115,7 @@ export function PublicMapScreen({ locale = "en", localized = null }: PublicMapSc
       <div className="ev-map-area">
         {MAPBOX_TOKEN ? (
           <EvacuationMap
-            dark={theme === "dark"} origin={null} hazards={NONE} shelters={NONE} zones={NONE} plan={null}
+            dark={theme === "dark"} origin={null} hazards={NONE} shelters={NONE} plan={null}
             centerKey={null} fitKey={null} marks={marks} onReady={onReady}
             ariaLabel={PUBLIC_MAP_LABEL} failedText={PUBLIC_MAP_FAILED}
             onMoveMark={(id, lat, lng) => save(moveMark(marks, id, lat, lng))}

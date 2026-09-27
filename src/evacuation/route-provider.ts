@@ -25,6 +25,8 @@ const MapboxRouteSchema = z.object({
       distance: z.number(),
       duration: z.number(),
       maneuver: z.object({ instruction: z.string(), type: z.string().optional(), modifier: z.string().optional() }),
+      /** `classes` names the kind of road leaving each intersection ("motorway", "toll", …). */
+      intersections: z.array(z.object({ classes: z.array(z.string()).optional() })).optional(),
     })),
   })),
 });
@@ -44,16 +46,20 @@ function toTurn({ type, modifier }: { type?: string; modifier?: string }): Turn 
 }
 
 function toRoute(route: z.infer<typeof MapboxRouteSchema>): Route {
+  const steps = route.legs.flatMap((leg) => leg.steps);
+  // The step before "arrive" is the road the trip ends on; its last intersection says what kind of road that is.
+  const approach = steps.at(-2) ?? steps.at(-1);
   return {
     path: route.geometry.coordinates.map(([lng, lat]) => ({ lat, lng })),
     distanceMeters: route.distance,
     durationSeconds: route.duration,
-    steps: route.legs.flatMap((leg) => leg.steps).map((step) => ({
+    steps: steps.map((step) => ({
       instruction: step.maneuver.instruction,
       distanceMeters: step.distance,
       durationSeconds: step.duration,
       turn: toTurn(step.maneuver),
     })),
+    ...(approach?.intersections?.at(-1)?.classes?.includes("motorway") ? { arrivesOnMotorway: true } : {}),
   };
 }
 

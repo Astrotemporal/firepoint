@@ -6,14 +6,11 @@ import { useEffect, useRef, useState } from "react";
 import type { FireMark } from "@/domain/fire-marks";
 import { GLENDALE_CITY_HALL } from "@/evacuation/data/glendale";
 import type { LocationFix } from "@/evacuation/location";
-import { PRIVATE_MARK_STYLE, privateMarkPaint, type MapTheme } from "@/domain/private-mark-style";
-import { RING_DASH, ringStack } from "@/domain/ring-visual";
-import { privateMarkHalos } from "@/evacuation/marks";
 import type { RoutePlan } from "@/evacuation/route-planner";
-import {
-  DESTINATION_HAZARD_BUFFER_METERS, destinationPoint, escapeHeading, isShelterAvailable, pointInHazard,
-} from "@/evacuation/routing";
-import type { Hazard, LatLng, SafeZone, Shelter } from "@/evacuation/types";
+import { SAFE_DISTANCE_METERS, type EscapeMark } from "@/evacuation/escape";
+import { formatMiles } from "@/evacuation/format";
+import { DESTINATION_HAZARD_BUFFER_METERS, destinationPoint, isShelterAvailable, pointInHazard } from "@/evacuation/routing";
+import type { Hazard, LatLng, Shelter } from "@/evacuation/types";
 import { MAPBOX_STYLES, MAPBOX_TOKEN } from "@/lib/mapbox";
 import { createPin, removePin, type PinHandlers, type PinView } from "./fire-pins";
 import { useMapText } from "./map-text";
@@ -32,7 +29,6 @@ type EvacuationMapProps = {
   origin: LocationFix | null;
   hazards: readonly Hazard[];
   shelters: readonly Shelter[];
-  zones: readonly SafeZone[];
   plan: RoutePlan<LocationFix> | null;
   /** Each new value re-centers the camera on `origin` (new start location, or the locate button). */
   centerKey: string | null;
@@ -108,19 +104,11 @@ function pinElement(className: string, glyph: string, label: string): HTMLButton
   return element;
 }
 
-function addLayers(map: MapboxMap, theme: MapTheme): void {
-  for (const id of ["hazards", "private-mark-halos", "accuracy", "routes"]) map.addSource(id, { type: "geojson", data: EMPTY });
-  // Incident geometry (none connected today) and private visual sketches have separate sources/paint.
-  map.addLayer({ id: "hazards-fill", type: "fill", source: "hazards", paint: { "fill-color": "#ef4444", "fill-opacity": 0.28 } });
+function addLayers(map: MapboxMap): void {
+  for (const id of ["hazards", "accuracy", "routes"]) map.addSource(id, { type: "geojson", data: EMPTY });
+  // A person's own fire marks are shaded lighter than hazards from the feed.
+  map.addLayer({ id: "hazards-fill", type: "fill", source: "hazards", paint: { "fill-color": "#ef4444", "fill-opacity": ["case", ["get", "mark"], 0.16, 0.28] } });
   map.addLayer({ id: "hazards-line", type: "line", source: "hazards", paint: { "line-color": COLORS.hazard, "line-width": 2 } });
-  // Private sketches are neutral grey by policy: no red, and no colour that depends on how many marks exist.
-  const sketch = privateMarkPaint(theme);
-  map.addLayer({ id: "private-mark-halos-fill", type: "fill", source: "private-mark-halos",
-    paint: { "fill-color": sketch.fill, "fill-opacity": PRIVATE_MARK_STYLE.fillOpacity } });
-  // Same dash rhythm as the /prepare defensible-space figure; a different unit and meaning. No on-canvas text:
-  // a map label cannot carry lang="en" in ES/HY, so the lang="en" legend and popup explain the ring instead.
-  map.addLayer({ id: "private-mark-halos-outline", type: "line", source: "private-mark-halos",
-    paint: { "line-color": sketch.stroke, "line-opacity": PRIVATE_MARK_STYLE.strokeOpacity, "line-width": 2, "line-dasharray": [...RING_DASH] } });
   map.addLayer({ id: "accuracy-fill", type: "fill", source: "accuracy", paint: { "fill-color": COLORS.you, "fill-opacity": 0.12 } });
   map.addLayer({ id: "accuracy-line", type: "line", source: "accuracy", paint: { "line-color": COLORS.you, "line-opacity": 0.4, "line-width": 1 } });
   const lineLayout = { "line-join": "round", "line-cap": "round" } as const;
@@ -141,20 +129,20 @@ function addLayers(map: MapboxMap, theme: MapTheme): void {
   });
   map.addLayer({
     id: "route-guides", type: "line", source: "routes", layout: lineLayout,
-    filter: ["in", ["get", "kind"], ["literal", ["shelter-guide", "escape-guide"]]],
+    filter: ["==", ["get", "kind"], "shelter-guide"],
     paint: {
-      "line-color": ["match", ["get", "kind"], "shelter-guide", COLORS.shelterRoute, COLORS.escapeRoute],
+      "line-color": COLORS.shelterRoute,
       "line-width": 3, "line-dasharray": [0.3, 2],
     },
   });
 }
 
-function planTargets(plan: RoutePlan | null): { shelter: Shelter | null; zone: SafeZone | null } {
+function planTargets(plan: RoutePlan | null): { shelter: Shelter | null; escapeMark: EscapeMark | null } {
   const shelterPick = plan?.shelter;
   const escapePick = plan?.escape;
   return {
     shelter: shelterPick?.kind === "route" || shelterPick?.kind === "routing-unavailable" ? shelterPick.shelter : null,
-    zone: escapePick && escapePick.kind !== "no-zone" && escapePick.kind !== "not-requested" ? escapePick.zone : null,
+    escapeMark: escapePick?.kind === "route" || escapePick?.kind === "routing-unavailable" ? escapePick.mark : null,
   };
 }
 
@@ -171,7 +159,7 @@ function MapNotice({ text }: { text: string }) {
 }
 
 function MapboxView({
-  dark, origin, hazards, shelters, zones, plan, centerKey, fitKey, marks, onReady, onMoveMark, onRemoveMark,
+  dark, origin, hazards, shelters, plan, centerKey, fitKey, marks, onReady, onMoveMark, onRemoveMark,
   ariaLabel, failedText, navigation = null,
 }: EvacuationMapProps) {
   const t = useMapText();
@@ -213,7 +201,7 @@ function MapboxView({
     // A new style drops our sources and layers, so they are rebuilt (and refilled by the effects) after each one.
     map.on("style.load", () => {
       everLoaded = true;
-      addLayers(map, styleRef.current === MAPBOX_STYLES.dark ? "dark" : "light");
+      addLayers(map);
       setLoaded((count) => count + 1);
     });
     map.on("error", () => { if (!everLoaded) setFailed(true); });
@@ -251,18 +239,9 @@ function MapboxView({
     if (!loaded || !source) return;
     source.setData({
       type: "FeatureCollection",
-      // No source is wired yet; private marks never enter this area-fill layer.
-      features: hazards.map((hazard) => circle(hazard.center, hazard.radiusMeters)),
+      features: hazards.map((hazard) => circle(hazard.center, hazard.radiusMeters, { mark: Boolean(hazard.userMark) })),
     });
   }, [hazards, loaded]);
-
-  useEffect(() => {
-    const source = mapRef.current?.getSource<GeoJSONSource>("private-mark-halos");
-    if (!loaded || !source) return;
-    // Each halo is its own single ring; `ringStack` only supplies the shared dash/label convention.
-    source.setData({ type: "FeatureCollection", features: ringStack(privateMarkHalos(marks)).map((edge) =>
-      circle(edge.ring.center, edge.radius, { kind: edge.ring.kind, id: edge.ring.id, dashed: edge.dashed })) });
-  }, [marks, loaded]);
 
   // Mapbox markers live outside React, so sync them with the stored marks by id.
   useEffect(() => {
@@ -284,7 +263,7 @@ function MapboxView({
 
   const targets = planTargets(plan);
   const shelterTargetId = targets.shelter?.id ?? null;
-  const zoneTargetId = targets.zone?.id ?? null;
+  const escapeMark = targets.escapeMark;
 
   useEffect(() => {
     const map = mapRef.current;
@@ -308,18 +287,19 @@ function MapboxView({
         });
         return new Marker({ element, anchor: "bottom" }).setLngLat(toLngLat(shelter));
       }),
-      ...zones.map((zone) => {
-        const element = pinElement(`ev-pin-zone${zone.id === zoneTargetId ? " ev-pin-chosen" : ""}`, "➜", t.zonePin(zone.name));
-        element.addEventListener("click", (event) => {
-          event.stopPropagation();
-          show(zone, [zone.name, zone.description, t.zoneNote]);
-        });
-        return new Marker({ element, anchor: "bottom" }).setLngLat(toLngLat(zone));
-      }),
     ];
+    // The escape mark: where the escape route ends, on a road just outside the fire danger zone.
+    if (escapeMark) {
+      const element = pinElement("ev-pin-zone ev-pin-chosen", "➜", t.escapeMarkPin);
+      element.addEventListener("click", (event) => {
+        event.stopPropagation();
+        show(escapeMark, [t.escapeMarkTitle, t.escapeMarkNote(formatMiles(SAFE_DISTANCE_METERS, t.units))]);
+      });
+      markers.push(new Marker({ element, anchor: "bottom" }).setLngLat(toLngLat(escapeMark)));
+    }
     markers.forEach((marker) => marker.addTo(map));
     return () => markers.forEach((marker) => marker.remove());
-  }, [shelters, zones, hazards, shelterTargetId, zoneTargetId, loaded, t]);
+  }, [shelters, hazards, shelterTargetId, escapeMark, loaded, t]);
 
   useEffect(() => {
     const source = mapRef.current?.getSource<GeoJSONSource>("routes");
@@ -331,13 +311,8 @@ function MapboxView({
       const { shelter, escape } = plan;
       if (shelter.kind === "route") features.push(line(shelter.route.path, "shelter"));
       else if (shelter.kind === "routing-unavailable" && origin) features.push(line([origin, shelter.shelter], "shelter-guide"));
+      // Escape is only ever drawn as a road route: never a straight line across hills or freeways.
       if (escape.kind === "route") features.push(line(escape.route.path, "escape"));
-      else if (escape.kind !== "no-zone" && escape.kind !== "not-requested" && origin) {
-        // Same rule as the route bar: never draw a guide line across the hazard.
-        const heading = escapeHeading(origin, escape.zone, hazards);
-        const end = heading.toward === "target" ? escape.zone : destinationPoint(origin, heading.bearing, 1_500);
-        features.push(line([origin, end], "escape-guide"));
-      }
     }
     source.setData({ type: "FeatureCollection", features });
   }, [plan, origin, hazards, loaded, navigation]);
@@ -402,9 +377,9 @@ function MapboxView({
     const bounds = new LngLatBounds(toLngLat(origin), toLngLat(origin));
     if (plan.shelter.kind === "route") plan.shelter.route.path.forEach((point) => bounds.extend(toLngLat(point)));
     if (plan.escape.kind === "route") plan.escape.route.path.forEach((point) => bounds.extend(toLngLat(point)));
-    const { shelter, zone } = planTargets(plan);
+    const { shelter, escapeMark: mark } = planTargets(plan);
     if (shelter) bounds.extend(toLngLat(shelter));
-    if (zone) bounds.extend(toLngLat(zone));
+    if (mark) bounds.extend(toLngLat(mark));
     map.fitBounds(bounds, { padding: fitPadding(map.getContainer()), maxZoom: 16, duration: 900 });
   }, [fitKey, plan, origin, loaded]);
 

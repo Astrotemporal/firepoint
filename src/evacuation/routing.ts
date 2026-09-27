@@ -1,9 +1,9 @@
-import type { GetRoute, Hazard, LatLng, Route, SafeZone, Shelter } from "./types";
+import type { GetRoute, Hazard, LatLng, Route, Shelter } from "./types";
 
 /*
- * Pure routing decisions. Network access only happens through an injected GetRoute, so every
+ * Geometry and shelter routing. Network access only happens through an injected GetRoute, so every
  * function here is deterministic under test. Distances are meters; bearings are degrees
- * clockwise from true north.
+ * clockwise from true north. Escape routing lives in ./escape.
  */
 
 const EARTH_RADIUS_METERS = 6_371_008.8;
@@ -114,23 +114,6 @@ export function destinationPoint(from: LatLng, bearingDegrees: number, meters: n
   return { lat: toDegrees(φ2), lng: ((toDegrees(λ2) + 540) % 360) - 180 };
 }
 
-export type Heading =
-  | { toward: "target"; bearing: number }
-  | { toward: "away-from-hazard"; bearing: number; hazard: Hazard };
-
-/**
- * Straight-line escape guidance when no road route is usable: toward the target if that line
- * stays clear of hazards, otherwise directly away from the nearest hazard. A compass arrow must
- * never point people across the hazard they are escaping.
- */
-export function escapeHeading(origin: LatLng, target: LatLng, hazards: readonly Hazard[]): Heading {
-  const threat = nearestHazard(origin, hazards);
-  if (!threat || !routeIntersectsHazard([origin, target], hazards, { origin })) {
-    return { toward: "target", bearing: bearing(origin, target) };
-  }
-  return { toward: "away-from-hazard", bearing: (bearing(origin, threat.hazard.center) + 180) % 360, hazard: threat.hazard };
-}
-
 /** A route and its alternatives that stay clear of every hazard, fastest first. */
 export function clearRoutes(route: Route, hazards: readonly Hazard[], origin: LatLng): Route[] {
   return [route, ...(route.alternatives ?? [])]
@@ -200,83 +183,4 @@ export async function pickShelter(
   return anyRouted
     ? { kind: "no-safe-route", nearest: ranked[0].shelter }
     : { kind: "routing-unavailable", shelter: ranked[0].shelter, reason: "provider-error" };
-}
-
-export type EscapeCandidate = {
-  zone: SafeZone;
-  bearing: number;
-  meters: number;
-  /** Angle between this zone and the nearest hazard as seen from the origin; null without hazards. */
-  separation: number | null;
-  /** The zone itself sits within a hazard's destination buffer. */
-  compromised: boolean;
-};
-
-/**
- * Escape points ordered best first: zones clear of hazards, then those whose bearing differs most
- * from the bearing to the nearest hazard (ties: farther from it). Without hazards, primary first.
- */
-export function rankEscapePoints(origin: LatLng, zones: readonly SafeZone[], hazards: readonly Hazard[]): EscapeCandidate[] {
-  const threat = nearestHazard(origin, hazards)?.hazard ?? null;
-  const hazardBearing = threat ? bearing(origin, threat.center) : null;
-  return zones
-    .map((zone) => {
-      const zoneBearing = bearing(origin, zone);
-      return {
-        zone,
-        bearing: zoneBearing,
-        meters: haversine(origin, zone),
-        separation: hazardBearing === null ? null : angularDifference(zoneBearing, hazardBearing),
-        compromised: hazards.some((hazard) => pointInHazard(zone, hazard, DESTINATION_HAZARD_BUFFER_METERS)),
-      };
-    })
-    .sort((a, b) => {
-      if (a.compromised !== b.compromised) return a.compromised ? 1 : -1;
-      if (threat) {
-        return (b.separation ?? 0) - (a.separation ?? 0) ||
-          haversine(b.zone, threat.center) - haversine(a.zone, threat.center);
-      }
-      return (a.zone.priority === b.zone.priority ? 0 : a.zone.priority === "primary" ? -1 : 1) || a.meters - b.meters;
-    });
-}
-
-export function pickEscapePoint(origin: LatLng, zones: readonly SafeZone[], hazards: readonly Hazard[]): SafeZone | null {
-  return rankEscapePoints(origin, zones, hazards)[0]?.zone ?? null;
-}
-
-export type EscapePick =
-  | { kind: "route"; zone: SafeZone; route: Route }
-  /** Every driving route found passed too close to a hazard. */
-  | { kind: "no-safe-route"; zone: SafeZone }
-  | { kind: "routing-unavailable"; zone: SafeZone; reason: "offline" | "provider-error" }
-  | { kind: "no-zone" }
-  /** The user hasn't asked for an escape route yet; nothing was computed. */
-  | { kind: "not-requested" };
-
-/** Tries escape points in rank order and returns the first route (or alternative) clear of hazards. */
-export async function pickEscapeRoute(
-  origin: LatLng,
-  zones: readonly SafeZone[],
-  hazards: readonly Hazard[],
-  getRoute: GetRoute,
-  { signal }: RouteOptions = {},
-): Promise<EscapePick> {
-  const ranked = rankEscapePoints(origin, zones, hazards);
-  if (ranked.length === 0) return { kind: "no-zone" };
-  let anyRouted = false;
-  for (const { zone } of ranked) {
-    let route: Route;
-    try {
-      route = await getRoute(origin, zone, { signal });
-    } catch (error) {
-      if (signal?.aborted) throw error;
-      continue;
-    }
-    anyRouted = true;
-    const clear = clearRoutes(route, hazards, origin)[0];
-    if (clear) return { kind: "route", zone, route: clear };
-  }
-  return anyRouted
-    ? { kind: "no-safe-route", zone: ranked[0].zone }
-    : { kind: "routing-unavailable", zone: ranked[0].zone, reason: "provider-error" };
 }

@@ -42,7 +42,7 @@ describe.each(["es", "hy"] as const)("%s map text", (locale) => {
     }
   });
 
-  it("does not claim a private mark changes routes", () => {
+  it("does not claim a private mark changes routes (the public screen shows this copy too)", () => {
     expect(text.placed).not.toMatch(/rutas.*evitan|ճանապարհներն.*շրջանց/iu);
     expect(text.marksOnDevice(3)).not.toMatch(/rutas.*evitan|ճանապարհները.*շրջանց/iu);
   });
