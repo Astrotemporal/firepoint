@@ -34,11 +34,13 @@ function startNext(mode, port, env) {
   child.stdout.on("data", (chunk) => { log += chunk; });
   child.stderr.on("data", (chunk) => { log += chunk; });
   const stop = () => new Promise((resolve) => {
-    if (child.exitCode !== null) { resolve(); return; }
+    if (child.exitCode !== null || child.signalCode !== null) { resolve(); return; }
     child.once("exit", () => resolve());
     const signalGroup = (signal) => { if (process.platform === "win32") child.kill(); else process.kill(-child.pid, signal); };
     try { signalGroup("SIGTERM"); } catch { resolve(); }
     setTimeout(() => { try { signalGroup("SIGKILL"); } catch { /* gone */ } }, 5_000).unref();
+    // Never wait forever on a stubborn process tree; the runner reaps orphans.
+    setTimeout(resolve, 8_000).unref();
   });
   return { child, stop, log: () => log };
 }
@@ -120,4 +122,8 @@ try {
 } finally {
   if (app) await app.stop();
   await stub.close();
+  // Exit explicitly: a surviving pipe or keep-alive socket must not hold the CI step open.
+  const lingering = process.getActiveResourcesInfo?.().filter((kind) => kind !== "TTYWrap") ?? [];
+  if (lingering.length) console.log(`exiting with lingering handles: ${lingering.join(", ")}`);
+  process.exit(process.exitCode ?? 0);
 }
