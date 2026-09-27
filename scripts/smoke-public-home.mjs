@@ -4,7 +4,7 @@
 import { chromium } from "playwright";
 
 const base = process.env.FIREPOINT_PREVIEW_URL ?? "http://127.0.0.1:3000";
-const STATUS_TITLE = "No verified incident, shelter or route loaded";
+const STATUS_TITLE = "Shelter status unavailable — no verified open-shelter feed loaded";
 const FORBIDDEN_SELECTORS = [".ev-escape-cta", ".ev-bar", ".ev-sheet", ".ev-go", ".ev-pin", ".ev-locate", ".ev-ask-button", ".ev-you", ".ev-start", ".ev-status", ".ev-form"];
 const FORBIDDEN_TEXT = [
   "Escape", "Nearest shelter", "Allow location access", "Use my location", "Routes start from", "Enter address", "routes avoid",
@@ -56,13 +56,13 @@ try {
           catch (error) { if (attempt === 23) throw error; await new Promise((resolve) => setTimeout(resolve, 250)); }
         }
         check(response?.status() === 200, `${name}/${locale}: homepage returned ${response?.status()}`);
-        await page.locator(".ev-public-status-title").waitFor();
+        await page.locator(".ev-pub-sheet").waitFor();
         // Let hydration, stored-mark reads, service-worker registration and any (forbidden) effects run.
         await page.waitForTimeout(3000);
-        const title = (await page.locator(".ev-public-status-title").textContent())?.trim();
-        check(title === STATUS_TITLE, `${name}/${locale}: status title was ${JSON.stringify(title)}`);
+        const title = (await page.locator(".ev-pub-row").first().textContent())?.trim();
+        check(title?.includes("Shelter status unavailable") === true, `${name}/${locale}: shelter unavailable row was ${JSON.stringify(title)}`);
         check(await page.locator(`main[lang="${locale}"]`).count() === 1, `${name}/${locale}: main is not lang=${locale}`);
-        check(await page.locator('section.ev-public-status[lang="en"]').count() === 1, `${name}/${locale}: status card is not marked lang=en`);
+        check(await page.locator('section.ev-pub-sheet[lang="en"]').count() === 1, `${name}/${locale}: status drawer is not marked lang=en`);
         check(await page.locator(".fire-token").count() === 1, `${name}/${locale}: fire mark button missing`);
         check(await page.locator('a.map-brand[href="/prepare"]').count() === 1, `${name}/${locale}: prep link missing`);
         check(await page.locator(`select.lang-select option[value="${locale}"]:checked`).count() === 1, `${name}/${locale}: language select not on ${locale}`);
@@ -96,8 +96,8 @@ try {
     await context.addInitScript(async () => {
       if (!("caches" in window) || sessionStorage.getItem("seeded")) return;
       sessionStorage.setItem("seeded", "1");
-      const cache = await caches.open("firepoint-shell-v4");
-      await cache.put("/", new Response('<main class="map-screen ev-shell"><button class="ev-escape-cta">Escape</button></main>', { headers: { "content-type": "text/html" } }));
+      const cache = await caches.open("firepoint-shell-v5");
+      await cache.put("/", new Response('<main class="map-screen ev-shell ev-shell-static"></main>', { headers: { "content-type": "text/html" } }));
     });
     const page = await context.newPage();
     try {
@@ -111,20 +111,20 @@ try {
         let names = [];
         for (let attempt = 0; attempt < 40; attempt += 1) {
           names = await page.evaluate(() => caches.keys());
-          if (names.includes("firepoint-shell-v5") && !names.includes("firepoint-shell-v4")) break;
+          if (names.includes("firepoint-shell-v6") && !names.includes("firepoint-shell-v4")) break;
           await page.waitForTimeout(250);
         }
-        check(!names.includes("firepoint-shell-v4"), `sw: old prototype cache survived the update: ${names.join(", ")}`);
-        check(names.includes("firepoint-shell-v5"), `sw: new shell cache missing: ${names.join(", ")}`);
-        const cachedHome = await page.evaluate(async () => (await (await caches.open("firepoint-shell-v5")).match("/"))?.text() ?? null);
-        check(cachedHome !== null && cachedHome.includes("ev-shell-static") && !cachedHome.includes("ev-escape-cta"), "sw: cached homepage is not the public shell");
+        check(!names.includes("firepoint-shell-v4") && !names.includes("firepoint-shell-v5"), `sw: old cache survived the update: ${names.join(", ")}`);
+        check(names.includes("firepoint-shell-v6"), `sw: new shell cache missing: ${names.join(", ")}`);
+        const cachedHome = await page.evaluate(async () => (await (await caches.open("firepoint-shell-v6")).match("/"))?.text() ?? null);
+        check(cachedHome !== null && cachedHome.includes("ev-pub-sheet") && !cachedHome.includes("ev-escape-cta"), "sw: cached homepage is not the public shell");
         await context.setOffline(true);
         await page.goto(base + "/", { waitUntil: "domcontentloaded" });
         const offlineHtml = await page.content();
         check(!offlineHtml.includes("ev-escape-cta"), "sw: offline homepage shows the prototype");
-        check(offlineHtml.includes("ev-shell-static") || offlineHtml.includes("offline"), "sw: offline homepage is neither the public shell nor the offline page");
+        check(offlineHtml.includes("ev-pub-sheet") || offlineHtml.includes("offline"), "sw: offline homepage is neither the public shell nor the offline page");
         await context.setOffline(false);
-        console.log(`sw: migration OK — caches now ${names.join(", ")}; offline "/" serves ${offlineHtml.includes("ev-shell-static") ? "the public shell" : "the offline page"}`);
+        console.log(`sw: migration OK — caches now ${names.join(", ")}; offline "/" serves ${offlineHtml.includes("ev-pub-sheet") ? "the public shell" : "the offline page"}`);
       }
     } finally { await context.close(); }
   }
