@@ -27,6 +27,38 @@ jobs:
       - run: npm run gis:smoke
         timeout-minutes: 8
 
+  source-cache-adapter-integration:
+    # Synthetic disposable PostgreSQL only. No shared/Neon DB or publisher access.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      source_postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: synthetic-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Apply draft schema only inside disposable PostgreSQL 17
+        run: |
+          docker exec -i "${{ job.services.source_postgres.id }}" psql -v ON_ERROR_STOP=1 -U postgres -d postgres < db/migrations/0100_source_snapshots.sql
+          docker exec -i "${{ job.services.source_postgres.id }}" psql -v ON_ERROR_STOP=1 -U postgres -d postgres < db/migrations/0101_source_scope_integrity.sql
+      - name: Atomic adapter rollback, competition, issuer isolation, expiry, and zero-row tests
+        env:
+          SOURCE_CACHE_TEST_DATABASE_URL: postgres://postgres:synthetic-only@127.0.0.1:5432/postgres
+        run: npx vitest run src/server/source-cache-postgres.integration.test.ts
+
   public-gate-smoke:
     # A production build (NODE_ENV=production) must serve the public homepage even with the prototype flag set.
     runs-on: ubuntu-latest
