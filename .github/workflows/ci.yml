@@ -22,6 +22,10 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      # Loopback-only: a synthetic stub stands in for the Glendale GIS MCP. No hosted
+      # MCP, Vercel, or real key is contacted; a production build must stay paused.
+      - run: npm run gis:smoke
+        timeout-minutes: 8
 
   public-gate-smoke:
     # A production build (NODE_ENV=production) must serve the public homepage even with the prototype flag set.

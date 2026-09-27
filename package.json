@@ -11,7 +11,9 @@
     "lint": "eslint",
     "test": "vitest run",
     "typecheck": "next typegen && tsc --noEmit",
-    "gis:local": "node scripts/glendale-gis-local.mjs"
+    "gis:local": "node scripts/glendale-gis-local.mjs",
+    "gis:stub": "node scripts/gis-mcp-stub.mjs",
+    "gis:smoke": "node scripts/gis-stub-smoke.mjs"
   },
   "dependencies": {
     "@lottiefiles/dotlottie-react": "^0.19.16",

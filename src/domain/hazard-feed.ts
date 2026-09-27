@@ -12,6 +12,10 @@ const DETAIL: Record<string, string> = {
   unauthorized: "The Glendale GIS server rejected Firepoint's key.",
   rate_limited: "The Glendale GIS server is rate-limiting requests; try again shortly.",
   tool_error: "The Glendale GIS server could not answer for this place.",
+  timeout: "The Glendale GIS server did not answer in time.",
+  redirected: "The Glendale GIS server tried to redirect the request; Firepoint does not follow redirects.",
+  bad_content_type: "The Glendale GIS server answered with an unexpected content type.",
+  oversize: "The Glendale GIS server's answer was larger than Firepoint accepts.",
 };
 
 /** Build the standing-hazard feed. Outside coverage and outages stay distinct from "not in a zone". */
@@ -22,7 +26,8 @@ export function buildHazardFeed(result: GisHazardsResult | "not-configured", gen
       detail: "Server has no GLENDALE_GIS_MCP_KEY; mapped hazard zones were not looked up." };
   } else if (result.status !== "ok") {
     check = { ...BASE, status: "down", lastAttemptAt: result.attemptedAt, lastSuccessAt: null, sourceAsOf: null,
-      detail: DETAIL[result.reason] ?? `Glendale GIS request unavailable (${result.reason}${result.httpStatus ? ` ${result.httpStatus}` : ""})` };
+      detail: (DETAIL[result.reason] ?? `Glendale GIS request unavailable (${result.reason}${result.httpStatus ? ` ${result.httpStatus}` : ""})`)
+        + (result.reason === "rate_limited" && result.retryAfterSeconds ? ` The server asked for a ${result.retryAfterSeconds}-second wait.` : "") };
   } else {
     // A successful RPC with every layer unavailable can mean a missing snapshot, not
     // that this resident is outside the City's map. Require explicit out-of-bounds.
