@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState, type PointerEvent, type RefObject } from "react";
+import { useRef, useState, type PointerEvent, type ReactNode, type RefObject } from "react";
 import type { MapHandle } from "./evacuation-map";
 import { Flame } from "./flame";
+import { HelpButton } from "./help-dialog";
 import { useMapText } from "./map-text";
 
 type FirePanelProps = {
@@ -14,12 +15,14 @@ type FirePanelProps = {
   onPlace: (lat: number, lng: number) => void;
   onHint: (hint: string) => void;
   onClear: () => void;
+  /** Stacked above the help button (the map screen's locate button). */
+  children?: ReactNode;
 };
 
 type Drag = { startX: number; startY: number; lastX: number; lastY: number; moved: boolean };
 
-/** A floating fire to drag onto the map (or press to drop one at the map centre). */
-export function FirePanel({ ready, count, hint, map, onPlace, onHint, onClear }: FirePanelProps) {
+/** A floating fire to drag onto the map (or press to drop one at the map centre), with the help button (and anything passed in) stacked above it. */
+export function FirePanel({ ready, count, hint, map, onPlace, onHint, onClear, children }: FirePanelProps) {
   const t = useMapText();
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
   const drag = useRef<Drag | null>(null);
@@ -89,6 +92,9 @@ export function FirePanel({ ready, count, hint, map, onPlace, onHint, onClear }:
   return (
     <div className="map-panel">
       {count > 0 && <button type="button" className="map-clear" onClick={onClear}>{t.clear}</button>}
+      <div className="fire-stack">
+      {children}
+      <HelpButton />
       <button
         type="button"
         className={`fire-token${ghost ? " is-dragging" : ""}`}
@@ -104,6 +110,7 @@ export function FirePanel({ ready, count, hint, map, onPlace, onHint, onClear }:
       >
         <Flame className="fire-token-flame" />
       </button>
+      </div>
       {/* Status is announced, not shown: the map itself shows the marks. */}
       <span className="sr-only" aria-live="polite">
         {hint ?? (ready ? t.marksOnDevice(count) : t.localToDevice)}

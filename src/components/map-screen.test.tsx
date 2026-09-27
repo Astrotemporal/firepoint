@@ -26,6 +26,13 @@ describe("map screen", () => {
     expect(html).toContain("call 911");
   });
 
+  it("puts a help button above the fire that opens a how-to dialog, with the 911 reminder", () => {
+    const html = renderToStaticMarkup(<MapScreen />);
+    expect(html).toMatch(/<div class="fire-stack"><button[^>]*class="map-help"[^>]*aria-label="How to use Firepoint"[\s\S]*?<\/dialog><button[^>]*class="fire-token"/);
+    expect(html).toMatch(/<dialog[^>]*class="help-dialog"/);
+    expect(html).toContain("Always follow official evacuation orders. To report a fire, call 911.");
+  });
+
   it("is the whole homepage, with the prep and official-source page one link away", async () => {
     const html = renderToStaticMarkup(await Home());
     expect(html).toMatch(/class="map-screen[" ]/);
