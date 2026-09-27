@@ -260,9 +260,11 @@ export function WildfireGuide({ locale = "en" }: { locale?: Locale } = {}) {
         <section className="g-sources g-card" aria-labelledby="sources-title">
           <h2 id="sources-title">{c.ui.sourcesTitle}</h2>
           <p>{c.ui.sourcesLede}</p>
+          {locale === "en" && <p lang="en">Genasys Protect opens a third-party map <strong>centered on Glendale</strong>, not a Firepoint zone lookup.
+            Search your address there and check the issuing agency. A blank map does not establish safety.</p>}
           <ul>
-            {(["alerts", "zone", "nws", "county", "rsg", "brochure"] as const).map((key) => (
-              <li key={key}><Out source={SOURCES[key]} label={c.sources[key]} c={c} /></li>
+            {(["alerts", "zone", ...(locale === "en" ? ["genasys"] as const : []), "nws", "county", "rsg", "brochure"] as const).map((key) => (
+              <li key={key}><Out source={SOURCES[key]} label={key === "genasys" ? SOURCES.genasys.label : c.sources[key]} c={c} /></li>
             ))}
           </ul>
         </section>

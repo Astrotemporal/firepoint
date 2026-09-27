@@ -33,6 +33,40 @@ export function cycleSnap(snap: Snap, heights: SnapHeights): Snap {
   return next;
 }
 
+export type HandleGesture =
+  | { kind: "tap" }
+  /** A drag released at `height` px moving at `velocity` px/ms (positive when moving up). */
+  | { kind: "drag"; height: number; velocity: number }
+  | { kind: "key"; key: "ArrowUp" | "ArrowDown" };
+
+export type HandleResult = {
+  snap: Snap;
+  /** The person deliberately slid the sheet all the way down; the drawer treats this as closing. */
+  closes: boolean;
+};
+
+/**
+ * Where a gesture on the handle takes the sheet, and whether it counts as closing the drawer (on phones, closing
+ * clears the escape route and brings the Escape button back). Only a slide down (drag or ArrowDown) closes. A tap
+ * only moves the sheet: the drawer's content is usually shorter than half the screen, so "half" and "full"
+ * coincide and the first tap on the handle would otherwise land on "peek" and discard the route just requested.
+ */
+export function handleGesture(snap: Snap, gesture: HandleGesture, heights: SnapHeights): HandleResult {
+  switch (gesture.kind) {
+    case "tap":
+      return { snap: cycleSnap(snap, heights), closes: false };
+    case "drag": {
+      const next = settleSnap(gesture.height, gesture.velocity, heights);
+      return { snap: next, closes: next === "peek" };
+    }
+    case "key": {
+      if (gesture.key === "ArrowUp") return { snap: snap === "peek" ? "half" : "full", closes: false };
+      const next: Snap = snap === "full" ? "half" : "peek";
+      return { snap: next, closes: next === "peek" };
+    }
+  }
+}
+
 /** The lowest snap with the same height, so a short sheet never reports "full" at its half height. */
 function lowest(snap: Snap, heights: SnapHeights): Snap {
   return ORDER.find((candidate) => heights[candidate] === heights[snap]) ?? snap;

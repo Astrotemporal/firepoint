@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { fetchWithTimeout, RequestTimeoutError } from "@/lib/fetch-with-timeout";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
-import type { GetRoute, LatLng, Route } from "./types";
+import type { GetRoute, LatLng, Route, Turn } from "./types";
 
 /*
  * Routing provider boundary. The app only calls `getRoute`; to change providers, write another
@@ -24,7 +24,7 @@ const MapboxRouteSchema = z.object({
     steps: z.array(z.object({
       distance: z.number(),
       duration: z.number(),
-      maneuver: z.object({ instruction: z.string() }),
+      maneuver: z.object({ instruction: z.string(), type: z.string().optional(), modifier: z.string().optional() }),
     })),
   })),
 });
@@ -33,6 +33,15 @@ const MapboxDirectionsSchema = z.object({
   message: z.string().optional(),
   routes: z.array(MapboxRouteSchema).optional(),
 });
+
+const TURNS: readonly Turn[] = ["straight", "uturn", "slight-left", "left", "sharp-left", "slight-right", "right", "sharp-right"];
+
+/** Mapbox's maneuver type ("depart", "arrive", …) and modifier ("slight right", …) as a turn arrow, when it maps to one. */
+function toTurn({ type, modifier }: { type?: string; modifier?: string }): Turn | undefined {
+  if (type === "depart" || type === "arrive") return type;
+  const turn = modifier?.replace(" ", "-");
+  return TURNS.find((known) => known === turn);
+}
 
 function toRoute(route: z.infer<typeof MapboxRouteSchema>): Route {
   return {
@@ -43,6 +52,7 @@ function toRoute(route: z.infer<typeof MapboxRouteSchema>): Route {
       instruction: step.maneuver.instruction,
       distanceMeters: step.distance,
       durationSeconds: step.duration,
+      turn: toTurn(step.maneuver),
     })),
   };
 }

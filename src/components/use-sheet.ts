@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
-import { cycleSnap, settleSnap, snapHeights, type Snap, type SnapHeights } from "./sheet";
+import { handleGesture, snapHeights, type HandleGesture, type Snap, type SnapHeights } from "./sheet";
 
 /** Movement (px) below which a press on the handle counts as a tap. */
 const TAP_SLOP = 6;
@@ -10,7 +10,7 @@ const TAP_SLOP = 6;
  * Drag, tap and measure logic for the directions bottom sheet (phones; desktop CSS ignores the height).
  * Publishes the visible height as --ev-sheet-h and the peek height as --ev-peek on the enclosing .ev-shell,
  * so the map and its floating buttons can stay clear of the sheet. `onCollapse` runs when the person
- * brings the sheet all the way down (drag, tap or arrow key on the handle).
+ * slides the sheet all the way down (drag or ArrowDown on the handle); a tap only moves it (see `handleGesture`).
  */
 export function useSheet({ onCollapse }: { onCollapse?: () => void } = {}) {
   const sheetRef = useRef<HTMLElement | null>(null);
@@ -21,7 +21,12 @@ export function useSheet({ onCollapse }: { onCollapse?: () => void } = {}) {
   const [drag, setDrag] = useState<number | null>(null);
   const gesture = useRef<{ startY: number; startHeight: number; lastY: number; lastTime: number; velocity: number; moved: boolean } | null>(null);
   const suppressClick = useRef(false);
-  const settle = (next: Snap) => { setSnap(next); if (next === "peek") onCollapse?.(); };
+  const apply = (gesture: HandleGesture) => {
+    if (!heights) return;
+    const result = handleGesture(snap, gesture, heights);
+    setSnap(result.snap);
+    if (result.closes) onCollapse?.();
+  };
 
   const measure = useCallback(() => {
     const sheet = sheetRef.current, inner = innerRef.current, peek = peekRef.current;
@@ -73,16 +78,17 @@ export function useSheet({ onCollapse }: { onCollapse?: () => void } = {}) {
     gesture.current = null;
     if (!g?.moved || !heights || drag === null) return;
     suppressClick.current = true;
-    settle(settleSnap(drag, g.velocity, heights));
+    apply({ kind: "drag", height: drag, velocity: g.velocity });
     setDrag(null);
   };
   const onClick = () => {
     if (suppressClick.current) { suppressClick.current = false; return; }
-    if (heights) settle(cycleSnap(snap, heights));
+    apply({ kind: "tap" });
   };
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key === "ArrowUp") { event.preventDefault(); setSnap(snap === "peek" ? "half" : "full"); }
-    if (event.key === "ArrowDown") { event.preventDefault(); settle(snap === "full" ? "half" : "peek"); }
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+    event.preventDefault();
+    apply({ kind: "key", key: event.key });
   };
 
   return {
