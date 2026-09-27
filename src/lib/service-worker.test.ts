@@ -11,7 +11,7 @@ const ORIGIN = "https://firepoint.example";
 const SOURCE = readFileSync("public/sw.js", "utf8");
 /** Namespaces the prototype worker used; a device that updates must lose them. */
 const RETIRED = ["firepoint-shell-v4", "firepoint-assets-v3", "firepoint-shell-v1", "firepoint-assets-v1"];
-const PUBLIC_HOME = '<main lang="en" class="map-screen ev-shell ev-shell-static"><script src="/_next/static/chunks/a.js"></script></main>';
+const PUBLIC_HOME = '<main lang="en" class="map-screen ev-shell"><section class="ev-pub-sheet ev-pub-sheet-peek"><script src="/_next/static/chunks/a.js"></script></section></main>';
 const PROTOTYPE_HOME = '<main class="map-screen ev-shell"><button class="ev-escape-cta">Escape</button></main>';
 
 class FakeCache {
@@ -101,7 +101,7 @@ describe("service worker cache migration", () => {
     for (const name of RETIRED) expect(remaining, name).not.toContain(name);
     expect(remaining).toContain("unrelated-v1");
     const home = await sandbox.caches.match("/");
-    expect(await home?.text()).toContain("ev-shell-static");
+    expect(await home?.text()).toContain("ev-pub-sheet");
   });
 
   it("never stores a homepage that is not the public screen: prototype markup, login redirects, errors", async () => {
@@ -137,13 +137,16 @@ describe("service worker cache migration", () => {
     await dispatch("activate");
     sandbox.fetch = async () => { throw new TypeError("offline"); };
     const response = await navigate(`${ORIGIN}/`);
-    expect(await response.text()).toContain("ev-shell-static");
+    expect(await response.text()).toContain("ev-pub-sheet");
   });
 
   it("checks the same marker the public screen renders", () => {
     const marker = /const PUBLIC_SHELL_MARKER = "([^"]+)"/.exec(SOURCE)?.[1];
-    expect(marker).toBe("ev-shell-static");
-    expect(readFileSync("src/components/public-map-screen.tsx", "utf8")).toContain(`className="map-screen ev-shell ${marker}"`);
+    expect(marker).toBe("ev-pub-sheet");
+    // The marker class lives on the PublicInfoDrawer <section>, imported by public-map-screen.
+    // Check that public-map-screen imports the drawer (which carries the marker), not that main has the class.
+    expect(readFileSync("src/components/public-map-screen.tsx", "utf8")).toContain("public-info-drawer");
+    expect(readFileSync("src/components/public-info-drawer.tsx", "utf8")).toContain(`ev-pub-sheet`);
     expect(readFileSync("src/components/map-screen.tsx", "utf8")).not.toContain(marker!);
   });
 });

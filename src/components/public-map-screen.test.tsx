@@ -9,7 +9,8 @@ import { GUIDE_HY } from "@/domain/wildfire-guide.hy";
 import type { Locale } from "@/i18n/locales";
 import { mapText } from "@/i18n/map";
 import Home from "../app/page";
-import { PUBLIC_MAP_FAILED, PUBLIC_MAP_LABEL, PUBLIC_STATUS_BODY, PUBLIC_STATUS_TITLE, PublicMapScreen } from "./public-map-screen";
+import { EVAC_UNAVAILABLE, NOT_ALL_CLEAR, SHELTER_UNAVAILABLE } from "./public-info-drawer";
+import { PUBLIC_MAP_FAILED, PUBLIC_MAP_LABEL, PublicMapScreen } from "./public-map-screen";
 
 // The homepage reads the saved language from request cookies; outside a request, use the test's choice.
 const request = vi.hoisted(() => ({ locale: "en" as Locale }));
@@ -25,17 +26,31 @@ const PROTOTYPE_MARKERS = [
 ];
 
 describe("public homepage (release gate off)", () => {
-  it("renders the basemap shell, private marks and the exact no-data statement", () => {
+  it("stacks a help button above the fire whose guide covers only private marks and prep, in English", () => {
+    for (const locale of ["en", "es", "hy"] as const) {
+      const html = renderToStaticMarkup(<PublicMapScreen locale={locale} />);
+      expect(html).toMatch(/<div class="fire-stack"><button[^>]*class="map-help"[\s\S]*?<\/dialog><button[^>]*class="fire-token"/);
+      expect(html).toMatch(/<dialog lang="en" class="help-dialog"/);
+      expect(html).toContain("No live incidents, shelters or routes are shown.");
+      expect(html).not.toContain(mapText(locale).help.intro);
+    }
+  });
+
+  it("renders the basemap shell, drawer, and the exact unavailable-status strings", () => {
     const html = renderToStaticMarkup(<PublicMapScreen />);
-    expect(html).toMatch(/class="map-screen ev-shell ev-shell-static"/);
-    // Without a token the map is replaced by a notice; with one, the client-only map is a placeholder on the server.
+    // Public screen uses ev-shell without the -static suffix; has the info drawer.
+    expect(html).toMatch(/class="map-screen ev-shell"/);
+    expect(html).not.toContain("ev-shell-static");
+    expect(html).toContain("ev-pub-sheet");
+    // Without a token the map is replaced by a notice; with one, the client-only map is a placeholder.
     expect(html).toMatch(/Loading map…|Map unavailable: no Mapbox token is configured\./);
     expect(html).toMatch(/<button[^>]*class="fire-token"[^>]*disabled=""/);
     expect(html).toMatch(/<button[^>]*class="fire-token"[^>]*aria-label="[^"]*Marks stay on this device and are not reports\."/);
     expect(html).toContain("Local to this device");
-    expect(html).toContain(PUBLIC_STATUS_TITLE);
-    expect(html).toContain(PUBLIC_STATUS_BODY);
-    expect(PUBLIC_STATUS_TITLE).toBe("No verified incident, shelter or route loaded");
+    // Exact unavailable-state strings (verbatim; smoke-check also looks for them).
+    expect(html).toContain(SHELTER_UNAVAILABLE);
+    expect(html).toContain(EVAC_UNAVAILABLE);
+    expect(html).toContain(NOT_ALL_CLEAR);
     expect(html).toContain("not an all-clear");
     expect(html).toContain("call 911");
     expect(html).toContain('href="/prepare"');
@@ -68,12 +83,13 @@ describe("public homepage (release gate off)", () => {
 });
 
 describe("public homepage languages", () => {
-  const card = (html: string) => html.match(/<section[^>]*class="ev-public-status"[^>]*>[\s\S]*<\/section>/)?.[0] ?? "";
+  const drawer = (html: string) =>
+    html.match(/<section[^>]*class="ev-pub-sheet[^"]*"[^>]*>[\s\S]*?<\/section>/)?.[0] ?? "";
 
-  it("marks its English-only card with lang=\"en\" and shows no fallback on English", () => {
+  it("marks the drawer with lang=\"en\" and shows no localized block on English", () => {
     const html = renderToStaticMarkup(<PublicMapScreen locale="en" localized={publicScreenLocalized("en")} />);
-    expect(html).toMatch(/<main lang="en" class="map-screen ev-shell ev-shell-static">/);
-    expect(card(html)).toMatch(/^<section[^>]*lang="en"/);
+    expect(html).toMatch(/<main lang="en" class="map-screen ev-shell">/);
+    expect(drawer(html)).toMatch(/lang="en"/);
     expect(html).not.toContain(ENGLISH_ONLY_NOTICE);
     expect(html).not.toContain("ev-public-status-localized");
   });
@@ -87,15 +103,15 @@ describe("public homepage languages", () => {
       }
     }
     expect(PUBLIC_MAP_LABEL).toBe("Map with your private marks. No live incidents, shelters or routes are shown.");
-    expect(PUBLIC_MAP_FAILED).toBe("The map couldn’t load. Check your connection.");
+    expect(PUBLIC_MAP_FAILED).toBe("The map couldn't load. Check your connection.");
   });
 
   it.each([["es", GUIDE_ES], ["hy", GUIDE_HY]] as const)("on %s says the status is English only and reuses only existing guide lines", (locale, guide) => {
     const localized = publicScreenLocalized(locale);
     const html = renderToStaticMarkup(<PublicMapScreen locale={locale} localized={localized} />);
     expect(ENGLISH_ONLY_NOTICE).toBe("Map status is available in English only.");
-    expect(html).toMatch(new RegExp(`<main lang="${locale}" class="map-screen ev-shell ev-shell-static">`));
-    expect(card(html)).toMatch(/^<section[^>]*lang="en"/);
+    expect(html).toMatch(new RegExp(`<main lang="${locale}" class="map-screen ev-shell">`));
+    expect(drawer(html)).toMatch(/lang="en"/);
     // Controls and the mark button use the existing map translations (not new text).
     const t = mapText(locale);
     expect(html).toContain(`aria-label="${t.fireLabel}"`);
@@ -107,10 +123,12 @@ describe("public homepage languages", () => {
     expect(localized).toEqual({ locale, urgentCall: guide.ui.urgentCall, guideTitle: guide.ui.title });
     expect(html).toContain(`<p lang="${locale}" class="ev-public-status-localized"><strong>${guide.ui.urgentCall}</strong> <a href="/prepare">${guide.ui.title}</a></p>`);
     expect(guide.ui.urgentCall).toContain("911");
-    // The English statements stay, unchanged, before the localized line's English-only notice.
-    expect(html).toContain(PUBLIC_STATUS_TITLE);
-    expect(html).toContain(PUBLIC_STATUS_BODY);
-    expect(html.indexOf(ENGLISH_ONLY_NOTICE)).toBeLessThan(html.indexOf(PUBLIC_STATUS_TITLE));
+    // The English statements are present.
+    expect(html).toContain(SHELTER_UNAVAILABLE);
+    expect(html).toContain(EVAC_UNAVAILABLE);
+    expect(html).toContain(NOT_ALL_CLEAR);
+    // English-only notice appears before the shelter/evac status (it's in the peek above the rows).
+    expect(html.indexOf(ENGLISH_ONLY_NOTICE)).toBeLessThan(html.indexOf(SHELTER_UNAVAILABLE));
     // The language select keeps its own language, outside the English-only regions.
     expect(html).toContain(`aria-label="${guideContent(locale).ui.languageLabel}"`);
   });
@@ -126,20 +144,22 @@ describe("public homepage languages", () => {
 });
 
 describe("homepage release gate", () => {
-  it("serves the public screen in production even when the prototype flag is set", async () => {
+  it("serves the public drawer screen in production even when the prototype flag is set", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("FIREPOINT_PROTOTYPE_ROUTING", "enabled");
     const html = renderToStaticMarkup(await Home());
-    expect(html).toContain("ev-shell-static");
-    expect(html).toContain(PUBLIC_STATUS_TITLE);
+    expect(html).toContain("ev-pub-sheet");
+    expect(html).not.toContain("ev-shell-static");
+    expect(html).toContain(SHELTER_UNAVAILABLE);
+    expect(html).toContain(EVAC_UNAVAILABLE);
     for (const marker of PROTOTYPE_MARKERS) expect(html, marker).not.toContain(marker);
   });
 
-  it("serves the public screen by default outside production too", async () => {
+  it("serves the public drawer screen by default outside production too", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("FIREPOINT_PROTOTYPE_ROUTING", "");
     const html = renderToStaticMarkup(await Home());
-    expect(html).toContain("ev-shell-static");
+    expect(html).toContain("ev-pub-sheet");
     expect(html).not.toContain("ev-escape-cta");
   });
 
@@ -147,7 +167,7 @@ describe("homepage release gate", () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("FIREPOINT_PROTOTYPE_ROUTING", "enabled");
     const html = renderToStaticMarkup(await Home());
-    expect(html).not.toContain("ev-shell-static");
+    expect(html).not.toContain("ev-pub-sheet");
     expect(html).toContain("ev-escape-cta");
     expect(html).toContain("Use my location");
     expect(html).toContain('class="ev-ask-button"');

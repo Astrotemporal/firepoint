@@ -34,12 +34,14 @@
 .ev-round { padding: 0; border-radius: 50%; width: 48px; }
 .ev-round svg { width: 20px; height: 20px; }
 /* "My location" sits up the right edge, under the theme/prep actions and zoom buttons; the fire owns the bottom corner. */
-.ev-locate { position: absolute; right: 16px; top: calc(144px + env(safe-area-inset-top, 0px)); width: 48px; height: 48px; min-height: 48px; min-width: 48px; border: 0; box-shadow: 0 2px 6px rgba(24, 49, 46, .18), 0 8px 24px rgba(24, 49, 46, .12); }
-.ev-locate-icon { width: 20px; height: 20px; border-radius: 50%; border: 3px solid var(--ev-you); position: relative; }
+/* Same frosted glass as the help button and fire tile it stacks with. */
+.ev-float-button.ev-locate { width: 56px; height: 56px; min-height: 56px; min-width: 56px; border: 1px solid var(--glass-edge); background: var(--glass-bg); -webkit-backdrop-filter: blur(12px) saturate(1.4); backdrop-filter: blur(12px) saturate(1.4); box-shadow: var(--glass-shadow); }
+.ev-float-button.ev-locate:hover { background: var(--glass-hover); }
+.ev-locate-icon { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--ev-you); position: relative; }
 .ev-locate-icon::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--ev-you); }
 /* Zoom buttons sit under the theme/prep actions; phones pinch to zoom, so they are hidden there. */
 .ev-shell .mapboxgl-ctrl-top-right { top: calc(64px + env(safe-area-inset-top, 0px)); right: 6px; }
-@media (max-width: 650px) { .ev-shell .mapboxgl-ctrl-top-right .mapboxgl-ctrl-group { display: none; } .ev-locate { right: 12px; top: calc(76px + env(safe-area-inset-top, 0px)); } }
+@media (max-width: 650px) { .ev-shell .mapboxgl-ctrl-top-right .mapboxgl-ctrl-group { display: none; } }
 
 /* Apple Maps-style blue dot in a white ring. Live GPS pulses; a chosen or fallback start stays still. */
 .ev-you, .ev-start { width: 22px; height: 22px; border-radius: 50%; background: var(--ev-you); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .35); }
@@ -91,8 +93,7 @@
 .ev-map-area { margin-bottom: calc(var(--ev-peek, 132px) - 18px); }
 /* The fire tile rides above the sheet; it and the locate button step aside when the sheet is fully open. */
 .ev-shell .map-panel { bottom: max(44px, calc(var(--ev-sheet-h, 0px) - var(--ev-peek, 0px) + 44px)); transition: bottom .28s ease, opacity .2s; }
-.ev-locate { transition: opacity .2s; }
-.ev-shell[data-sheet="full"] .map-panel, .ev-shell[data-sheet="full"] .ev-locate { opacity: 0; pointer-events: none; }
+.ev-shell[data-sheet="full"] .map-panel { opacity: 0; pointer-events: none; }
 .ev-shell .mapboxgl-ctrl-bottom-left, .ev-shell .mapboxgl-ctrl-bottom-right { bottom: 18px; }
 
 /* Phones, before Escape is pressed: no drawer, just the button floating over the map. */
@@ -116,7 +117,7 @@
   .ev-map-area { margin-bottom: 0; }
   .ev-shell .mapboxgl-ctrl-bottom-left, .ev-shell .mapboxgl-ctrl-bottom-right { bottom: 0; }
   .ev-shell .map-panel { bottom: 44px; }
-  .ev-shell[data-sheet="full"] .map-panel, .ev-shell[data-sheet="full"] .ev-locate { opacity: 1; pointer-events: auto; }
+  .ev-shell[data-sheet="full"] .map-panel { opacity: 1; pointer-events: auto; }
 }
 
 .ev-status { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 14px; padding: 2px 2px 6px; font-size: 14px; line-height: 1.4; font-weight: 700; color: var(--ev-text); }
@@ -222,3 +223,86 @@
 .ev-public-status-localized { font-size: 15px; font-weight: 700; line-height: 1.4; }
 .ev-public-status-localized a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ev-ink); font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
 .ev-public-status-english-only { margin-top: 2px !important; margin-bottom: 8px !important; padding: 6px 10px; border-radius: 8px; background: var(--ev-badge-bg); color: var(--ev-badge-ink); border-left: 4px solid var(--ev-badge-edge); font-size: 14px; font-weight: 700; line-height: 1.4; }
+
+
+/* ---------------------------------------------------------------------------
+ * Public-homepage drawer (feat/public-drawer-safe).
+ *
+ * Mirrors the routing sheet (`ev-sheet`) layout but uses `ev-pub-*` class
+ * names so the prototype-gate tests stay clean.
+ * Phones: bottom sheet, always visible at peek (no idle/escape-button state).
+ * Wide screens: side card, top-left, same position as the routing side card.
+ * ---------------------------------------------------------------------------*/
+
+.ev-pub-sheet {
+  position: absolute; z-index: 5; left: 0; right: 0; bottom: 0;
+  display: flex; flex-direction: column;
+  height: var(--ev-sheet-visible, auto);
+  max-height: calc(100dvh - 110px);
+  background: var(--ev-surface);
+  color: var(--ev-ink);
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, .2);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  font-family: -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+.ev-pub-scroll {
+  flex: 1 1 auto; min-height: 0;
+  overflow: hidden; overscroll-behavior: contain;
+}
+.ev-pub-sheet-half .ev-pub-scroll,
+.ev-pub-sheet-full .ev-pub-scroll { overflow-y: auto; }
+.ev-pub-inner { padding: 0 14px 10px; }
+/* Drag handle — >=44 px tall, full-width touch target. */
+.ev-pub-handle {
+  flex: none; display: grid; place-items: center;
+  width: 100%; min-height: 44px; padding: 0; border: 0;
+  background: none; cursor: grab; touch-action: none;
+}
+.ev-pub-handle > span { width: 40px; height: 5px; border-radius: 3px; background: var(--ev-edge); }
+.ev-pub-sheet-dragging .ev-pub-handle { cursor: grabbing; }
+/* Peek: always-visible rows at bottom of screen. */
+.ev-pub-peek { padding-bottom: 6px; }
+.ev-pub-peek > * + * { margin-top: 6px; }
+/* Status rows: shelter and evacuation-order unavailable lines. */
+.ev-pub-row {
+  display: flex; align-items: baseline; gap: 6px; margin: 0;
+  font-size: 14px; font-weight: 700; line-height: 1.4; color: var(--ev-text);
+}
+.ev-pub-row-icon { flex: none; font-size: 15px; line-height: 1; }
+.ev-pub-source-link {
+  display: inline-flex; align-items: center; min-height: 44px;
+  color: var(--ev-ink); font-size: 13px; font-weight: 700;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+/* Body: expanded content below the visible peek fold. */
+.ev-pub-body { border-top: 1px solid var(--ev-line); padding-top: 10px; }
+.ev-pub-not-all-clear {
+  margin: 0 0 8px; font-size: 14px; font-weight: 700; line-height: 1.4; color: var(--ev-text);
+}
+.ev-pub-links {
+  display: flex; flex-wrap: wrap; gap: 4px 18px; margin-bottom: 6px;
+}
+.ev-pub-links a {
+  display: inline-flex; align-items: center; min-height: 44px;
+  color: var(--ev-ink); font-size: 15px; font-weight: 800;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+
+@media (min-width: 760px) {
+  .ev-pub-sheet {
+    top: calc(16px + env(safe-area-inset-top, 0px)); left: 16px; right: auto; bottom: auto;
+    width: 400px; height: auto; max-height: calc(100% - 64px);
+    border-radius: 14px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .18), 0 10px 28px rgba(0, 0, 0, .18);
+    padding-bottom: 0;
+  }
+  .ev-pub-scroll, .ev-pub-sheet-half .ev-pub-scroll { overflow-y: auto; }
+  .ev-pub-inner { padding: 14px 16px 12px; }
+  .ev-pub-handle { display: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ev-pub-sheet { transition: height .28s cubic-bezier(.2, .8, .2, 1), background-color .25s; }
+  .ev-pub-sheet-dragging { transition: none; }
+}

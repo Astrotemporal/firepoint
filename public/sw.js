@@ -14,7 +14,7 @@ const ASSETS = "firepoint-assets-v4";
 const SHELL = ["/offline.html", "/icon-192.png", "/icon-512.png"];
 const MAX_ASSETS = 120;
 /** Class the public homepage's <main> carries (src/components/public-map-screen.tsx). */
-const PUBLIC_SHELL_MARKER = "ev-shell-static";
+const PUBLIC_SHELL_MARKER = "ev-pub-sheet";
 
 /** Only a direct, same-origin 200 for the public screen may be stored as the homepage. */
 async function publicHomeResponse(response) {

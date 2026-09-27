@@ -66,6 +66,32 @@ h1 em,h2 em { font-weight: 400; }
 .fire-token-flame { width: 38px; height: 38px; filter: grayscale(1) drop-shadow(0 2px 3px rgba(24,49,46,.3)); pointer-events: none; }
 .map-clear { min-height: 36px; padding: 0 14px; border: 1px solid var(--glass-edge); border-radius: 999px; background: var(--glass-bg); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: var(--glass-shadow); color: var(--surface-ink); font-size: 13px; font-weight: 700; }
 .map-clear:hover { background: var(--glass-hover); }
+.map-panel { align-items: flex-end; } .map-panel .map-clear { margin-bottom: 14px; }
+.fire-stack { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.map-help { width: 56px; height: 56px; display: grid; place-items: center; padding: 0; border: 1px solid var(--glass-edge); border-radius: 50%; background: var(--glass-bg); -webkit-backdrop-filter: blur(12px) saturate(1.4); backdrop-filter: blur(12px) saturate(1.4); box-shadow: var(--glass-shadow); color: var(--surface-ink); font-size: 22px; font-weight: 800; line-height: 1; cursor: pointer; }
+.map-help:hover { background: var(--glass-hover); }
+.help-dialog { margin: auto; width: min(440px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); padding: 0; border: 0; border-radius: 20px; background: var(--surface); color: var(--surface-ink); box-shadow: var(--surface-shadow); overflow: auto; overscroll-behavior: contain; }
+.help-dialog::backdrop { background: rgba(10,22,30,.45); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+.help-body { padding: 20px 20px 18px; }
+.help-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.help-head h2 { margin: 0; font-size: 20px; font-weight: 800; line-height: 1.25; }
+.help-x { flex-shrink: 0; width: 32px; height: 32px; margin: -4px -6px 0 0; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--surface-muted); font-size: 24px; line-height: 1; cursor: pointer; }
+.help-x:hover { background: color-mix(in srgb, var(--surface-ink) 8%, transparent); color: var(--surface-ink); }
+.help-intro { margin: 6px 0 16px; color: var(--surface-muted); font-size: 14px; line-height: 1.45; }
+.help-steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; }
+.help-steps li { display: grid; grid-template-columns: 32px 1fr; gap: 12px; align-items: start; }
+.help-steps strong { display: block; font-size: 15px; font-weight: 700; }
+.help-steps p { margin: 2px 0 0; font-size: 14px; line-height: 1.45; color: var(--surface-muted); }
+.help-steps .help-how { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; line-height: 1.45; color: var(--surface-muted); list-style: disc; }
+.help-steps .help-how li { display: list-item; }
+.help-steps .help-note { margin-top: 4px; font-size: 13px; font-style: italic; }
+.help-step-icon { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--accent-bg) 12%, transparent); color: var(--accent-bg); font-size: 15px; font-weight: 800; }
+.help-step-dot { width: 12px; height: 12px; border-radius: 50%; background: #007aff; box-shadow: 0 0 0 3px #fff, 0 1px 3px rgba(0,0,0,.3); }
+.help-step-escape { color: #d9481f; }
+.help-step-flame { width: 22px; height: 22px; }
+.help-safety { margin: 18px 0 0; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--warn) 12%, transparent); color: var(--warn); font-size: 13px; font-weight: 600; line-height: 1.45; }
+.help-close { width: 100%; min-height: 46px; margin-top: 16px; border: 0; border-radius: 999px; background: var(--accent-bg); color: var(--accent-ink); font-size: 15px; font-weight: 700; cursor: pointer; }
+.help-close:hover { background: var(--accent-hover); }
 .map-actions { position: absolute; z-index: 1000; top: calc(16px + env(safe-area-inset-top, 0px)); right: 16px; display: flex; gap: 10px; align-items: center; }
 .theme-toggle { width: 48px; height: 48px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: var(--surface); color: var(--surface-ink); box-shadow: var(--surface-shadow); }
 .theme-toggle:hover { color: #df7548; }

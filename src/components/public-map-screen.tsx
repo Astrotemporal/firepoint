@@ -4,28 +4,31 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { MARKS_KEY, MAX_MARKS, addMark, createMark, moveMark, parseMarks, type FireMark } from "@/domain/fire-marks";
-import { ENGLISH_ONLY_NOTICE, type PublicScreenLocalized } from "@/domain/public-screen-copy";
+import { type PublicScreenLocalized } from "@/domain/public-screen-copy";
 import { LANGUAGE_LABEL, type Locale } from "@/i18n/locales";
 import { mapText } from "@/i18n/map";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { registerServiceWorker } from "@/lib/service-worker";
 import type { MapHandle } from "./evacuation-map";
 import { FirePanel } from "./fire-panel";
+import { HelpButton } from "./help-dialog";
 import { LanguageSelect } from "./language-select";
 import { MapTextProvider } from "./map-text";
+import { PublicInfoDrawer } from "./public-info-drawer";
 import { applyTheme, currentTheme, subscribeTheme, type Theme } from "./theme";
 import { MoonIcon, SunIcon } from "./theme-icons";
 
 /*
  * The public homepage. Nothing on it is emergency guidance: a basemap, private on-device marks,
- * the theme and language controls, and one plain statement that no verified incident, shelter or
- * route is loaded. It never asks for the device location, never plans a route and never calls the
- * directions provider; that prototype only renders behind the server-side release gate
- * (`src/server/release-gate.ts`). Keep this module free of the routing/shelter/location imports.
+ * the theme and language controls, and a bottom drawer with explicit unavailable states for
+ * shelter status and evacuation orders. It never asks for the device location, never plans a
+ * route and never calls the directions provider; that prototype only renders behind the server-
+ * side release gate (`src/server/release-gate.ts`). Keep this module free of the
+ * routing/shelter/location imports.
  *
- * Language: the controls, fire marks and pins use the existing `src/i18n/map.ts` translations through
- * `MapTextProvider`. The status card and the mark announcements are English only (no translated
- * safety statement exists for them), and the map strings that promise routes (`mapLabel`, `mapFailed`,
+ * Language: the controls, fire marks and pins use the existing `src/i18n/map.ts` translations
+ * through `MapTextProvider`. The drawer status text is English only (no translated safety
+ * statement exists for it). Map strings that promise routes (`mapLabel`, `mapFailed`,
  * `noMapToken`, `placed`, `marksOnDevice`) are never used here.
  */
 
@@ -35,12 +38,9 @@ const EvacuationMap = dynamic(() => import("./evacuation-map").then((mod) => mod
   loading: () => <div className="ev-map map-loading" role="status">Loading map…</div>,
 });
 
-/** Exact public status line; tests and the browser smoke check look for it verbatim. */
-export const PUBLIC_STATUS_TITLE = "No verified incident, shelter or route loaded";
-export const PUBLIC_STATUS_BODY = "Follow official sources. This is not an all-clear. To report a fire, call 911.";
-/** English-only copy for the map region and load failure: neither may promise routes or shelters. */
+/** English-only aria label and load-failure copy for the map; neither may promise routes or shelters. */
 export const PUBLIC_MAP_LABEL = "Map with your private marks. No live incidents, shelters or routes are shown.";
-export const PUBLIC_MAP_FAILED = "The map couldn’t load. Check your connection.";
+export const PUBLIC_MAP_FAILED = "The map couldn\'t load. Check your connection.";
 export const PUBLIC_NO_TOKEN = "Map unavailable: no Mapbox token is configured.";
 
 const NONE: readonly never[] = [];
@@ -60,8 +60,6 @@ export function PublicMapScreen({ locale = "en", localized = null }: PublicMapSc
   const [canStore, setCanStore] = useState(true);
   const [hint, setHint] = useState<string | null>(null);
   const mapRef = useRef<MapHandle | null>(null);
-  const shellRef = useRef<HTMLElement>(null);
-  const statusRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -75,15 +73,6 @@ export function PublicMapScreen({ locale = "en", localized = null }: PublicMapSc
     return () => { active = false; };
   }, []);
   useEffect(registerServiceWorker, []);
-  // On phones the status card overlaps the map's bottom edge; tell the CSS how tall it is.
-  useEffect(() => {
-    const shell = shellRef.current;
-    const status = statusRef.current;
-    if (!shell || !status || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => shell.style.setProperty("--ev-public-status-h", `${status.offsetHeight}px`));
-    observer.observe(status);
-    return () => observer.disconnect();
-  }, []);
 
   const onReady = useCallback((map: MapHandle | null) => { mapRef.current = map; }, []);
 
@@ -109,7 +98,7 @@ export function PublicMapScreen({ locale = "en", localized = null }: PublicMapSc
 
   return (
     <MapTextProvider locale={locale}>
-    <main ref={shellRef} lang={locale} className="map-screen ev-shell ev-shell-static">
+    <main lang={locale} className="map-screen ev-shell">
       <h1 className="sr-only">{t.screenTitle}</h1>
       <div className="ev-map-area">
         {MAPBOX_TOKEN ? (
@@ -126,6 +115,7 @@ export function PublicMapScreen({ locale = "en", localized = null }: PublicMapSc
         <FirePanel
           ready={ready} count={marks.length} hint={panelHint} map={mapRef} onPlace={place} onHint={setHint}
           onClear={() => { save([]); setHint(t.marksCleared); }}
+          help={<HelpButton variant="public" />}
         />
         <div className="map-actions">
           <LanguageSelect current={locale} label={LANGUAGE_LABEL[locale]} returnTo="/" className="map-lang-select" />
@@ -141,26 +131,13 @@ export function PublicMapScreen({ locale = "en", localized = null }: PublicMapSc
         </div>
         {!canStore && <p className="map-storage-warning" role="status">{t.storageWarning}</p>}
       </div>
-      <section ref={statusRef} lang="en" className="ev-public-status" aria-labelledby="ev-public-status-title">
-        {localized && (
-          <>
-            {/* Lines that already exist in the visitor's language (from the /prepare guide); nothing new is translated here. */}
-            <p lang={localized.locale} className="ev-public-status-localized">
-              <strong>{localized.urgentCall}</strong> <Link href="/prepare">{localized.guideTitle}</Link>
-            </p>
-            <p className="ev-public-status-english-only">{ENGLISH_ONLY_NOTICE}</p>
-          </>
-        )}
-        <p id="ev-public-status-title" className="ev-public-status-title" role="status">{PUBLIC_STATUS_TITLE}</p>
-        <p className="ev-public-status-body">{PUBLIC_STATUS_BODY}</p>
-        <p className="ev-public-status-links">
-          <Link href="/prepare#sources-title">Official sources</Link>
-          <Link href="/prepare">Ready, Set, Go guide</Link>
-        </p>
-        <p className="ev-note">
-          The flame places a private mark on this device only. Marks are not reports, fire locations or evacuation zones.
-        </p>
-      </section>
+      {/*
+       * The public information drawer: explicit shelter/evac unavailable states, official links,
+       * no routes, no location access, no hardcoded data. Typed slots (`shelterSnapshot`,
+       * `noticeSnapshot`) are accepted but never populated here — a future server adapter PR
+       * will pass verified, freshness-stamped snapshots.
+       */}
+      <PublicInfoDrawer localized={localized} />
     </main>
     </MapTextProvider>
   );
