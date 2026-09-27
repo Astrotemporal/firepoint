@@ -34,12 +34,14 @@
 .ev-round { padding: 0; border-radius: 50%; width: 48px; }
 .ev-round svg { width: 20px; height: 20px; }
 /* "My location" sits up the right edge, under the theme/prep actions and zoom buttons; the fire owns the bottom corner. */
-.ev-locate { position: absolute; right: 16px; top: calc(144px + env(safe-area-inset-top, 0px)); width: 48px; height: 48px; min-height: 48px; min-width: 48px; border: 0; box-shadow: 0 2px 6px rgba(24, 49, 46, .18), 0 8px 24px rgba(24, 49, 46, .12); }
-.ev-locate-icon { width: 20px; height: 20px; border-radius: 50%; border: 3px solid var(--ev-you); position: relative; }
+/* Same frosted glass as the help button and fire tile it stacks with. */
+.ev-float-button.ev-locate { width: 56px; height: 56px; min-height: 56px; min-width: 56px; border: 1px solid var(--glass-edge); background: var(--glass-bg); -webkit-backdrop-filter: blur(12px) saturate(1.4); backdrop-filter: blur(12px) saturate(1.4); box-shadow: var(--glass-shadow); }
+.ev-float-button.ev-locate:hover { background: var(--glass-hover); }
+.ev-locate-icon { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--ev-you); position: relative; }
 .ev-locate-icon::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--ev-you); }
 /* Zoom buttons sit under the theme/prep actions; phones pinch to zoom, so they are hidden there. */
 .ev-shell .mapboxgl-ctrl-top-right { top: calc(64px + env(safe-area-inset-top, 0px)); right: 6px; }
-@media (max-width: 650px) { .ev-shell .mapboxgl-ctrl-top-right .mapboxgl-ctrl-group { display: none; } .ev-locate { right: 12px; top: calc(76px + env(safe-area-inset-top, 0px)); } }
+@media (max-width: 650px) { .ev-shell .mapboxgl-ctrl-top-right .mapboxgl-ctrl-group { display: none; } }
 
 /* Apple Maps-style blue dot in a white ring. Live GPS pulses; a chosen or fallback start stays still. */
 .ev-you, .ev-start { width: 22px; height: 22px; border-radius: 50%; background: var(--ev-you); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .35); }
@@ -91,8 +93,7 @@
 .ev-map-area { margin-bottom: calc(var(--ev-peek, 132px) - 18px); }
 /* The fire tile rides above the sheet; it and the locate button step aside when the sheet is fully open. */
 .ev-shell .map-panel { bottom: max(44px, calc(var(--ev-sheet-h, 0px) - var(--ev-peek, 0px) + 44px)); transition: bottom .28s ease, opacity .2s; }
-.ev-locate { transition: opacity .2s; }
-.ev-shell[data-sheet="full"] .map-panel, .ev-shell[data-sheet="full"] .ev-locate { opacity: 0; pointer-events: none; }
+.ev-shell[data-sheet="full"] .map-panel { opacity: 0; pointer-events: none; }
 .ev-shell .mapboxgl-ctrl-bottom-left, .ev-shell .mapboxgl-ctrl-bottom-right { bottom: 18px; }
 
 /* Phones, before Escape is pressed: no drawer, just the button floating over the map. */
@@ -116,7 +117,7 @@
   .ev-map-area { margin-bottom: 0; }
   .ev-shell .mapboxgl-ctrl-bottom-left, .ev-shell .mapboxgl-ctrl-bottom-right { bottom: 0; }
   .ev-shell .map-panel { bottom: 44px; }
-  .ev-shell[data-sheet="full"] .map-panel, .ev-shell[data-sheet="full"] .ev-locate { opacity: 1; pointer-events: auto; }
+  .ev-shell[data-sheet="full"] .map-panel { opacity: 1; pointer-events: auto; }
 }
 
 .ev-status { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 14px; padding: 2px 2px 6px; font-size: 14px; line-height: 1.4; font-weight: 700; color: var(--ev-text); }

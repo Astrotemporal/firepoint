@@ -11,6 +11,7 @@ import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { registerServiceWorker } from "@/lib/service-worker";
 import type { MapHandle } from "./evacuation-map";
 import { FirePanel } from "./fire-panel";
+import { HelpButton } from "./help-dialog";
 import { LanguageSelect } from "./language-select";
 import { MapTextProvider } from "./map-text";
 import { applyTheme, currentTheme, subscribeTheme, type Theme } from "./theme";
@@ -126,6 +127,7 @@ export function PublicMapScreen({ locale = "en", localized = null }: PublicMapSc
         <FirePanel
           ready={ready} count={marks.length} hint={panelHint} map={mapRef} onPlace={place} onHint={setHint}
           onClear={() => { save([]); setHint(t.marksCleared); }}
+          help={<HelpButton variant="public" />}
         />
         <div className="map-actions">
           <LanguageSelect current={locale} label={LANGUAGE_LABEL[locale]} returnTo="/" className="map-lang-select" />
