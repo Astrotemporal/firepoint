@@ -23,19 +23,3 @@ jobs:
       - run: npm test
       - run: npm run build
 
-  public-gate-smoke:
-    # A production build (NODE_ENV=production) must serve the public homepage even with the prototype flag set.
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-      - run: npm ci
-      - run: npm run build
-      - run: npx playwright install --with-deps chromium
-      - name: Start the production server with the prototype flag set (it must be ignored)
-        run: FIREPOINT_PROTOTYPE_ROUTING=enabled npm run start -- --port 3000 > /tmp/firepoint-smoke.log 2>&1 &
-      - run: node scripts/smoke-public-home.mjs

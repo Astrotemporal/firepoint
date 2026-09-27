@@ -12,7 +12,6 @@ Firepoint offers **English, Spanish and Eastern Armenian**, reflecting Glendale'
 | Map screen, directions drawer, fire marks and map popups (`/`) | Translated: [`src/i18n/map.ts`](../src/i18n/map.ts), shared through `MapTextProvider` / `useMapText` ([`map-text.tsx`](../src/components/map-text.tsx)) |
 | Turn-by-turn road steps | From Mapbox: Spanish when ES is chosen; English for Armenian, which Mapbox Directions doesn't support |
 | Shelter names, addresses, evacuation-point descriptions, feed hazard labels | Never translated: data shown as published |
-| Public map screen (`/`, production) | Controls, fire marks and pins use the `src/i18n/map.ts` translations through `MapTextProvider`. The status card is English only: on Spanish/Armenian visits it is marked `lang="en"`, says "Map status is available in English only." and repeats only the guide's existing 911 line and guide name in that language (`src/domain/public-screen-copy.ts`). Route-related map strings (`mapLabel`, `mapFailed`, `noMapToken`, `placed`, `marksOnDevice`) are not used there; no new safety text is translated |
 | `public/offline.html` | English only (a static fallback; tests keep it in sync with the English guide) |
 | Official notices, agency names, photo credits | Never translated: shown as published |
 
