@@ -104,7 +104,7 @@ export function FirePanel({ ready, count, hint, map, onPlace, onHint, onClear }:
       >
         <Flame className="fire-token-flame" />
       </button>
-      {/* Status is announced, not shown: the map itself shows the marks. */}
+      {/* Status is announced, not shown: marks are private pins, never reports or routing hazards. */}
       <span className="sr-only" aria-live="polite">
         {hint ?? (ready ? t.marksOnDevice(count) : t.localToDevice)}
       </span>

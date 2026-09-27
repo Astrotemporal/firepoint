@@ -1,24 +1,24 @@
 import type { FireMark } from "@/domain/fire-marks";
 import type { Hazard } from "./types";
 
-/**
- * Fire marks count as fires for routing, so directions avoid them. A mark is a point, so it gets a
- * fixed radius; the usual buffers then apply (shelters within 1 km of the edge are skipped, and
- * routes must stay 500 m clear of it).
- */
-export const MARK_RADIUS_METERS = 500;
-
 export const markLabel = (index: number) => `Fire mark ${index + 1}`;
 
-export function markHazards(marks: readonly FireMark[]): Hazard[] {
+/** Arbitrary UI sketch size, NOT a measured fire extent, warning ring or avoidance buffer. */
+export const PRIVATE_MARK_DISPLAY_RADIUS_METERS = 500;
+
+/** Distinct from Hazard: display-only red dashed halos, never an incident or evacuation zone. */
+export function privateMarkHalos(marks: readonly FireMark[]) {
   return marks.map((mark, index) => ({
-    id: `mark-${mark.id}`,
-    type: "fire",
-    center: { lat: mark.lat, lng: mark.lng },
-    radiusMeters: MARK_RADIUS_METERS,
-    severity: 3,
+    kind: "private-display-halo" as const, id: mark.id,
+    center: { lat: mark.lat, lng: mark.lng }, displayRadiusMeters: PRIVATE_MARK_DISPLAY_RADIUS_METERS,
     label: markLabel(index),
-    simulated: false,
-    userMark: true,
   }));
+}
+
+/** Private device marks are visual bookmarks, not incident reports or routing hazards. */
+export function selectRoutingHazards({ sourceHazards }: {
+  sourceHazards: readonly Hazard[];
+  privateMarks: readonly FireMark[];
+}): readonly Hazard[] {
+  return sourceHazards;
 }

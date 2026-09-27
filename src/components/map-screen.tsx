@@ -2,13 +2,13 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { MARKS_KEY, MAX_MARKS, addMark, createMark, moveMark, parseMarks, type FireMark } from "@/domain/fire-marks";
 import { GLENDALE_CITY_HALL, SAFE_ZONES, SERVICE_RADIUS_METERS, SHELTERS } from "@/evacuation/data/glendale";
 import { isAppleMobile } from "@/evacuation/format";
 import { getActiveHazards, subscribeToHazards } from "@/evacuation/hazards";
 import { DEFAULT_FIX, LocationTracker, type LocationFix } from "@/evacuation/location";
-import { markHazards } from "@/evacuation/marks";
+import { selectRoutingHazards } from "@/evacuation/marks";
 import { RoutePlanner } from "@/evacuation/route-planner";
 import { getRouteIn } from "@/evacuation/route-provider";
 import { haversine, nearestHazard } from "@/evacuation/routing";
@@ -67,8 +67,8 @@ export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
   const [hint, setHint] = useState<string | null>(null);
   const mapRef = useRef<MapHandle | null>(null);
 
-  // Fire marks count as fires for routing, next to the hazard feed (an empty stub until a real feed is connected).
-  const hazards = useMemo(() => [...stubHazards, ...markHazards(marks)], [stubHazards, marks]);
+  // Private marks remain visible as pins, but cannot become a reported fire or steer directions.
+  const hazards = selectRoutingHazards({ sourceHazards: stubHazards, privateMarks: marks });
   const fix = location.fix;
   const metersFromGlendale = fix?.source === "gps" ? haversine(fix, GLENDALE_CITY_HALL) : 0;
   const outsideArea = metersFromGlendale > SERVICE_RADIUS_METERS;

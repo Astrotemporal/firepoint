@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FireMark } from "@/domain/fire-marks";
 import { GLENDALE_CITY_HALL } from "@/evacuation/data/glendale";
 import type { LocationFix } from "@/evacuation/location";
+import { privateMarkHalos } from "@/evacuation/marks";
 import type { RoutePlan } from "@/evacuation/route-planner";
 import {
   DESTINATION_HAZARD_BUFFER_METERS, destinationPoint, escapeHeading, isShelterAvailable, pointInHazard,
@@ -95,11 +96,15 @@ function pinElement(className: string, glyph: string, label: string): HTMLButton
   return element;
 }
 
-function addLayers(map: MapboxMap, simulatedLabel: string): void {
-  for (const id of ["hazards", "accuracy", "routes"]) map.addSource(id, { type: "geojson", data: EMPTY });
-  // A person's own fire marks are shaded lighter than hazards from the feed.
-  map.addLayer({ id: "hazards-fill", type: "fill", source: "hazards", paint: { "fill-color": "#ef4444", "fill-opacity": ["case", ["get", "mark"], 0.16, 0.28] } });
+function addLayers(map: MapboxMap): void {
+  for (const id of ["hazards", "private-mark-halos", "accuracy", "routes"]) map.addSource(id, { type: "geojson", data: EMPTY });
+  // Incident geometry (none connected today) and private visual sketches have separate sources/paint.
+  map.addLayer({ id: "hazards-fill", type: "fill", source: "hazards", paint: { "fill-color": "#ef4444", "fill-opacity": 0.28 } });
   map.addLayer({ id: "hazards-line", type: "line", source: "hazards", paint: { "line-color": COLORS.hazard, "line-width": 2 } });
+  map.addLayer({ id: "private-mark-halos-fill", type: "fill", source: "private-mark-halos",
+    paint: { "fill-color": "#ef4444", "fill-opacity": 0.07 } });
+  map.addLayer({ id: "private-mark-halos-outline", type: "line", source: "private-mark-halos",
+    paint: { "line-color": COLORS.hazard, "line-opacity": 0.65, "line-width": 2, "line-dasharray": [2, 2] } });
   map.addLayer({ id: "accuracy-fill", type: "fill", source: "accuracy", paint: { "fill-color": COLORS.you, "fill-opacity": 0.12 } });
   map.addLayer({ id: "accuracy-line", type: "line", source: "accuracy", paint: { "line-color": COLORS.you, "line-opacity": 0.4, "line-width": 1 } });
   const lineLayout = { "line-join": "round", "line-cap": "round" } as const;
@@ -125,12 +130,6 @@ function addLayers(map: MapboxMap, simulatedLabel: string): void {
       "line-color": ["match", ["get", "kind"], "shelter-guide", COLORS.shelterRoute, COLORS.escapeRoute],
       "line-width": 3, "line-dasharray": [0.3, 2],
     },
-  });
-  // Drawn last, over the routes. A plain label instead of a popup, so the demo fire is never mistaken for a real one.
-  map.addLayer({
-    id: "hazards-label", type: "symbol", source: "hazards", filter: ["all", ["get", "simulated"], ["!", ["get", "mark"]]],
-    layout: { "text-field": simulatedLabel, "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"], "text-size": 13 },
-    paint: { "text-color": COLORS.hazard, "text-halo-color": "#ffffff", "text-halo-width": 1.5 },
   });
 }
 
@@ -160,8 +159,6 @@ function MapboxView({
   ariaLabel, failedText,
 }: EvacuationMapProps) {
   const t = useMapText();
-  // Read by the one-time map setup below; the language only changes with a page reload.
-  const textRef = useRef(t);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
   const pinsRef = useRef(new Map<string, PinView>());
@@ -200,7 +197,7 @@ function MapboxView({
     // A new style drops our sources and layers, so they are rebuilt (and refilled by the effects) after each one.
     map.on("style.load", () => {
       everLoaded = true;
-      addLayers(map, textRef.current.simulatedFire);
+      addLayers(map);
       setLoaded((count) => count + 1);
     });
     map.on("error", () => { if (!everLoaded) setFailed(true); });
@@ -238,11 +235,17 @@ function MapboxView({
     if (!loaded || !source) return;
     source.setData({
       type: "FeatureCollection",
-      features: hazards.map((hazard) => circle(hazard.center, hazard.radiusMeters, {
-        simulated: hazard.simulated, mark: Boolean(hazard.userMark),
-      })),
+      // No source is wired yet; private marks never enter this area-fill layer.
+      features: hazards.map((hazard) => circle(hazard.center, hazard.radiusMeters)),
     });
   }, [hazards, loaded]);
+
+  useEffect(() => {
+    const source = mapRef.current?.getSource<GeoJSONSource>("private-mark-halos");
+    if (!loaded || !source) return;
+    source.setData({ type: "FeatureCollection", features: privateMarkHalos(marks).map((halo) =>
+      circle(halo.center, halo.displayRadiusMeters, { kind: halo.kind, id: halo.id })) });
+  }, [marks, loaded]);
 
   // Mapbox markers live outside React, so sync them with the stored marks by id.
   useEffect(() => {

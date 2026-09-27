@@ -1,19 +1,18 @@
 import type { Hazard } from "./types";
 
 /*
- * STUB hazard source: empty until a vetted feed is connected. Disaster detection lives elsewhere; see README
- * "Replacing the hazard stub". Contract for a real feed: getActiveHazards() returns the SAME array instance until
- * the list changes (it backs React's useSyncExternalStore), and subscribers are called after each change.
- * An empty list is not an all-clear; the directions bar says so.
+ * No incident hazard feed is connected. Return one stable EMPTY array for useSyncExternalStore;
+ * absence is unknown, not an all-clear. Private drag marks are not feed hazards.
+ * A future publisher adapter must preserve snapshot identity until a verified update,
+ * notify subscribers, and carry its own source/freshness state. Do not add demo fires here.
  */
-
-const NONE: readonly Hazard[] = [];
+const EMPTY_HAZARDS: readonly Hazard[] = Object.freeze([]);
 
 export function getActiveHazards(): readonly Hazard[] {
-  return NONE;
+  return EMPTY_HAZARDS;
 }
 
-export function subscribeToHazards(listener: () => void): () => void {
-  void listener;
+export function subscribeToHazards(_listener: () => void): () => void {
+  // No feed exists to emit a change. The API shape is retained for a future sourced adapter.
   return () => {};
 }

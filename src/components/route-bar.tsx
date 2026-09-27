@@ -128,6 +128,7 @@ export function RouteBar(props: RouteBarProps) {
               </ul>
             )}
             <p className="ev-note ev-with-icon"><Icon name="info" /><span>{t.notAllClear}</span></p>
+            <p className="ev-note" lang="en">Dashed private mark halos are sketches, not reports, fire extents, evacuation zones or routing hazards. Shelters and escape targets remain unverified.</p>
           </div>
         </div>
       </div>

@@ -29,11 +29,14 @@ export function createPin(id: string, map: MapboxMap, handlers: { current: PinHa
   const title = document.createElement("strong");
   const note = document.createElement("small");
   note.textContent = text.note;
+  const haloNote = document.createElement("small");
+  haloNote.lang = "en";
+  haloNote.textContent = "The dashed 500 m halo is a private display sketch, not a fire perimeter or evacuation zone. It does not affect routes.";
   const remove = document.createElement("button");
   remove.type = "button";
   remove.textContent = text.remove;
   remove.addEventListener("click", () => handlers.current.onRemove(id));
-  content.append(title, note, remove);
+  content.append(title, note, haloNote, remove);
 
   const popup = new Popup({ offset: 64, maxWidth: "240px", focusAfterOpen: true }).setDOMContent(content);
   const marker = new Marker({ element: pin, anchor: "bottom", draggable: true }).setLngLat(map.getCenter()).setPopup(popup).addTo(map);
