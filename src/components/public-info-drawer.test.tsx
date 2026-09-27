@@ -172,3 +172,23 @@ describe("PublicInfoDrawer language", () => {
     expect(html).not.toContain("Map status is available in English only.");
   });
 });
+
+describe("PublicInfoDrawer map-symbol legend", () => {
+  it("shows a static explanation-only legend with grey/yellow/red symbols", () => {
+    const html = renderToStaticMarkup(<PublicInfoDrawer />);
+    expect(html).toContain("ev-pub-legend");
+    expect(html).toContain("Map symbols");
+    expect(html).toContain("ev-pub-legend-grey");
+    expect(html).toContain("private mark, this device only, not a report");
+    expect(html).toContain("ev-pub-legend-yellow");
+    expect(html).toContain("unverified");
+    expect(html).toContain("moderated crowdsourced report");
+    expect(html).toContain("ev-pub-legend-red");
+    expect(html).toContain("agency-confirmed active source");
+    // Legend is explanation only — no map badge, no count, no live status
+    expect(html).not.toContain("badge");
+    expect(html).not.toContain("count");
+    expect(html).not.toContain("reports found");
+    expect(html).not.toContain("active now");
+  });
+});

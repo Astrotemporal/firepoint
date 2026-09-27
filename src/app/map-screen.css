@@ -306,3 +306,13 @@
   .ev-pub-sheet { transition: height .28s cubic-bezier(.2, .8, .2, 1), background-color .25s; }
   .ev-pub-sheet-dragging { transition: none; }
 }
+
+/* Map-symbol legend in the drawer body — explanation only, no live data. */
+.ev-pub-legend { margin-bottom: 8px; }
+.ev-pub-legend-title { margin: 0 0 4px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ev-muted); }
+.ev-pub-legend-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.ev-pub-legend-list li { display: flex; align-items: center; gap: 8px; font-size: 13px; line-height: 1.4; color: var(--ev-text); }
+.ev-pub-legend-swatch { flex: none; width: 14px; height: 14px; border-radius: 50%; }
+.ev-pub-legend-grey { background: none; border: 2px dashed var(--ev-muted); }
+.ev-pub-legend-yellow { background: #f59e0b; border: 2px solid #d97706; opacity: .85; }
+.ev-pub-legend-red { background: var(--ev-escape-bg, #9a3412); border: 2px solid var(--ev-escape-bg, #7c2d12); opacity: .85; }

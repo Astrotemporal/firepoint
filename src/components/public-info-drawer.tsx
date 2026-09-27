@@ -204,6 +204,15 @@ export function PublicInfoDrawer({
           {/* Body section — visible when expanded to half or full. */}
           <div className="ev-pub-body">
             <p className="ev-pub-not-all-clear" role="status">{NOT_ALL_CLEAR}</p>
+            {/* Static map-symbol legend: explanation only, no live data or map badges. */}
+            <div className="ev-pub-legend" aria-label="Map symbol guide">
+              <p className="ev-pub-legend-title">Map symbols</p>
+              <ul className="ev-pub-legend-list">
+                <li><span className="ev-pub-legend-swatch ev-pub-legend-grey" aria-hidden="true" /><span>Grey dashed ring — private mark, this device only, not a report</span></li>
+                <li><span className="ev-pub-legend-swatch ev-pub-legend-yellow" aria-hidden="true" /><span>Yellow circle — moderated crowdsourced report, <strong>unverified</strong></span></li>
+                <li><span className="ev-pub-legend-swatch ev-pub-legend-red" aria-hidden="true" /><span>Red — agency-confirmed active source notice</span></li>
+              </ul>
+            </div>
             <div className="ev-pub-links">
               <Link href="/prepare#sources-title">Official sources</Link>
               <Link href="/prepare">Ready, Set, Go guide</Link>
