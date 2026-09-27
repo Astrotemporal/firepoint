@@ -18,6 +18,7 @@ import { MAPBOX_STYLES, MAPBOX_TOKEN } from "@/lib/mapbox";
 import { createPin, removePin, type PinHandlers, type PinView } from "./fire-pins";
 import { useMapText } from "./map-text";
 import shelterIcon from "./shelter-icon.png";
+import { CROWD_REPORT_ACTIVITY_STYLE, type UnreviewedReportActivityResult } from "@/domain/crowd-report-activity-layer";
 
 /** What the screen needs from the map (dropping a fire mark), kept independent of the map library. */
 export type MapHandle = {
@@ -49,6 +50,12 @@ type EvacuationMapProps = {
   failedText?: string;
   /** In-app navigation: draw only this line and keep the camera on `center`, turned to `bearing`. */
   navigation?: MapNavigation | null;
+  /**
+   * Validated unreviewed 3+ coarse-cell report activity from `unreviewedReportActivityLayer`.
+   * Null / absent → source stays empty and no yellow hollow badges are drawn.
+   * Not a routing hazard, evacuation order, or official indicator.
+   */
+  reportActivity?: UnreviewedReportActivityResult | null;
 };
 
 export type MapNavigation = {
@@ -147,6 +154,23 @@ function addLayers(map: MapboxMap, theme: MapTheme): void {
       "line-width": 3, "line-dasharray": [0.3, 2],
     },
   });
+  // Unreviewed crowd-report activity badges: fixed-pixel hollow yellow circles.
+  // Source starts empty; the reportActivity effect fills it when a valid result is present.
+  // Not a routing hazard, evacuation zone, or official indicator; route coupling is false.
+  map.addSource("crowdsourced-report-activity", { type: "geojson", data: EMPTY });
+  map.addLayer({
+    id: "crowdsourced-report-activity-badges",
+    type: "circle",
+    source: "crowdsourced-report-activity",
+    paint: {
+      "circle-radius": CROWD_REPORT_ACTIVITY_STYLE.badgeSizePx / 2,
+      "circle-color": CROWD_REPORT_ACTIVITY_STYLE.fillColor,
+      "circle-opacity": 0,
+      "circle-stroke-color": CROWD_REPORT_ACTIVITY_STYLE.strokeColor,
+      "circle-stroke-width": CROWD_REPORT_ACTIVITY_STYLE.strokeWidthPx,
+      "circle-stroke-opacity": CROWD_REPORT_ACTIVITY_STYLE.opacity,
+    },
+  });
 }
 
 function planTargets(plan: RoutePlan | null): { shelter: Shelter | null; zone: SafeZone | null } {
@@ -172,7 +196,7 @@ function MapNotice({ text }: { text: string }) {
 
 function MapboxView({
   dark, origin, hazards, shelters, zones, plan, centerKey, fitKey, marks, onReady, onMoveMark, onRemoveMark,
-  ariaLabel, failedText, navigation = null,
+  ariaLabel, failedText, navigation = null, reportActivity = null,
 }: EvacuationMapProps) {
   const t = useMapText();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -263,6 +287,17 @@ function MapboxView({
     source.setData({ type: "FeatureCollection", features: ringStack(privateMarkHalos(marks)).map((edge) =>
       circle(edge.ring.center, edge.radius, { kind: edge.ring.kind, id: edge.ring.id, dashed: edge.dashed })) });
   }, [marks, loaded]);
+
+  // Unreviewed report activity badges: yellow hollow circles when a valid result is present.
+  // Absent/null → source stays empty; no yellow circles are drawn by default.
+  // selectRoutingHazards ignores this source (routeCoupling is false on the layer contract).
+  useEffect(() => {
+    const source = mapRef.current?.getSource<GeoJSONSource>("crowdsourced-report-activity");
+    if (!loaded || !source) return;
+    source.setData(
+      reportActivity?.state === "ready" ? reportActivity.layer.mapbox.source.data : EMPTY,
+    );
+  }, [reportActivity, loaded]);
 
   // Mapbox markers live outside React, so sync them with the stored marks by id.
   useEffect(() => {
