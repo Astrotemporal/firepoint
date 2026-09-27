@@ -86,3 +86,57 @@ link operators to the official source.
 
 No UI. No live adapter. No production poller. No secrets. No browser upstream
 calls. No merge or deploy claim.
+
+## Draft scope-integrity hardening (not deployed)
+
+`db/migrations/0101_source_scope_integrity.sql` is a **forward-only proposal** after
+0100. It has not been applied to any shared database. It binds registry,
+generation, record-provenance issuer, and complete-generation references to a
+single source/tenant/jurisdiction. It requires storage rights before a
+successful generation and serializes a fetch attempt's initial last-good
+pointer against generation creation. Failure/skip cannot advance that pointer;
+incomplete generations remain available for source-health review but are never
+last-good or allowed to retract records. The SQL rejects attempts to retract
+an upstream ID that appears in the retracting complete generation and checks
+generation record counts at transaction commit.
+
+`SourceCacheStorage` now requires an explicit issuer-bearing scope on **every**
+operation. No adapter exists. A future adapter must validate Zod at both read
+and write boundaries, use one transaction for a generation and its records,
+check the issuer against the source registry before each operation, and never
+turn no-data/failure into an all-clear. The typed scope alone does not grant
+authorization to a caller; an authenticated operator/service policy must bind
+that scope before any route or worker can use the adapter.
+
+`db/tests/source-scope-integrity.sql` contains synthetic Postgres negative
+checks; it rolls back its fixtures. The GitHub Actions `source-sql-integrity`
+job applies 0100 and 0101 to a disposable Postgres service, runs that fixture,
+and checks a concurrent pair of successful fetches. It never contacts Neon.
+A snapshot generation must be the next numbered generation and must still
+point to the latest complete generation at **insert time**, not just at fetch
+start. A retraction can use only the latest later complete generation; historic
+rows and attempts cannot be deleted/reinserted to rewrite a snapshot. Registry
+issuer inserts must have a nonblank, exact label (no surrounding ECMAScript
+trim whitespace); the SQL CHECK remains active after migration preflight.
+
+`source_registry.source_url` is the canonical registry endpoint or source page.
+`source_generation.source_url` **may differ**: it is the HTTPS URL cited for
+that specific published snapshot/vintage. Records must copy the generation's
+URL and issuer exactly. The schema does **not** prove that a differing URL is
+actually controlled by the issuer or covered by storage rights. A future
+adapter must verify publisher URL lineage/allowlists and rights before it
+writes, and must not use a plausible HTTPS URL alone as proof of authority.
+The registry issuer must be the actual issuing authority, not an aggregator
+name; multi-issuer feeds need separately verified issuer registries or a later
+explicit multi-issuer contract. Never label the aggregator as an order issuer.
+
+**0101 is not idempotent.** It is a one-time draft migration, not an app startup
+script. Its preflight aborts if any fetch attempt, generation, or record already
+exists, or if registry issuer labels are blank or padded. A database with such
+rows requires a separately reviewed audit/backfill migration; do not re-run
+0101 or work around the preflight. The synthetic CI test is not a production
+migration approval. A future adapter still needs read/write Zod validation,
+authorization, concurrency tests against its actual transactions, and rights
+review before any shared database rollout.
+No publisher feed, Neon connection, polling, UI, or community-report table is
+involved. **This is not a durable source-cache implementation.**

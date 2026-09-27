@@ -24,6 +24,23 @@ export const SourceScopeSchema = z.object({
 });
 export type SourceScope = z.infer<typeof SourceScopeSchema>;
 
+/** Explicit issuer authority is required at every storage operation boundary. */
+export const SourceIssuerScopeSchema = SourceScopeSchema.extend({
+  issuer: z.string().min(1).refine(
+    (value) => value.trim() === value && value.trim().length > 0,
+    "issuer must be a concrete exact label",
+  ),
+});
+export type SourceIssuerScope = z.infer<typeof SourceIssuerScopeSchema>;
+
+export function assertSourceIssuerScope(expected: SourceIssuerScope, actual: SourceScope & { issuer: string }): void {
+  const scoped = SourceIssuerScopeSchema.parse(expected);
+  const candidate = SourceIssuerScopeSchema.parse(actual);
+  if (scoped.tenantId !== candidate.tenantId || scoped.jurisdictionId !== candidate.jurisdictionId || scoped.issuer !== candidate.issuer) {
+    throw new Error("source-cache issuer/scope mismatch");
+  }
+}
+
 export const SourceRecordKindSchema = z.enum([
   "shelter-status",
   "evacuation-order",
@@ -160,6 +177,40 @@ export const CompleteSnapshotRetractionSchema = SourceScopeSchema.extend({
   reason: z.literal("missing-from-complete-snapshot"),
 });
 export type CompleteSnapshotRetraction = z.infer<typeof CompleteSnapshotRetractionSchema>;
+
+/** Successful fetches can be partial, but only complete successful generations are last-good references. */
+export function assertFetchAttemptTransition(previous: SourceFetchAttempt, next: SourceFetchAttempt): void {
+  const before = SourceFetchAttemptSchema.parse(previous);
+  const after = SourceFetchAttemptSchema.parse(next);
+  assertSameSourceScope(before, after);
+  if (before.id !== after.id || before.sourceRegistryId !== after.sourceRegistryId ||
+      before.startedAt !== after.startedAt || before.status !== "started" || after.status === "started" ||
+      after.completedAt === null || Date.parse(after.completedAt) < Date.parse(after.startedAt) ||
+      before.lastGoodGenerationId !== after.lastGoodGenerationId) {
+    throw new Error("invalid source fetch attempt transition");
+  }
+  if (after.status === "succeeded-empty" && after.rowsAccepted !== 0 ||
+      after.status === "succeeded-non-empty" && after.rowsAccepted === 0 ||
+      (after.status === "failed" || after.status === "skipped-gated") && after.completeSnapshot) {
+    throw new Error("invalid source fetch attempt result");
+  }
+}
+
+export function assertCompleteSnapshotReference(
+  scope: SourceIssuerScope,
+  generation: SourceGeneration,
+  referenced: SourceGeneration,
+): void {
+  const authority = SourceIssuerScopeSchema.parse(scope);
+  const current = SourceGenerationSchema.parse(generation);
+  const candidate = SourceGenerationSchema.parse(referenced);
+  assertSourceIssuerScope(authority, current);
+  assertSourceIssuerScope(authority, candidate);
+  if (current.sourceRegistryId !== candidate.sourceRegistryId ||
+      !candidate.completeSnapshot || candidate.generationNumber >= current.generationNumber) {
+    throw new Error("invalid previous complete generation");
+  }
+}
 
 export function assertSameSourceScope(expected: SourceScope, actual: SourceScope): void {
   if (expected.tenantId !== actual.tenantId || expected.jurisdictionId !== actual.jurisdictionId) {

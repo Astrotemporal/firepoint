@@ -4,7 +4,7 @@ import type {
   SourceGeneration,
   SourceRecord,
   SourceRegistry,
-  SourceScope,
+  SourceIssuerScope,
 } from "@/domain/source-cache";
 
 /**
@@ -15,17 +15,17 @@ import type {
  * Community observations are deliberately outside this interface.
  */
 export interface SourceCacheStorage {
-  getRegistry(scope: SourceScope, sourceRegistryId: string): Promise<SourceRegistry | null>;
-  listRegistries(scope: SourceScope): Promise<readonly SourceRegistry[]>;
-  createFetchAttempt(attempt: SourceFetchAttempt): Promise<void>;
-  updateFetchAttemptResult(attempt: SourceFetchAttempt): Promise<void>;
-  insertImmutableGeneration(input: {
+  getRegistry(scope: SourceIssuerScope, sourceRegistryId: string): Promise<SourceRegistry | null>;
+  listRegistries(scope: SourceIssuerScope): Promise<readonly SourceRegistry[]>;
+  createFetchAttempt(scope: SourceIssuerScope, attempt: SourceFetchAttempt): Promise<void>;
+  updateFetchAttemptResult(scope: SourceIssuerScope, attempt: SourceFetchAttempt): Promise<void>;
+  insertImmutableGeneration(scope: SourceIssuerScope, input: {
     generation: SourceGeneration;
     records: readonly SourceRecord[];
   }): Promise<void>;
-  getLastGoodGeneration(scope: SourceScope, sourceRegistryId: string): Promise<SourceGeneration | null>;
-  listCurrentRecords(scope: SourceScope, sourceRegistryId: string): Promise<readonly SourceRecord[]>;
+  getLastGoodGeneration(scope: SourceIssuerScope, sourceRegistryId: string): Promise<SourceGeneration | null>;
+  listCurrentRecords(scope: SourceIssuerScope, sourceRegistryId: string): Promise<readonly SourceRecord[]>;
 
   /** Incomplete, failed, or gated snapshots must never retract existing records. */
-  markRetractedFromCompleteSnapshot(retraction: CompleteSnapshotRetraction): Promise<void>;
+  markRetractedFromCompleteSnapshot(scope: SourceIssuerScope, retraction: CompleteSnapshotRetraction): Promise<void>;
 }

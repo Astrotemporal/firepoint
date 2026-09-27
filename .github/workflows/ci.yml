@@ -43,3 +43,31 @@ jobs:
       - name: Start the production server with the prototype flag set (it must be ignored)
         run: FIREPOINT_PROTOTYPE_ROUTING=enabled npm run start -- --port 3000 > /tmp/firepoint-smoke.log 2>&1 &
       - run: node scripts/smoke-public-home.mjs
+
+  source-sql-integrity:
+    # Disposable synthetic PostgreSQL only; no application DB or hosted feed.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      source_postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: synthetic-only
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply draft source migrations to disposable Postgres
+        run: |
+          docker exec -i "${{ job.services.source_postgres.id }}" psql -v ON_ERROR_STOP=1 -U postgres -d postgres < db/migrations/0100_source_snapshots.sql
+          docker exec -i "${{ job.services.source_postgres.id }}" psql -v ON_ERROR_STOP=1 -U postgres -d postgres < db/migrations/0101_source_scope_integrity.sql
+      - name: Reject synthetic cross-scope, stale, retroactive, and rewrite attempts
+        run: docker exec -i "${{ job.services.source_postgres.id }}" psql -v ON_ERROR_STOP=1 -U postgres -d postgres < db/tests/source-scope-integrity.sql
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Concurrent complete-generation serialization
+        run: node db/tests/source-scope-concurrency.mjs "${{ job.services.source_postgres.id }}"
