@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fetchGlendaleHazards, parseRpcBody } from "./glendale-gis";
+import { fetchGlendaleHazards, GIS_MAX_RESPONSE_BYTES, parseRpcBody } from "./glendale-gis";
 
 const now = () => new Date("2026-09-26T12:00:00.000Z");
 const point = [-118.25, 34.15] as const;
@@ -42,6 +42,7 @@ describe("parseRpcBody", () => {
     expect(parseRpcBody(sse({ ok: 1 }), "text/event-stream", 1)).toMatchObject({ id: 1 });
     expect(parseRpcBody('{"jsonrpc":"2.0","id":1,"result":{}}', "application/json", 1)).toMatchObject({ id: 1 });
     expect(() => parseRpcBody(sse({ ok: 1 }, 7), "text/event-stream", 1)).toThrow(SyntaxError);
+    expect(() => parseRpcBody('{"jsonrpc":"2.0","id":2,"result":{}}', "application/json", 1)).toThrow(SyntaxError);
   });
 });
 
@@ -80,10 +81,65 @@ describe("fetchGlendaleHazards", () => {
   it("names a rejected key, rate limiting, tool errors and schema drift", async () => {
     expect(await fetchGlendaleHazards({ point, apiKey, now, fetcher: reply("", 401) })).toMatchObject({ status: "unavailable", reason: "unauthorized" });
     expect(await fetchGlendaleHazards({ point, apiKey, now, fetcher: reply("", 429) })).toMatchObject({ status: "unavailable", reason: "rate_limited" });
+    const throttled: typeof fetch = async () => new Response("", { status: 429, headers: { "retry-after": "30" } });
+    expect(await fetchGlendaleHazards({ point, apiKey, now, fetcher: throttled })).toMatchObject({ reason: "rate_limited", retryAfterSeconds: 30 });
     const toolError = `data: ${JSON.stringify({ jsonrpc: "2.0", id: 1, result: { content: [{ type: "text", text: "boom" }], isError: true } })}\n\n`;
     expect(await fetchGlendaleHazards({ point, apiKey, now, fetcher: reply(toolError) })).toMatchObject({ reason: "tool_error" });
     expect(await fetchGlendaleHazards({ point, apiKey, now, fetcher: reply(sse({ location: {} })) })).toMatchObject({ reason: "invalid_response" });
     expect(await fetchGlendaleHazards({ point, apiKey, now, fetcher: async () => { throw new TypeError("offline"); } })).toMatchObject({ reason: "network_error" });
+  });
+
+  it("asks for manual redirects and refuses any 3xx or opaque redirect", async () => {
+    let init: RequestInit | undefined;
+    const redirect = await fetchGlendaleHazards({ point, apiKey, now, fetcher: async (_input, options) => {
+      init = options;
+      return new Response(null, { status: 307, headers: { location: "https://evil.example/mcp" } });
+    } });
+    expect(init?.redirect).toBe("manual");
+    expect(redirect).toMatchObject({ status: "unavailable", reason: "redirected", httpStatus: 307 });
+    const opaque = { type: "opaqueredirect", status: 0, ok: false, headers: new Headers() } as unknown as Response;
+    expect(await fetchGlendaleHazards({ point, apiKey, now, fetcher: async () => opaque })).toMatchObject({ reason: "redirected" });
+  });
+
+  it("rejects replies that are not JSON or an event stream", async () => {
+    expect(await fetchGlendaleHazards({ point, apiKey, now, fetcher: reply("<html>", 200, "text/html; charset=utf-8") }))
+      .toMatchObject({ status: "unavailable", reason: "bad_content_type" });
+    expect(await fetchGlendaleHazards({ point, apiKey, now, fetcher: reply(sse(payload()), 200, "TEXT/EVENT-STREAM; charset=utf-8") }))
+      .toMatchObject({ status: "ok" });
+  });
+
+  it("bounds the reply size by declared length and by bytes actually streamed", async () => {
+    const declared: typeof fetch = async () =>
+      new Response("{}", { headers: { "content-type": "application/json", "content-length": String(GIS_MAX_RESPONSE_BYTES + 1) } });
+    expect(await fetchGlendaleHazards({ point, apiKey, now, fetcher: declared })).toMatchObject({ reason: "oversize" });
+
+    let pulled = 0;
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) { pulled += 1; controller.enqueue(new Uint8Array(64 * 1024).fill(0x20)); },
+    });
+    const streamed: typeof fetch = async () => new Response(endless, { headers: { "content-type": "application/json" } });
+    expect(await fetchGlendaleHazards({ point, apiKey, now, fetcher: streamed })).toMatchObject({ reason: "oversize" });
+    expect(pulled).toBeLessThanOrEqual(GIS_MAX_RESPONSE_BYTES / (64 * 1024) + 2);
+
+    const good = sse(payload());
+    expect(await fetchGlendaleHazards({ point, apiKey, now, fetcher: reply(good), maxResponseBytes: good.length - 1 })).toMatchObject({ reason: "oversize" });
+    expect(await fetchGlendaleHazards({ point, apiKey, now, fetcher: reply(good), maxResponseBytes: good.length })).toMatchObject({ status: "ok" });
+  });
+
+  it("times out a body that never finishes, even when the fetcher ignores the signal", async () => {
+    const stalled = new ReadableStream<Uint8Array>({ pull: () => new Promise(() => undefined) });
+    const fetcher: typeof fetch = async () => new Response(stalled, { headers: { "content-type": "application/json" } });
+    expect(await fetchGlendaleHazards({ point, apiKey, now, fetcher, timeoutMs: 50 })).toMatchObject({ reason: "timeout" });
+  });
+
+  it("makes exactly one upstream request per lookup", async () => {
+    let calls = 0;
+    const fetcher: typeof fetch = async () => { calls += 1; return new Response(sse(payload()), { headers: { "content-type": "text/event-stream" } }); };
+    await fetchGlendaleHazards({ point, apiKey, now, fetcher });
+    expect(calls).toBe(1);
+    calls = 0;
+    await fetchGlendaleHazards({ point, apiKey, now, fetcher: async () => { calls += 1; return new Response("", { status: 502 }); } });
+    expect(calls).toBe(1);
   });
 
   it("refuses unusable keys and non-HTTPS remote URLs before sending anything", async () => {

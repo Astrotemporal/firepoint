@@ -38,7 +38,7 @@ npm run build
 # or: make check
 ```
 
-The `Makefile` also has `make gis-fetch`/`make gis-local` developer-only MCP steps. GitHub Actions runs these four web checks for PRs and `main` pushes, with no secret-dependent source calls. Report the result of each command separately. Lint, typecheck, tests, and build do not establish agency source coverage or operational readiness.
+The `Makefile` also has `make gis-fetch`/`make gis-local`/`make gis-stub`/`make gis-smoke` developer-only MCP steps. GitHub Actions runs these four web checks plus `npm run gis:smoke` (a loopback-only synthetic GIS stub; see [docs/glendale-gis-integration.md](docs/glendale-gis-integration.md)) for PRs and `main` pushes, with no secret-dependent source calls. Report the result of each command separately. Lint, typecheck, tests, and build do not establish agency source coverage or operational readiness.
 
 ## Plan and working agreements
 

@@ -22,3 +22,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      # Loopback-only: a synthetic stub stands in for the Glendale GIS MCP. No hosted
+      # MCP, Vercel, or real key is contacted; a production build must stay paused.
+      - run: npm run gis:smoke
+        timeout-minutes: 8
