@@ -86,3 +86,33 @@ link operators to the official source.
 
 No UI. No live adapter. No production poller. No secrets. No browser upstream
 calls. No merge or deploy claim.
+
+## Draft scope-integrity hardening (not deployed)
+
+`db/migrations/0101_source_scope_integrity.sql` is a **forward-only proposal** after
+0100. It has not been applied to any shared database. It binds registry,
+generation, record-provenance issuer, and complete-generation references to a
+single source/tenant/jurisdiction. It requires storage rights before a
+successful generation and serializes a fetch attempt's initial last-good
+pointer against generation creation. Failure/skip cannot advance that pointer;
+incomplete generations remain available for source-health review but are never
+last-good or allowed to retract records. The SQL rejects attempts to retract
+an upstream ID that appears in the retracting complete generation and checks
+generation record counts at transaction commit.
+
+`SourceCacheStorage` now requires an explicit issuer-bearing scope on **every**
+operation. No adapter exists. A future adapter must validate Zod at both read
+and write boundaries, use one transaction for a generation and its records,
+check the issuer against the source registry before each operation, and never
+turn no-data/failure into an all-clear. The typed scope alone does not grant
+authorization to a caller; an authenticated operator/service policy must bind
+that scope before any route or worker can use the adapter.
+
+`db/tests/source-scope-integrity.sql` contains synthetic Postgres negative
+checks. Run it only in a disposable Postgres database after applying 0100 and
+0101 there; it rolls back its fixtures. Existing production rows must be
+audited before applying 0101, since its constraints intentionally reject
+incorrect legacy references. PostgreSQL integration and concurrent-transaction
+checks must run in CI before adapter development or any production migration.
+No publisher feed, Neon connection, polling, UI, or community-report table is
+involved. **This is not a durable source-cache implementation.**
