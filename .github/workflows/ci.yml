@@ -3,7 +3,7 @@ name: Firepoint checks
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, staging/source-backed]
 
 permissions:
   contents: read

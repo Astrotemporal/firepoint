@@ -3,7 +3,7 @@ name: Refresh app preview
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, staging/source-backed]
   workflow_dispatch:
 
 # Captures are read-only artifacts. Newer runs cancel older ones for the same ref.
