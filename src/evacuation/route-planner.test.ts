@@ -1,12 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SAFE_ZONES, SHELTERS } from "./data/glendale";
+import { SHELTERS } from "./data/glendale";
 import { SYNTHETIC_HAZARDS } from "../../tests/fixtures/synthetic-fire";
 import { RoutePlanner } from "./route-planner";
-import type { GetRoute, LatLng } from "./types";
+import type { GetRoute, Hazard, LatLng, Shelter } from "./types";
 
 const cityHall: LatLng = { lat: 34.14662, lng: -118.24825 };
 /** ~`meters` north of City Hall. */
 const north = (meters: number): LatLng => ({ lat: cityHall.lat + meters / 111_195, lng: cityHall.lng });
+/** Synthetic fire 1 km north of City Hall: City Hall is inside its danger zone, so there is something to escape. */
+const NEAR_FIRE: Hazard = {
+  id: "test-near-fire", type: "fire", center: north(1000), radiusMeters: 500, severity: 3, label: "TEST FIRE", simulated: true,
+};
 
 describe("RoutePlanner recalculation", () => {
   beforeEach(() => { vi.useFakeTimers(); });
@@ -17,7 +21,7 @@ describe("RoutePlanner recalculation", () => {
       path: [from, to], distanceMeters: 1000, durationSeconds: 120, steps: [],
     }));
     const planner = new RoutePlanner({
-      getRoute, shelters: SHELTERS, zones: SAFE_ZONES, isOnline: () => online,
+      getRoute, shelters: SHELTERS, isOnline: () => online,
       debounceMs: 1000, minIntervalMs: 5000, now: () => Date.now(),
     });
     return { planner, getRoute, runs: () => new Set(getRoute.mock.calls.map(([from]) => `${from.lat},${from.lng}`)).size };
@@ -67,10 +71,17 @@ describe("RoutePlanner recalculation", () => {
     await vi.advanceTimersByTimeAsync(1000);
     const plan = planner.getSnapshot().plan;
     expect(getRoute).not.toHaveBeenCalled();
-    expect(plan?.shelter).toMatchObject({ kind: "routing-unavailable", reason: "offline", shelter: { id: "pacific-community-center" } });
+    // Glendale Police headquarters, a block from City Hall, is the nearest place the shelter route can lead.
+    expect(plan?.shelter).toMatchObject({ kind: "routing-unavailable", reason: "offline", shelter: { id: "glendale-police-hq" } });
     expect(plan?.escape).toEqual({ kind: "not-requested" });
 
     planner.requestEscape();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(getRoute).not.toHaveBeenCalled();
+    // The simulated Verdugo fire is ~3 km beyond City Hall's reach: already outside its danger zone.
+    expect(planner.getSnapshot().plan?.escape).toMatchObject({ kind: "already-safe" });
+
+    planner.update(cityHall, [NEAR_FIRE]);
     await vi.advanceTimersByTimeAsync(1000);
     expect(getRoute).not.toHaveBeenCalled();
     expect(planner.getSnapshot().plan?.escape).toMatchObject({ kind: "routing-unavailable", reason: "offline" });
@@ -86,17 +97,17 @@ describe("RoutePlanner escape requests", () => {
       path: [from, to], distanceMeters: 1000, durationSeconds: 120, steps: [],
     }));
     const planner = new RoutePlanner({
-      getRoute, shelters: SHELTERS, zones: SAFE_ZONES, isOnline: () => true,
+      getRoute, shelters: SHELTERS, isOnline: () => true,
       debounceMs: 1000, minIntervalMs: 5000, now: () => Date.now(),
     });
-    /** Calls to `getRoute` whose destination is a safe zone (has `priority`), not a shelter. */
-    const escapeCalls = () => getRoute.mock.calls.filter(([, to]) => "priority" in to);
+    /** Calls to `getRoute` whose destination is an escape mark, not a shelter. */
+    const escapeCalls = () => getRoute.mock.calls.filter(([, to]) => !SHELTERS.includes(to as Shelter));
     return { planner, getRoute, escapeCalls };
   }
 
   it("never calls getRoute for the escape leg until requested", async () => {
     const { planner, escapeCalls } = setup();
-    planner.update(cityHall, []);
+    planner.update(cityHall, [NEAR_FIRE]);
     await vi.advanceTimersByTimeAsync(1000);
     expect(escapeCalls()).toHaveLength(0);
     expect(planner.getSnapshot().plan?.escape).toEqual({ kind: "not-requested" });
@@ -105,7 +116,7 @@ describe("RoutePlanner escape requests", () => {
 
   it("computes the escape route once requested, and keeps it updated", async () => {
     const { planner, escapeCalls } = setup();
-    planner.update(cityHall, []);
+    planner.update(cityHall, [NEAR_FIRE]);
     await vi.advanceTimersByTimeAsync(1000);
     expect(escapeCalls()).toHaveLength(0);
 
@@ -116,15 +127,16 @@ describe("RoutePlanner escape requests", () => {
     expect(planner.getSnapshot().plan?.escape.kind).toBe("route");
 
     // Later hazard changes keep recomputing the escape leg without asking again.
-    planner.update(cityHall, SYNTHETIC_HAZARDS);
+    const callsBefore = escapeCalls().length;
+    planner.update(cityHall, [{ ...NEAR_FIRE, center: north(-1000) }]);
     await vi.advanceTimersByTimeAsync(1000);
     expect(planner.getSnapshot().plan?.escape.kind).toBe("route");
-    expect(escapeCalls().length).toBeGreaterThan(1);
+    expect(escapeCalls().length).toBeGreaterThan(callsBefore);
   });
 
   it("clearing removes the escape route and stops requesting it", async () => {
     const { planner, escapeCalls } = setup();
-    planner.update(cityHall, []);
+    planner.update(cityHall, [NEAR_FIRE]);
     planner.requestEscape();
     await vi.advanceTimersByTimeAsync(1000);
     expect(planner.getSnapshot().plan?.escape.kind).toBe("route");

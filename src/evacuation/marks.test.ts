@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { createMark } from "@/domain/fire-marks";
+import { COMMUNITY_SHELTERS as SHELTERS, GLENDALE_CITY_HALL } from "./data/glendale";
 import { getActiveHazards } from "./hazards";
-import { markLabel, privateMarkHalos, PRIVATE_MARK_DISPLAY_RADIUS_METERS, selectRoutingHazards } from "./marks";
+import {
+  MARK_RADIUS_METERS, markHazards, markLabel, privateMarkHalos, PRIVATE_MARK_DISPLAY_RADIUS_METERS, selectRoutingHazards,
+} from "./marks";
+import { haversine, pickShelter } from "./routing";
+import type { GetRoute } from "./types";
 import { SYNTHETIC_HAZARDS } from "../../tests/fixtures/synthetic-fire";
 
-describe("private marks remain visual bookmarks", () => {
+/** Straight-line routes; duration proportional to distance. Test-only. */
+const directRoutes: GetRoute = async (from, to) => ({ path: [from, to], distanceMeters: haversine(from, to), durationSeconds: haversine(from, to) / 10, steps: [] });
+
+describe("private fire marks", () => {
   it("uses a stable empty hazard snapshot with no incident source connected", () => {
     expect(getActiveHazards()).toEqual([]);
     expect(getActiveHazards()).toBe(getActiveHazards());
@@ -25,14 +33,27 @@ describe("private marks remain visual bookmarks", () => {
     }
   });
 
-  it("never turns a placed, moved or multiple private marks into a routing hazard", () => {
+  it("counts each mark as a fire the directions steer around, never a report", () => {
     const marks = [createMark(34.15, -118.25), createMark(34.16, -118.24)];
     expect(markLabel(0)).toBe("Fire mark 1");
     const noFeed = getActiveHazards();
-    expect(selectRoutingHazards({ sourceHazards: noFeed, privateMarks: marks })).toBe(noFeed);
     expect(selectRoutingHazards({ sourceHazards: noFeed, privateMarks: [] })).toBe(noFeed);
-    // Even a test-only hazard list is unchanged: 500 m display halos never become route buffers.
-    expect(selectRoutingHazards({ sourceHazards: SYNTHETIC_HAZARDS, privateMarks: marks }))
-      .toBe(SYNTHETIC_HAZARDS);
+    const hazards = selectRoutingHazards({ sourceHazards: SYNTHETIC_HAZARDS, privateMarks: marks });
+    expect(hazards.slice(0, SYNTHETIC_HAZARDS.length)).toEqual(SYNTHETIC_HAZARDS);
+    expect(hazards.slice(SYNTHETIC_HAZARDS.length)).toEqual(markHazards(marks));
+    expect(markHazards(marks)[0]).toMatchObject({
+      id: `mark-${marks[0].id}`, type: "fire", center: { lat: 34.15, lng: -118.25 },
+      radiusMeters: MARK_RADIUS_METERS, label: "Fire mark 1", simulated: false, userMark: true,
+    });
+  });
+
+  it("steers the shelter pick away from a marked fire", async () => {
+    const civic = SHELTERS.find((shelter) => shelter.id === "glendale-civic-auditorium")!;
+    const nearest = SHELTERS.find((shelter) => shelter.id === "glendale-adult-recreation-center")!;
+    const clear = await pickShelter(GLENDALE_CITY_HALL, SHELTERS, [], directRoutes);
+    expect(clear.kind === "route" && clear.shelter.id).toBe(nearest.id);
+    // A mark on the nearest shelter also rules out Pacific, 1.1 km away; the Civic Auditorium is next.
+    const marked = await pickShelter(GLENDALE_CITY_HALL, SHELTERS, markHazards([createMark(nearest.lat, nearest.lng)]), directRoutes);
+    expect(marked.kind === "route" && marked.shelter.id).toBe(civic.id);
   });
 });

@@ -1,11 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { GLENDALE_CITY_HALL, SAFE_ZONES, SHELTERS } from "./data/glendale";
+import { COMMUNITY_SHELTERS, GLENDALE_CITY_HALL, SHELTERS, STATION_SHELTERS } from "./data/glendale";
 import { SYNTHETIC_HAZARDS } from "../../tests/fixtures/synthetic-fire";
 import {
-  angularDifference, bearing, destinationPoint, escapeHeading, haversine, pickEscapePoint, pickEscapeRoute,
-  pickShelter, pointInHazard, rankShelters, routeIntersectsHazard,
+  angularDifference, bearing, destinationPoint, haversine, pickShelter, pointInHazard, rankShelters, routeIntersectsHazard,
 } from "./routing";
-import type { GetRoute, Hazard, LatLng, Route, SafeZone, Shelter } from "./types";
+import type { GetRoute, Hazard, LatLng, Route, Shelter } from "./types";
 
 // Synthetic geometry, test-only: points are placed by meters north/east of a reference.
 const METERS_PER_DEGREE = (Math.PI * 6_371_008.8) / 180;
@@ -27,9 +26,6 @@ function shelter(id: string, point: LatLng, overrides: Partial<Shelter> = {}): S
     id, name: id, address: "Synthetic address", ...point, capacity: null, currentOccupancy: null,
     petsAllowed: null, adaCompliant: null, status: "open", verified: false, ...overrides,
   };
-}
-function zone(id: string, point: LatLng, priority: SafeZone["priority"] = "secondary"): SafeZone {
-  return { id, name: id, description: "Synthetic zone", ...point, priority };
 }
 function route(path: LatLng[], durationSeconds: number): Route {
   return { path, durationSeconds, distanceMeters: durationSeconds * 10, steps: [] };
@@ -142,62 +138,20 @@ describe("pickShelter", () => {
   });
 });
 
-describe("pickEscapePoint", () => {
-  it("chooses the escape point opposite the hazard, over a primary point toward it", () => {
-    const zones = [
-      zone("toward-fire", offset(home, 3000, 3000), "primary"),
-      zone("west", offset(home, 0, -3000)),
-      zone("south", offset(home, -3000, 0)),
-    ];
-    expect(pickEscapePoint(home, zones, [fire])?.id).toBe("south");
-  });
-
-  it("prefers the primary point when there are no hazards", () => {
-    const zones = [zone("secondary", offset(home, -500, 0)), zone("primary", offset(home, 0, 4000), "primary")];
-    expect(pickEscapePoint(home, zones, [])?.id).toBe("primary");
-  });
-
-  it("applies the route hazard check and moves to the next point", async () => {
-    const south = zone("south", offset(home, -3000, 0));
-    const west = zone("west", offset(home, 0, -3000));
-    const getRoute: GetRoute = async (from, to) => to === south
-      ? route([from, fire.center, to], 60) // contrived detour through the fire
-      : route([from, to], 300);
-    expect(await pickEscapeRoute(home, [south, west], [fire], getRoute)).toMatchObject({ kind: "route", zone: { id: "west" } });
-  });
-});
-
-describe("escapeHeading", () => {
-  it("points at the escape point when the straight line is clear", () => {
-    const south = offset(home, -3000, 0);
-    expect(escapeHeading(home, south, [fire])).toEqual({ toward: "target", bearing: bearing(home, south) });
-  });
-
-  it("points directly away from the hazard when the line to the escape point crosses it", () => {
-    const beyond = offset(fire.center, 4000, 0);
-    const heading = escapeHeading(home, beyond, [fire]);
-    expect(heading.toward).toBe("away-from-hazard");
-    expect(heading.bearing).toBeCloseTo(180, 1);
-  });
-});
-
 describe("Glendale stub data", () => {
-  it("excludes the two foothill shelters near the simulated Verdugo fire", () => {
-    const ids = rankShelters(GLENDALE_CITY_HALL, SHELTERS, SYNTHETIC_HAZARDS).map(({ shelter: s }) => s.id);
-    expect(ids).toEqual(["pacific-community-center"]);
-    expect(rankShelters(GLENDALE_CITY_HALL, SHELTERS, [])).toHaveLength(3);
+  it("excludes the two foothill shelters near the simulated Verdugo fire, nearest first", () => {
+    const ids = rankShelters(GLENDALE_CITY_HALL, COMMUNITY_SHELTERS, SYNTHETIC_HAZARDS).map(({ shelter: s }) => s.id);
+    expect(ids).toEqual(["glendale-adult-recreation-center", "pacific-community-center"]);
+    expect(rankShelters(GLENDALE_CITY_HALL, COMMUNITY_SHELTERS, [])).toHaveLength(4);
   });
 
-  it("escapes Sparr Heights toward Burbank, away from the fire to its south-southwest", () => {
-    const sparrHeights = SHELTERS.find((s) => s.id === "sparr-heights-community-center")!;
-    expect(pickEscapePoint(sparrHeights, SAFE_ZONES, SYNTHETIC_HAZARDS)?.id).toBe("burbank-sr134");
-  });
-
-  it("never sends Sparr Heights west across the fire's flank by straight line", () => {
-    const sparrHeights = SHELTERS.find((s) => s.id === "sparr-heights-community-center")!;
-    const burbank = SAFE_ZONES.find((z) => z.id === "burbank-sr134")!;
-    const heading = escapeHeading(sparrHeights, burbank, SYNTHETIC_HAZARDS);
-    expect(heading.toward).toBe("away-from-hazard");
-    expect(angularDifference(heading.bearing, 0)).toBeLessThan(30); // roughly north, away from the fire
+  it("routes to police and fire stations like the community shelters, skipping those near the fire", () => {
+    expect(SHELTERS).toHaveLength(COMMUNITY_SHELTERS.length + STATION_SHELTERS.length);
+    expect(rankShelters(GLENDALE_CITY_HALL, SHELTERS, [])).toHaveLength(SHELTERS.length);
+    const ranked = rankShelters(GLENDALE_CITY_HALL, SHELTERS, SYNTHETIC_HAZARDS);
+    expect(ranked[0].shelter.id).toBe("glendale-police-hq"); // a block from City Hall
+    const ids = ranked.map(({ shelter: s }) => s.id);
+    expect(ids).not.toContain("glendale-fire-station-24"); // 1734 Canada Blvd, in the fire's 1 km buffer
+    expect(ids).not.toContain("glendale-civic-auditorium");
   });
 });

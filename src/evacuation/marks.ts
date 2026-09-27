@@ -19,10 +19,30 @@ export function privateMarkHalos(marks: readonly FireMark[]): PrivateDisplayHalo
   }));
 }
 
-/** Private device marks are visual bookmarks, not incident reports or routing hazards. */
-export function selectRoutingHazards({ sourceHazards }: {
+/**
+ * A person's marks are the fire their own directions steer around: the escape route leads out of each mark's fire
+ * zone and shelters near one are skipped. A mark is a point, so for routing it gets this fixed radius; it is not a
+ * measured fire extent, and a mark is never a report or an incident.
+ */
+export const MARK_RADIUS_METERS = 500;
+
+export function markHazards(marks: readonly FireMark[]): Hazard[] {
+  return marks.map((mark, index) => ({
+    id: `mark-${mark.id}`,
+    type: "fire",
+    center: { lat: mark.lat, lng: mark.lng },
+    radiusMeters: MARK_RADIUS_METERS,
+    severity: 3,
+    label: markLabel(index),
+    simulated: false,
+    userMark: true,
+  }));
+}
+
+/** Feed hazards plus this device's marks; the feed's own array when there are no marks. */
+export function selectRoutingHazards({ sourceHazards, privateMarks }: {
   sourceHazards: readonly Hazard[];
   privateMarks: readonly FireMark[];
 }): readonly Hazard[] {
-  return sourceHazards;
+  return privateMarks.length ? [...sourceHazards, ...markHazards(privateMarks)] : sourceHazards;
 }

@@ -21,14 +21,13 @@ describe("ring legend and figure accessibility", () => {
     expect(html).not.toMatch(/zone \d|order|warning|perimeter|\bft\b/i);
   });
 
-  it("shows the halo legend on the map panel only once a mark exists, never with a position", () => {
+  it("keeps the map panel free of a halo legend: marks are drawn as fire areas, never with a position", () => {
     const props = { ready: true, hint: null, map: { current: null }, onPlace: () => {}, onHint: () => {}, onClear: () => {} };
-    expect(renderToStaticMarkup(<FirePanel {...props} count={0} />)).not.toContain("ring-legend");
-    const html = renderToStaticMarkup(<FirePanel {...props} count={1} />);
-    expect(html).toContain('class="ring-legend" data-ring-kind="private-display-halo" lang="en"');
-    expect(html).toContain("500 m · private sketch");
-    expect(html).toContain("Not a zone, perimeter or report; routes ignore it.");
-    expect(html).not.toMatch(/lat|lng|34\.\d/);
+    for (const count of [0, 1]) {
+      const html = renderToStaticMarkup(<FirePanel {...props} count={count} />);
+      expect(html).not.toContain("ring-legend");
+      expect(html).not.toMatch(/lat|lng|34\.\d/);
+    }
   });
 
   it("keeps the /prepare defensible-space figure in feet with the same dashed outer edge, and no metre halo", () => {

@@ -35,14 +35,6 @@ export type Shelter = LatLng & {
   verified: boolean;
 };
 
-/** A general evacuation point outside the high-risk foothill/wildfire interface. */
-export type SafeZone = LatLng & {
-  id: string;
-  name: string;
-  description: string;
-  priority: "primary" | "secondary";
-};
-
 /** The maneuver at the start of a step, for its turn arrow. */
 export type Turn =
   | "depart" | "arrive" | "straight" | "uturn"
@@ -60,6 +52,8 @@ export type Route = {
   distanceMeters: number;
   durationSeconds: number;
   steps: RouteStep[];
+  /** The trip ends on a freeway (when the provider says so): no place to stop, so escape marks avoid it. */
+  arrivesOnMotorway?: boolean;
   /** Other routes the provider offered for the same trip, used when this one crosses a hazard. */
   alternatives?: Route[];
 };
