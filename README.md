@@ -8,7 +8,7 @@ Firepoint is a planned, account-optional mobile web app for emergency awareness 
 
 ## App preview
 
-Current `/prepare` wildfire guide, captured from the production build of `main` at commit [`ae0c994`](https://github.com/Astrotemporal/firepoint/commit/ae0c994) on 2026-09-26 (16:23 America/Los_Angeles) with `scripts/capture-preview.mjs`. No Mapbox token was configured, no live source was queried, and no private marks or keys appear. They show the `/prepare` guide only, **not** the Mapbox homepage. Later `main` commits (PRs #26 and #29) changed the map page's location prompt and translations, not the guide, so these images were not retaken; the SHA above is the build they show. The photos are public-domain US government works credited on the page.
+Checked-in `/prepare` wildfire-guide snapshot, captured from the production build of `main` at commit [`ae0c994`](https://github.com/Astrotemporal/firepoint/commit/ae0c994) on 2026-09-26 (16:23 America/Los_Angeles) with `scripts/capture-preview.mjs`. No Mapbox token was configured, no live source was queried, and no private marks or keys appear. They show the `/prepare` guide only, **not** the Mapbox homepage. Later `main` commits (PRs #26 and #29) changed the map page's location prompt and translations, not the guide, so these images were not retaken; the SHA above is the build they show. The photos are public-domain US government works credited on the page.
 
 | Phone (390×844, first screen) | Desktop (1440×900, first screen) |
 | --- | --- |
