@@ -5,7 +5,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Firepoint | A place to start",
-  description: "Keep a local preparation list and find official emergency information for Glendale, California.",
+  description: "Official emergency sources and a wildfire preparation guide for Glendale, California.",
   applicationName: "Firepoint",
   appleWebApp: { capable: true, title: "Firepoint", statusBarStyle: "default" },
 };

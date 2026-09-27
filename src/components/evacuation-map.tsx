@@ -40,6 +40,10 @@ type EvacuationMapProps = {
   onReady: (map: MapHandle | null) => void;
   onMoveMark: (id: string, lat: number, lng: number) => void;
   onRemoveMark: (id: string) => void;
+  /** Accessible name of the map region; the public screen passes one that mentions no routes or shelters. */
+  ariaLabel?: string;
+  /** Load-failure notice; the public screen passes one that promises no routes. */
+  failedText?: string;
 };
 
 const COLORS = { shelterRoute: "#1d4ed8", escapeRoute: "#c2410c", hazard: "#b91c1c", you: "#007aff" };
@@ -153,6 +157,7 @@ function MapNotice({ text }: { text: string }) {
 
 function MapboxView({
   dark, origin, hazards, shelters, zones, plan, centerKey, fitKey, marks, onReady, onMoveMark, onRemoveMark,
+  ariaLabel, failedText,
 }: EvacuationMapProps) {
   const t = useMapText();
   // Read by the one-time map setup below; the language only changes with a page reload.
@@ -369,9 +374,9 @@ function MapboxView({
         ref={containerRef}
         className="ev-map"
         role="region"
-        aria-label={t.mapLabel}
+        aria-label={ariaLabel ?? t.mapLabel}
       />
-      {failed && <MapNotice text={t.mapFailed} />}
+      {failed && <MapNotice text={failedText ?? t.mapFailed} />}
     </>
   );
 }
