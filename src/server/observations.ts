@@ -77,7 +77,7 @@ export type ObservationStore = {
   listPending(limit: number): Promise<StoredObservation[]>;
   moderate(input: ModerationDecision & { decidedAt: string }): Promise<StoredObservation | null>;
   listApproved(now: string): Promise<PublishedObservation[]>;
-  cleanupExpired(now: string): Promise<number>;
+  cleanupExpired(now: string): Promise<{ deleted: number; rateBucketsDeleted: number; moreMayRemain: boolean }>;
 };
 
 export function jsonError(message: string, status: number): Response {
@@ -295,7 +295,8 @@ export async function handleGetAggregate(store: ObservationStore, now = new Date
 }
 
 function requirePurgeToken(request: Request): Response | null {
-  const token = process.env.FIREPOINT_PURGE_TOKEN?.trim() || process.env.CRON_SECRET?.trim();
+  // Do not accept CRON_SECRET: Vercel Cron targets Production, not this Preview-only route.
+  const token = process.env.FIREPOINT_PURGE_TOKEN?.trim();
   if (!token) return jsonError("Purge workflow is not configured", 503);
   const header = request.headers.get("Authorization") ?? "";
   if (header !== `Bearer ${token}`) return jsonError("Purge authorization required", 401);
@@ -305,6 +306,6 @@ function requirePurgeToken(request: Request): Response | null {
 export async function handlePurgeExpired(request: Request, store: ObservationStore, now = new Date().toISOString()): Promise<Response> {
   const auth = requirePurgeToken(request);
   if (auth) return auth;
-  const deleted = await store.cleanupExpired(now);
-  return Response.json({ deleted, purgedAt: now }, { status: 200, headers: COMMUNITY_HEADERS });
+  const cleanup = await store.cleanupExpired(now);
+  return Response.json({ ...cleanup, purgedAt: now }, { status: 200, headers: COMMUNITY_HEADERS });
 }
