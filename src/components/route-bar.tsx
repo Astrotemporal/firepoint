@@ -130,7 +130,7 @@ export function RouteBar(props: RouteBarProps) {
               </ul>
             )}
             <p className="ev-note ev-with-icon"><Icon name="info" /><span>{t.notAllClear}</span></p>
-            <p className="ev-note" lang="en">The shaded red areas are your private fire marks: sketches, not reports or measured fire extents. Directions treat each one as the fire and lead away from it. Shelters remain unverified.</p>
+            <p className="ev-note" lang="en">The shaded red areas are your private fire marks: sketches, not reports or measured fire extents. The dotted yellow ring around each is its warning zone; the escape route leads beyond it. Shelters remain unverified.</p>
           </div>
         </div>
       </div>

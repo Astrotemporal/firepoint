@@ -113,11 +113,11 @@ h1 em,h2 em { font-weight: 400; }
 .map-brand .brand-mark { width: 24px; height: 24px; background: var(--accent-ink); }
 .map-brand .brand-mark span { width: 10px; height: 10px; background: #e39c25; }
 .map-storage-warning { position: absolute; z-index: 1000; left: 16px; top: calc(16px + env(safe-area-inset-top, 0px)); max-width: min(430px, calc(100% - 96px)); padding: 11px 14px; background: #fff1dc; border-left: 4px solid #c87537; font-size: 12px; line-height: 1.45; }
-.fire-ghost { position: fixed; z-index: 2000; width: 46px; height: 46px; pointer-events: none; transform: translate(-50%, -85%) scale(1.1); filter: grayscale(1) drop-shadow(0 6px 8px rgba(24,49,46,.35)); }
+.fire-ghost { position: fixed; z-index: 2000; width: 46px; height: 46px; pointer-events: none; transform: translate(-50%, -85%) scale(1.1); filter: drop-shadow(0 6px 8px rgba(24,49,46,.35)); }
 /* No position here: Mapbox's .mapboxgl-marker (absolute) anchors the pin; `relative` would detach it from the map. */
 .fire-pin { width: 44px; aspect-ratio: 500 / 690; padding: 0; background: none; border: 0; cursor: grab; }
 .fire-pin::after { content: ""; position: absolute; left: 50%; bottom: -3px; width: 28px; height: 8px; translate: -50% 0; border-radius: 50%; background: radial-gradient(rgba(24,49,46,.35), transparent 70%); z-index: -1; }
-.fire-pin-fire { display: block; width: 100%; height: 100%; filter: grayscale(1); }
+.fire-pin-fire { display: block; width: 100%; height: 100%; }
 .fire-pin:active { cursor: grabbing; }
 .fire-popup { display: flex; flex-direction: column; gap: 5px; min-width: 170px; }
 .fire-popup strong { font-family: Georgia, 'Times New Roman', serif; font-size: 18px; font-weight: 400; }

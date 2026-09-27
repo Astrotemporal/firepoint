@@ -29,13 +29,14 @@ describe("private mark visual policy: neutral grey, independent of counts", () =
     expect(privateMarkPaint.length).toBe(1); // theme only
   });
 
-  it("desaturates placed private flames while leaving the fire toolbox control colored", () => {
+  it("shows placed flames, the drag preview and the fire toolbox in the fire's own orange, with no colour filter", () => {
     const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
     expect(css).toContain(`--private-mark: ${PRIVATE_MARK_STYLE.paint.light.stroke};`);
     expect(css).toContain(`--private-mark: ${PRIVATE_MARK_STYLE.paint.dark.stroke};`);
     for (const selector of [".fire-pin-fire", ".fire-ghost"]) {
       const rule = css.split("\n").find((line) => line.startsWith(`${selector} {`));
-      expect(rule, selector).toContain(PRIVATE_MARK_ICON_FILTER);
+      expect(rule, selector).toBeDefined();
+      expect(rule, selector).not.toMatch(/grayscale|saturate|hue-rotate/);
     }
     const toolboxRule = css.split("\n").find((line) => line.startsWith(".fire-token-flame {"));
     expect(toolboxRule).toBeDefined();

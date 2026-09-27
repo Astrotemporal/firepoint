@@ -55,7 +55,14 @@ export type MapNavigation = {
   bearing: number;
 };
 
-const COLORS = { shelterRoute: "#1d4ed8", escapeRoute: "#c2410c", hazard: "#b91c1c", you: "#007aff" };
+const COLORS = {
+  shelterRoute: "#1d4ed8", escapeRoute: "#c2410c", hazard: "#b91c1c", you: "#007aff",
+  // Warning yellow, as on evacuation-warning maps; the edge is a deeper amber so it reads on light and dark basemaps.
+  dangerZone: "#facc15", dangerZoneEdge: "#eab308",
+};
+/** The yellow warning ring sits this far past each fire's edge: a little inside the escape router's 1-mile fire danger
+ * zone (SAFE_DISTANCE_METERS), so every escape mark lands beyond it. */
+const WARNING_RING_METERS = 1_200;
 const EMPTY: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 const toLngLat = (point: LatLng): [number, number] => [point.lng, point.lat];
 
@@ -105,7 +112,14 @@ function pinElement(className: string, glyph: string, label: string): HTMLButton
 }
 
 function addLayers(map: MapboxMap): void {
-  for (const id of ["hazards", "accuracy", "routes"]) map.addSource(id, { type: "geojson", data: EMPTY });
+  for (const id of ["danger-zones", "hazards", "accuracy", "routes"]) map.addSource(id, { type: "geojson", data: EMPTY });
+  // The warning ring around each fire: a warning-yellow wash with a dotted edge, under the fire itself.
+  // The escape route always ends beyond it.
+  map.addLayer({ id: "danger-zones-fill", type: "fill", source: "danger-zones", paint: { "fill-color": COLORS.dangerZone, "fill-opacity": 0.15 } });
+  map.addLayer({
+    id: "danger-zones-line", type: "line", source: "danger-zones", layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": COLORS.dangerZoneEdge, "line-width": 2.5, "line-opacity": 0.9, "line-dasharray": [0.1, 2] },
+  });
   // A person's own fire marks are shaded lighter than hazards from the feed.
   map.addLayer({ id: "hazards-fill", type: "fill", source: "hazards", paint: { "fill-color": "#ef4444", "fill-opacity": ["case", ["get", "mark"], 0.16, 0.28] } });
   map.addLayer({ id: "hazards-line", type: "line", source: "hazards", paint: { "line-color": COLORS.hazard, "line-width": 2 } });
@@ -235,11 +249,16 @@ function MapboxView({
   }, [style]);
 
   useEffect(() => {
-    const source = mapRef.current?.getSource<GeoJSONSource>("hazards");
+    const map = mapRef.current;
+    const source = map?.getSource<GeoJSONSource>("hazards");
     if (!loaded || !source) return;
     source.setData({
       type: "FeatureCollection",
       features: hazards.map((hazard) => circle(hazard.center, hazard.radiusMeters, { mark: Boolean(hazard.userMark) })),
+    });
+    map?.getSource<GeoJSONSource>("danger-zones")?.setData({
+      type: "FeatureCollection",
+      features: hazards.map((hazard) => circle(hazard.center, hazard.radiusMeters + WARNING_RING_METERS)),
     });
   }, [hazards, loaded]);
 

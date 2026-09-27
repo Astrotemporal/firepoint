@@ -31,7 +31,7 @@ export function createPin(id: string, map: MapboxMap, handlers: { current: PinHa
   note.textContent = text.note;
   const haloNote = document.createElement("small");
   haloNote.lang = "en";
-  haloNote.textContent = "The grey dashed 500 m halo is a private display sketch, not a fire perimeter or evacuation zone. It does not affect routes.";
+  haloNote.textContent = "The shaded red area is a private sketch, not a measured fire perimeter or evacuation zone. The dotted yellow ring is its warning zone; the escape route leads beyond it.";
   const remove = document.createElement("button");
   remove.type = "button";
   remove.textContent = text.remove;
