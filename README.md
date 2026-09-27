@@ -2,7 +2,7 @@
 
 Firepoint is a planned, account-optional mobile web app for emergency awareness and personal preparedness in Glendale, California. Nearby Southern California coverage is a future possibility **only where source coverage and rights have been checked**. A resident should be able to choose an area, find clearly attributed hazard information and links to agency notices, and keep a personal preparation checklist. The area-specific, source-backed parts of this plan are **proposed, not shipped**; see the current status below.
 
-**Live-source release gate:** NWS, fire/air and Glendale GIS adapters exist, but the production source panel and POST queries are paused pending rights, caching, rate limits and monitoring. The local-only `FIREPOINT_DEMO_LIVE_SOURCES=enabled` switch is for developer integration tests, not a public coverage claim. The map and official agency links are separate.
+**Release blockers:** PR #16 removed the default simulated fire and makes escape routing tap-to-request, but the homepage still treats private marks as 500 m route hazards, shows unverified `open` shelters and offers invented escape targets. Shelter routing is still automatic; none of these routes is verified fire-safe. PR #19 proposes display-only mark halos with no routing effect, but is not merged. Gate or replace the remaining unverified guidance before public use. NWS, fire/air and Glendale GIS adapters exist, but the production source panel and POST queries are paused pending rights, caching, rate limits and monitoring. The local-only `FIREPOINT_DEMO_LIVE_SOURCES=enabled` switch is for developer integration tests, not a public coverage claim. The map and official agency links are separate.
 
 **Not an official City of Glendale service.** Firepoint does not issue evacuation orders, determine whether a place is safe, or provide an all-clear. For an emergency, follow the responsible public agency and local emergency services. Do not rely on this app as your only source of information.
 
@@ -57,6 +57,9 @@ The `Makefile` also has `make gis-fetch`/`make gis-local` developer-only MCP ste
 - [Data contracts](docs/contracts.md): proposed and implemented schemas; check its status notes before claiming a route or UI integration exists.
 - [Map decisions](docs/maps.md): the Mapbox home, the removed OpenFreeMap/MapLibre area map, attribution, cost, privacy and limits.
 - [PWA storage, systems, audio and route handoff](docs/pwa-storage-and-systems.md): shipped versus proposed behavior and provenance gates.
+- [Crowd reports and tiered map research](docs/crowd-report-zones.md): unverified report-density concept, not a fire perimeter or safe zone.
+- [Source coverage and a real GIS snapshot example](docs/source-capabilities-example.md): dated published data, not a live incident or all-clear.
+- [Vercel / v0 deployment start](docs/deploy.md): environment setup, protected previews and hard release gates; no deployment is connected.
 - [Resident stories](docs/user-stories.md), [four-person scope](docs/hackathon-roles.md), and [source/storage roadmap](docs/source-roadmap.md): proposals and ownership boundaries, not shipped services.
 - [Product vision](docs/vision.md) and [broader API roadmap](docs/roadmap.md): teammate proposals for later phases. Check their assumptions against the source policy and current status before promising a live feature.
 
