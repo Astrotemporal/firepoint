@@ -89,7 +89,7 @@ export function RouteBar(props: RouteBarProps) {
     >
       <button
         type="button" className="ev-sheet-handle" aria-expanded={snap !== "peek"} aria-controls="ev-sheet-body"
-        aria-label={snap === "full" ? t.collapseDirections : t.expandDirections} {...handleProps}
+        aria-label={snap === "peek" ? t.expandDirections : t.collapseDirections} {...handleProps}
       >
         <span aria-hidden="true" />
       </button>
@@ -128,6 +128,7 @@ export function RouteBar(props: RouteBarProps) {
               </ul>
             )}
             <p className="ev-note ev-with-icon"><Icon name="info" /><span>{t.notAllClear}</span></p>
+            <p className="ev-note" lang="en">Dashed grey private mark halos are sketches, not reports, fire extents, evacuation zones or routing hazards. Shelters and escape targets remain unverified.</p>
           </div>
         </div>
       </div>

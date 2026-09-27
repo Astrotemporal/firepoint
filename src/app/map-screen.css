@@ -202,3 +202,24 @@
   .ev-sheet { transition: height .28s cubic-bezier(.2, .8, .2, 1), transform .28s ease, background-color .25s; }
   .ev-sheet-dragging { transition: none; }
 }
+
+/* Public homepage (release gate off): no directions sheet. The map keeps the whole height and a small
+   status card sits at the bottom on phones, top-left on wider screens. */
+.ev-shell-static .ev-map-area { margin-bottom: 0; }
+.ev-shell-static .mapboxgl-ctrl-bottom-left, .ev-shell-static .mapboxgl-ctrl-bottom-right { bottom: calc(var(--ev-public-status-h, 140px) + 8px); }
+.ev-shell-static .map-panel { bottom: calc(var(--ev-public-status-h, 140px) + 16px); }
+.ev-public-status { position: absolute; z-index: 5; left: 12px; right: 12px; bottom: 12px; padding: 14px 16px 12px; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); background: var(--ev-surface); color: var(--ev-ink); border-radius: 14px; box-shadow: 0 2px 6px rgba(0, 0, 0, .18), 0 10px 28px rgba(0, 0, 0, .18); }
+.ev-public-status p { margin: 0; }
+.ev-public-status-title { font-size: 16px; font-weight: 800; line-height: 1.3; }
+.ev-public-status-body { margin-top: 4px !important; font-size: 14px; font-weight: 700; line-height: 1.4; color: var(--ev-text); }
+.ev-public-status-links { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 6px !important; }
+.ev-public-status-links a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ev-ink); font-size: 15px; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
+.ev-public-status .ev-note { margin-top: 2px !important; }
+@media (min-width: 760px) {
+  .ev-public-status { top: calc(16px + env(safe-area-inset-top, 0px)); left: 16px; right: auto; bottom: auto; width: 400px; padding-bottom: 12px; }
+  .ev-shell-static .mapboxgl-ctrl-bottom-left, .ev-shell-static .mapboxgl-ctrl-bottom-right { bottom: 0; }
+  .ev-shell-static .map-panel { bottom: 44px; }
+}
+.ev-public-status-localized { font-size: 15px; font-weight: 700; line-height: 1.4; }
+.ev-public-status-localized a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ev-ink); font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
+.ev-public-status-english-only { margin-top: 2px !important; margin-bottom: 8px !important; padding: 6px 10px; border-radius: 8px; background: var(--ev-badge-bg); color: var(--ev-badge-ink); border-left: 4px solid var(--ev-badge-edge); font-size: 14px; font-weight: 700; line-height: 1.4; }

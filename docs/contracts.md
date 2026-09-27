@@ -8,7 +8,7 @@ This is a **new contract authored for Firepoint**, not the earlier Trigger Point
 2. A response is a `NoticeFeedSchema` with `version: 1`, `generatedAt`, an array of `sourceChecks`, `notices`, and `allClear: false`. Render each source's `status`, `lastSuccessAt` and `detail` before interpreting items. `notices: []` only says those applicable sources had no matching returned records; it does not say the resident is safe.
 3. `OfficialNoticeSchema` carries original `headline`, description/instructions if supplied, issuer identity if known, operator, record URL, times and `match` method. The match `publisher-point-filter` means the publisher returned a notice for the queried point; it is not an official evacuation-zone identifier. Only an issuing agency can issue or end an order.
 4. `StandingHazardSchema` carries mapped context with verified footprint or an unavailable state. `EvacuationZoneSchema` must stay `unavailable` until an agency-verified standing-zone dataset/lookup is integrated. A City neighborhood or CAL FIRE hazard class does not supply `zoneId`.
-5. `PublishedObservationSchema` always says `verification: unverified`; its public text must be redacted before serialization. `SubmissionReceiptSchema` only means a backend actually received a submission for moderation; it cannot mean publication or emergency dispatch. There is currently no report API or database.
+5. `PublishedObservationSchema` always says `verification: unverified`; its public text must be redacted before serialization. `SubmissionReceiptSchema` only means a backend actually received a submission for moderation; it cannot mean publication or emergency dispatch. There is currently no report API or database. A pure, unconnected aggregation contract for moderated observations (coarse cells, withheld states, provenance) is described in [observation aggregation](observation-aggregation.md); it is a decision gate, not a service.
 
 ### One safe parser for future UI code
 
@@ -43,7 +43,7 @@ For UI teammate tasks: create loading, unavailable, stale, expired, outside-cove
 | `nifc-current-perimeters` | NIFC/WFIGS current perimeters (`FirePerimeterSchema`, Polygon/MultiPolygon) | A coarse envelope centred on a 0.1°-snapped point | `polygonCapturedAt` is the publisher's mapping time, distinct from `retrievedAt`. Types: wildfire, prescribed, complex, unknown. A truncated page (`exceededTransferLimit`) is `down`, not a partial result. |
 | `airnow-current-observations` | AirNow current reporting-area observations (`AirQualityReadingSchema`) | A 0.1°-snapped point; the key stays server-side | `preliminary: true` always. Negative "no data" AQI values are omitted. `not-configured` without `AIRNOW_API_KEY`. |
 
-Each source produces its own check even when it fails. The route answers 200 when at least one source succeeded and 503 when none did; in both cases, read `sourceChecks` before interpreting empty lists. The resident panel rounds a one-time device location to three decimals before sending it and never stores it.
+Each source produces its own check even when it fails. The route answers 200 when at least one source succeeded and 503 when none did; in both cases, read `sourceChecks` before interpreting empty lists. The former resident source panel (removed from `/prepare` in PR #14; production queries are paused) rounded a one-time device location to three decimals before sending it and never stored it; keep that rule for any future caller.
 
 ## Mapped hazard zones
 

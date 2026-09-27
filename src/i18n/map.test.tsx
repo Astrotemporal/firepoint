@@ -42,6 +42,11 @@ describe.each(["es", "hy"] as const)("%s map text", (locale) => {
     }
   });
 
+  it("does not claim a private mark changes routes", () => {
+    expect(text.placed).not.toMatch(/rutas.*evitan|ճանապարհներն.*շրջանց/iu);
+    expect(text.marksOnDevice(3)).not.toMatch(/rutas.*evitan|ճանապարհները.*շրջանց/iu);
+  });
+
   it("renders the map screen in this language", () => {
     const html = renderToStaticMarkup(<MapScreen locale={locale} />);
     expect(html).toContain(text.loadingMap);

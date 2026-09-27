@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { SAFE_ZONES, SHELTERS } from "@/evacuation/data/glendale";
-import { TEST_HAZARDS } from "@/evacuation/hazards.fixture";
+import { SYNTHETIC_HAZARDS } from "../../tests/fixtures/synthetic-fire";
 import { DEFAULT_FIX, type LocationFix } from "@/evacuation/location";
 import type { RoutePlan } from "@/evacuation/route-planner";
 import type { Route } from "@/evacuation/types";
@@ -26,7 +26,7 @@ const noop = () => {};
 function render(overrides: Partial<RouteBarProps> = {}) {
   return renderToStaticMarkup(
     <RouteBar
-      location={{ status: "tracking", fix: gps }} origin={gps} outsideAreaMeters={null} hazards={TEST_HAZARDS}
+      location={{ status: "tracking", fix: gps }} origin={gps} outsideAreaMeters={null} hazards={SYNTHETIC_HAZARDS}
       threat={null} escapeFirst={false} plan={plan} pending={false} online appleMaps={false} escapeRequested
       onUseLocation={noop} onManualLocation={noop} onRetryRoutes={noop}
       onRequestEscape={noop} onClearEscape={noop}
@@ -63,7 +63,7 @@ describe("RouteBar", () => {
     const html = render();
     expect(html.indexOf("Escape route")).toBeLessThan(html.indexOf("Nearest shelter"));
     expect(html.indexOf("Escape route")).toBeLessThan(html.indexOf('id="ev-sheet-body"'));
-    const near = render({ threat: { hazard: TEST_HAZARDS[0], edgeMeters: 900 }, escapeFirst: true });
+    const near = render({ threat: { hazard: SYNTHETIC_HAZARDS[0], edgeMeters: 900 }, escapeFirst: true });
     expect(near.indexOf("Take the escape route.")).toBeLessThan(near.indexOf('id="ev-sheet-body"'));
   });
 
@@ -87,11 +87,11 @@ describe("RouteBar", () => {
     const sparrHeights: LocationFix = { ...SHELTERS[2], accuracyMeters: null, source: "manual", label: "Sparr Heights" };
     const html = render({
       location: { status: "manual", fix: sparrHeights }, origin: sparrHeights,
-      threat: { hazard: TEST_HAZARDS[0], edgeMeters: 86 }, escapeFirst: true,
+      threat: { hazard: SYNTHETIC_HAZARDS[0], edgeMeters: 86 }, escapeFirst: true,
       plan: { ...plan, origin: sparrHeights, escape: { kind: "no-safe-route", zone: SAFE_ZONES[1] } },
     });
     expect(html).toContain("less than 0.1 mi away");
-    expect(html).toContain("Head north, away from Simulated fire · Verdugo Mountains");
+    expect(html).toContain("Head north, away from SYNTHETIC TEST fire · Verdugo Mountains");
     expect(html).not.toContain("destination=34.180800,-118.309000");
   });
 
@@ -120,11 +120,13 @@ describe("RouteBar", () => {
     expect(render({ hazards: [] })).toContain("this is not an all-clear");
   });
 
-  it("treats a nearby fire mark like a hazard, without calling it simulated", () => {
-    const mark = { ...TEST_HAZARDS[0], id: "mark-1", label: "Fire mark 1", simulated: false, userMark: true };
-    const html = render({ hazards: [mark], threat: { hazard: mark, edgeMeters: 400 }, escapeFirst: true });
-    expect(html).toContain("Fire mark 1 is 0.2 mi away. Take the escape route.");
-    expect(html).not.toMatch(/simulated/i);
+  it("labels private halos as sketches and never treats an empty incident feed as an all-clear", () => {
+    const html = render({ hazards: [], threat: null, escapeFirst: false, escapeRequested: false,
+      plan: { ...plan, escape: { kind: "not-requested" } } });
+    expect(html).toContain('lang="en"');
+    expect(html).toContain("Dashed grey private mark halos are sketches, not reports, fire extents, evacuation zones or routing hazards.");
+    expect(html).toContain("this is not an all-clear");
+    expect(html).not.toContain("Take the escape route.");
   });
 
   describe("escape route on request", () => {
@@ -176,7 +178,7 @@ describe("RouteBar", () => {
     });
 
     it("points the hazard-proximity warning at the button before a request, and at the route after", () => {
-      const near = { escapeFirst: true, threat: { hazard: TEST_HAZARDS[0], edgeMeters: 1200 } };
+      const near = { escapeFirst: true, threat: { hazard: SYNTHETIC_HAZARDS[0], edgeMeters: 1200 } };
       expect(render({ ...near, ...notRequested })).toContain("Tap Escape.");
       expect(render({ ...near, ...notRequested })).not.toContain("Take the escape route.");
       expect(render({ ...near, escapeRequested: true })).toContain("Take the escape route.");

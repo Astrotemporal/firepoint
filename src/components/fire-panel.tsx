@@ -1,10 +1,18 @@
 "use client";
 
 import { useRef, useState, type PointerEvent, type ReactNode, type RefObject } from "react";
+import type { PrivateDisplayHalo } from "@/domain/ring-visual";
+import { PRIVATE_MARK_DISPLAY_RADIUS_METERS } from "@/evacuation/marks";
 import type { MapHandle } from "./evacuation-map";
 import { Flame } from "./flame";
-import { HelpButton } from "./help-dialog";
 import { useMapText } from "./map-text";
+import { RingLegend } from "./ring-legend";
+
+/** Legend sample only: no position, no id, nothing stored. It describes how every halo is drawn. */
+const LEGEND_HALO: PrivateDisplayHalo = {
+  kind: "private-display-halo", meaning: "arbitrary-display-sketch", unit: "m", provenance: "this-device",
+  id: "legend", center: { lat: 0, lng: 0 }, displayRadiusMeters: PRIVATE_MARK_DISPLAY_RADIUS_METERS, label: "Legend",
+};
 
 type FirePanelProps = {
   /** False until stored marks are read after hydration; the fire stays disabled until then. */
@@ -15,6 +23,8 @@ type FirePanelProps = {
   onPlace: (lat: number, lng: number) => void;
   onHint: (hint: string) => void;
   onClear: () => void;
+  /** The screen's help button, stacked right above the fire. */
+  help?: ReactNode;
   /** Stacked above the help button (the map screen's locate button). */
   children?: ReactNode;
 };
@@ -22,7 +32,7 @@ type FirePanelProps = {
 type Drag = { startX: number; startY: number; lastX: number; lastY: number; moved: boolean };
 
 /** A floating fire to drag onto the map (or press to drop one at the map centre), with the help button (and anything passed in) stacked above it. */
-export function FirePanel({ ready, count, hint, map, onPlace, onHint, onClear, children }: FirePanelProps) {
+export function FirePanel({ ready, count, hint, map, onPlace, onHint, onClear, help, children }: FirePanelProps) {
   const t = useMapText();
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
   const drag = useRef<Drag | null>(null);
@@ -94,7 +104,7 @@ export function FirePanel({ ready, count, hint, map, onPlace, onHint, onClear, c
       {count > 0 && <button type="button" className="map-clear" onClick={onClear}>{t.clear}</button>}
       <div className="fire-stack">
       {children}
-      <HelpButton />
+      {help}
       <button
         type="button"
         className={`fire-token${ghost ? " is-dragging" : ""}`}
@@ -111,10 +121,11 @@ export function FirePanel({ ready, count, hint, map, onPlace, onHint, onClear, c
         <Flame className="fire-token-flame" />
       </button>
       </div>
-      {/* Status is announced, not shown: the map itself shows the marks. */}
+      {/* Status is announced, not shown: marks are private pins, never reports or routing hazards. */}
       <span className="sr-only" aria-live="polite">
         {hint ?? (ready ? t.marksOnDevice(count) : t.localToDevice)}
       </span>
+      {count > 0 && <RingLegend ring={LEGEND_HALO} dashed note="grey ring around each mark. Not a zone, perimeter or report; routes ignore it." />}
       {ghost && <Flame className="fire-ghost" style={{ left: ghost.x, top: ghost.y }} />}
     </div>
   );

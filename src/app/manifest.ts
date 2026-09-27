@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Firepoint — prepare and find official updates",
     short_name: "Firepoint",
-    description: "A personal preparation list and paths to official Glendale emergency information.",
+    description: "Official Glendale emergency sources and a wildfire preparation guide.",
     start_url: "/",
     scope: "/",
     display: "standalone",
