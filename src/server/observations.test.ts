@@ -42,7 +42,7 @@ class FakeStore implements ObservationStore {
       precisionMeters: row.precisionMeters, verification: "unverified",
     }));
   }
-  async cleanupExpired() { this.expiredCleanups += 1; return 0; }
+  async cleanupExpired() { this.expiredCleanups += 1; return { deleted: 0, rateBucketsDeleted: 0, moreMayRemain: false }; }
 }
 
 const now = "2026-09-26T20:00:00.000Z";
@@ -192,6 +192,17 @@ describe("community observation backend handlers", () => {
     const response = await handlePurgeExpired(new Request("http://localhost", { headers: { Authorization: "Bearer purge-secret" } }), store, now);
     expect(response.status).toBe(200);
     expect(store.expiredCleanups).toBe(1);
+    expect(await response.json()).toMatchObject({ deleted: 0, rateBucketsDeleted: 0, moreMayRemain: false, purgedAt: now });
+  });
+
+  it("does not accept the Production Cron secret for Preview purge", async () => {
+    const store = new FakeStore();
+    vi.stubEnv("CRON_SECRET", "production-cron-secret");
+    const response = await handlePurgeExpired(new Request("http://localhost", {
+      headers: { Authorization: "Bearer production-cron-secret" },
+    }), store, now);
+    expect(response.status).toBe(503);
+    expect(store.expiredCleanups).toBe(0);
   });
 
   it("returns 503 for a withheld public aggregate rather than an empty success", async () => {

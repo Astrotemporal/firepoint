@@ -6,6 +6,7 @@ import {
 } from "./observations";
 
 export const DEFAULT_TENANT_ID = "glendale-preview";
+export const PURGE_BATCH_SIZE = 1000;
 
 type DbObservationRow = {
   id: string; tenant_id: string; topic: PublishedObservation["topic"]; report_text: string;
@@ -132,10 +133,39 @@ export class PostgresObservationStore implements ObservationStore {
     return typed.map(rowToPublished);
   }
 
-  async cleanupExpired(now: string): Promise<number> {
+  async cleanupExpired(now: string): Promise<{ deleted: number; rateBucketsDeleted: number; moreMayRemain: boolean }> {
+    // One statement keeps both deletes atomic. Batches cap work per Preview invocation and
+    // counts avoid returning a potentially unbounded list of raw receipt IDs.
     const rows = await this.sql`
-      delete from community_observations where tenant_id = ${this.tenant} and expires_at <= ${now} returning id`;
-    await this.sql`delete from community_observation_rate_limits where tenant_id = ${this.tenant} and window_start < (${now}::timestamptz - interval '2 days')`;
-    return (rows as unknown as { id: string }[]).length;
+      with expired_candidates as (
+        select id from community_observations
+        where tenant_id = ${this.tenant} and expires_at <= ${now}
+        order by expires_at, id limit ${PURGE_BATCH_SIZE}
+        for update
+      ), expired as (
+        delete from community_observations o using expired_candidates c
+        where o.id = c.id and o.tenant_id = ${this.tenant}
+        returning 1
+      ), rate_candidates as (
+        select tenant_id, rate_key, window_start from community_observation_rate_limits
+        where tenant_id = ${this.tenant} and window_start < (${now}::timestamptz - interval '2 days')
+        order by window_start, rate_key limit ${PURGE_BATCH_SIZE}
+        for update
+      ), old_rates as (
+        delete from community_observation_rate_limits r using rate_candidates c
+        where r.tenant_id = c.tenant_id and r.rate_key = c.rate_key and r.window_start = c.window_start
+        returning 1
+      )
+      select (select count(*) from expired)::integer as deleted,
+             (select count(*) from old_rates)::integer as rate_buckets_deleted`;
+    const result = (rows as unknown as { deleted: number; rate_buckets_deleted: number }[])[0];
+    if (!result || ![result.deleted, result.rate_buckets_deleted].every((count) => Number.isSafeInteger(count) && count >= 0 && count <= PURGE_BATCH_SIZE)) {
+      throw new Error("invalid purge result");
+    }
+    return {
+      deleted: result.deleted,
+      rateBucketsDeleted: result.rate_buckets_deleted,
+      moreMayRemain: result.deleted === PURGE_BATCH_SIZE || result.rate_buckets_deleted === PURGE_BATCH_SIZE,
+    };
   }
 }
