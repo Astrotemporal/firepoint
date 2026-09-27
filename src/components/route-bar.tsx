@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
+import { Icon, TurnIcon } from "./detail-icons";
 import { useSheet } from "./use-sheet";
 import {
   compassDirection, directionsUrl, formatDuration, formatMiles, formatShortDistance,
@@ -40,7 +41,10 @@ export type RouteBarProps = {
 
 type RowView = {
   title: string;
+  /** The headline: where to go or which way to head. */
   summary: string;
+  /** A quieter second line (time in bold, then distance). */
+  sub?: ReactNode;
   danger?: boolean;
   /** Where "Go" opens native directions; absent when no usable route should be offered. */
   goTo?: Shelter | SafeZone;
@@ -121,7 +125,7 @@ export function RouteBar(props: RouteBarProps) {
                 />
               </ul>
             )}
-            <p className="ev-note">{t.notAllClear}</p>
+            <p className="ev-note ev-with-icon"><Icon name="info" /><span>{t.notAllClear}</span></p>
           </div>
         </div>
       </div>
@@ -312,6 +316,7 @@ function RouteRow({ kind, view, appleMaps, expanded, onToggle, action }: {
         <span className="ev-row-text">
           <span className="ev-row-title">{view.title}</span>
           <span className={`ev-row-summary${view.danger ? " ev-danger-text" : ""}`}>{view.summary}</span>
+          {view.sub && <span className="ev-row-sub">{view.sub}</span>}
         </span>
         <svg className="ev-row-chevron" viewBox="0 0 8 14" aria-hidden="true" focusable="false">
           <path d="M1.5 1.5 6.5 7l-5 5.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -355,11 +360,12 @@ function escapeRow({ plan, origin, hazards, online, onRetryRoutes }: RouteBarPro
   if (pick.kind === "route") {
     return {
       title,
-      summary: t.headToward(t.compass[compassDirection(bearing(origin, pick.zone))], pick.zone.name, formatDuration(pick.route.durationSeconds, t.units)),
+      ...splitSummary(t.headToward(t.compass[compassDirection(bearing(origin, pick.zone))], pick.zone.name, formatDuration(pick.route.durationSeconds, t.units))),
+      sub: <TimeAndDistance route={pick.route} />,
       goTo: pick.zone,
       details: (
         <>
-          <p className="ev-meta">{formatMiles(pick.route.distanceMeters, t.units)} · {pick.zone.description}</p>
+          <p className="ev-meta ev-with-icon"><Icon name="flag" /><span>{pick.zone.description}</span></p>
           <Steps route={pick.route} />
         </>
       ),
@@ -370,9 +376,9 @@ function escapeRow({ plan, origin, hazards, online, onRetryRoutes }: RouteBarPro
   return {
     title,
     danger: pick.kind === "no-safe-route",
-    summary: heading.toward === "target"
-      ? t.headTowardStraight(direction, pick.zone.name, formatMiles(haversine(origin, pick.zone), t.units))
-      : t.headAway(direction, hazardName(heading.hazard, t)),
+    ...(heading.toward === "target"
+      ? splitSummary(t.headTowardStraight(direction, pick.zone.name, formatMiles(haversine(origin, pick.zone), t.units)))
+      : { summary: t.headAway(direction, hazardName(heading.hazard, t)) }),
     // A maps app would take the same road through the hazard, so only link when routing itself failed.
     goTo: pick.kind === "routing-unavailable" ? pick.zone : undefined,
     details: (
@@ -405,11 +411,12 @@ function shelterRow({ plan, origin, hazards, pending, online, onRetryRoutes }: R
   if (pick.kind === "route") {
     return {
       title,
-      summary: `${shelter.name} · ${formatMiles(pick.route.distanceMeters, t.units)} · ${formatDuration(pick.route.durationSeconds, t.units)}`,
+      summary: shelter.name,
+      sub: <TimeAndDistance route={pick.route} />,
       goTo: shelter,
       details: (
         <>
-          <p className="ev-meta">{shelter.address}</p>
+          <Address shelter={shelter} />
           <ShelterFacts shelter={shelter} />
           <Steps route={pick.route} />
         </>
@@ -419,7 +426,7 @@ function shelterRow({ plan, origin, hazards, pending, online, onRetryRoutes }: R
   const heading = bearing(origin, shelter);
   return {
     title,
-    summary: t.shelterStraight(shelter.name, t.compass[compassDirection(heading)], formatMiles(haversine(origin, shelter), t.units)),
+    ...splitSummary(t.shelterStraight(shelter.name, t.compass[compassDirection(heading)], formatMiles(haversine(origin, shelter), t.units))),
     goTo: shelter,
     details: (
       <>
@@ -427,7 +434,7 @@ function shelterRow({ plan, origin, hazards, pending, online, onRetryRoutes }: R
         {routeIntersectsHazard([origin, shelter], hazards, { origin }) && (
           <p className="ev-meta ev-danger-text">{t.straightNearHazard}</p>
         )}
-        <p className="ev-meta">{shelter.address}</p>
+        <Address shelter={shelter} />
         <ShelterFacts shelter={shelter} />
         {online && <RetryButton onRetry={onRetryRoutes} />}
       </>
@@ -435,14 +442,33 @@ function shelterRow({ plan, origin, hazards, pending, online, onRetryRoutes }: R
   };
 }
 
+/**
+ * Splits a translated "headline · detail" summary at its last " · " (every locale appends the time or
+ * distance that way), so the headline reads bold and the detail sits on the quieter second line.
+ */
+function splitSummary(text: string): Pick<RowView, "summary" | "sub"> {
+  const at = text.lastIndexOf(" · ");
+  return at < 0 ? { summary: text } : { summary: text.slice(0, at), sub: text.slice(at + 3) };
+}
+
+/** "**7 min** · 1.4 mi": the time is what matters in an evacuation, so it carries the weight. */
+function TimeAndDistance({ route }: { route: Route }) {
+  const t = useMapText();
+  return <><strong>{formatDuration(route.durationSeconds, t.units)}</strong> · {formatMiles(route.distanceMeters, t.units)}</>;
+}
+
+function Address({ shelter }: { shelter: Shelter }) {
+  return <p className="ev-meta ev-with-icon"><Icon name="pin" /><span>{shelter.address}</span></p>;
+}
+
 function ShelterFacts({ shelter }: { shelter: Shelter }) {
   const t = useMapText();
   const known = (value: boolean | null) => (value === null ? t.unknown : value ? t.yes : t.no);
   return (
     <p className="ev-facts">
-      {!shelter.verified && <span className="ev-badge">{t.unverifiedShelter}</span>}
-      <span>{t.pets}: {known(shelter.petsAllowed)}</span>
-      <span>{t.adaAccessible}: {known(shelter.adaCompliant)}</span>
+      {!shelter.verified && <span className="ev-badge"><Icon name="warning" />{t.unverifiedShelter}</span>}
+      <span className="ev-fact"><Icon name="paw" />{t.pets}: <strong>{known(shelter.petsAllowed)}</strong></span>
+      <span className="ev-fact"><Icon name="accessible" />{t.adaAccessible}: <strong>{known(shelter.adaCompliant)}</strong></span>
     </p>
   );
 }
@@ -484,8 +510,11 @@ function Steps({ route }: { route: Route }) {
     <ol className="ev-steps">
       {route.steps.map((step, index) => (
         <li key={index}>
-          <span>{step.instruction}</span>
-          {step.distanceMeters > 0 && <span className="ev-step-distance">{formatShortDistance(step.distanceMeters, t.units)}</span>}
+          <TurnIcon turn={step.turn} />
+          <span className="ev-step-text">
+            {step.distanceMeters > 0 && <strong className="ev-step-distance">{formatShortDistance(step.distanceMeters, t.units)}</strong>}
+            <span>{step.instruction}</span>
+          </span>
         </li>
       ))}
     </ol>

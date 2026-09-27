@@ -10,7 +10,10 @@ import { RouteBar, type RouteBarProps } from "./route-bar";
 // Synthetic routes and fixes; test-only.
 const route: Route = {
   path: [DEFAULT_FIX, SHELTERS[1]], distanceMeters: 2338, durationSeconds: 226,
-  steps: [{ instruction: "Turn left onto North Isabel Street.", distanceMeters: 57, durationSeconds: 12 }],
+  steps: [
+    { instruction: "Turn left onto North Isabel Street.", distanceMeters: 57, durationSeconds: 12, turn: "left" },
+    { instruction: "You have arrived at your destination.", distanceMeters: 0, durationSeconds: 0, turn: "arrive" },
+  ],
 };
 const gps: LocationFix = { lat: 34.14662, lng: -118.24825, accuracyMeters: 450, source: "gps", label: null };
 const plan: RoutePlan<LocationFix> = {
@@ -35,8 +38,8 @@ function render(overrides: Partial<RouteBarProps> = {}) {
 describe("RouteBar", () => {
   it("shows both routes compactly with distance, time, a Go link, and (collapsed) steps", () => {
     const html = render();
-    expect(html).toContain("Pacific Community Center · 1.5 mi · 4 min");
-    expect(html).toContain("toward Burbank via SR-134 · 9 min");
+    expect(html).toContain('<span class="ev-row-summary">Pacific Community Center</span><span class="ev-row-sub"><strong>4 min</strong> · 1.5 mi</span>');
+    expect(html).toMatch(/toward Burbank via SR-134<\/span><span class="ev-row-sub"><strong>9 min<\/strong> · 1.5 mi/);
     expect(html).toContain("https://www.google.com/maps/dir/?api=1&amp;destination=34.139830,-118.264780&amp;travelmode=driving");
     expect(html).toContain("Turn left onto North Isabel Street.");
     expect(html).toMatch(/aria-expanded="false"/);
@@ -44,6 +47,14 @@ describe("RouteBar", () => {
     expect(html).toContain("Unverified: confirm it’s open");
     expect(html).not.toMatch(/simulated fire/i); // no demo fire or toggle in the app
     expect(html).not.toMatch(/🏠|🚗/); // row icons are drawn glyphs, not emoji
+  });
+
+  it("labels details with icons and gives each step a turn arrow, its distance in bold", () => {
+    const html = render();
+    for (const icon of ["pin", "warning", "paw", "accessible", "info"]) expect(html).toContain(`ev-icon-${icon}`);
+    expect(html).toContain('data-turn="left"');
+    expect(html).toContain('data-turn="arrive"');
+    expect(html).toMatch(/<strong class="ev-step-distance">200 ft<\/strong>/);
   });
 
   it("keeps the escape route at the top of the drawer once requested, with the fire warning in the peek", () => {
@@ -60,7 +71,7 @@ describe("RouteBar", () => {
       plan: { ...plan, shelter: { kind: "routing-unavailable", shelter: SHELTERS[1], reason: "offline" } },
     });
     expect(html).toContain("Offline: straight-line directions only.");
-    expect(html).toContain("Pacific Community Center · southwest 1.1 mi straight-line");
+    expect(html).toContain('<span class="ev-row-summary">Pacific Community Center</span><span class="ev-row-sub">southwest 1.1 mi straight-line</span>');
     expect(html).toContain("Arrow pointing southwest");
     expect(html).toContain("501 S Pacific Ave, Glendale, CA 91204");
   });
@@ -139,7 +150,8 @@ describe("RouteBar", () => {
 
     it("shows the full escape route, with a Clear control, once requested", () => {
       const html = render(); // default: escapeRequested + a resolved plan.escape
-      expect(html).toContain("toward Burbank via SR-134 · 9 min");
+      expect(html).toContain("toward Burbank via SR-134");
+      expect(html).toContain("<strong>9 min</strong>");
       expect(html).toContain("Hide escape route");
       expect(html.match(/class="ev-row-main" aria-expanded/g)).toHaveLength(2);
     });
