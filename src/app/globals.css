@@ -62,8 +62,8 @@ h1 em,h2 em { font-weight: 400; }
 .fire-token:active { transform: scale(.96); }
 .fire-token.is-dragging { cursor: grabbing; opacity: .45; }
 .fire-token:disabled { opacity: .5; cursor: not-allowed; transform: none; }
-/* Private-mark policy (src/domain/private-mark-style.ts): the flame artwork is fully desaturated wherever it stands for a private mark. */
-.fire-token-flame { width: 38px; height: 38px; filter: grayscale(1) drop-shadow(0 2px 3px rgba(24,49,46,.3)); pointer-events: none; }
+/* The fire toolbox is an action control, not a placed private mark: keep its flame colored. Map marks remain grey. */
+.fire-token-flame { width: 38px; height: 38px; filter: drop-shadow(0 2px 3px rgba(24,49,46,.3)); pointer-events: none; }
 .map-clear { min-height: 36px; padding: 0 14px; border: 1px solid var(--glass-edge); border-radius: 999px; background: var(--glass-bg); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: var(--glass-shadow); color: var(--surface-ink); font-size: 13px; font-weight: 700; }
 .map-clear:hover { background: var(--glass-hover); }
 .map-panel { align-items: flex-end; } .map-panel .map-clear { margin-bottom: 14px; }
