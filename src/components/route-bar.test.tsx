@@ -47,6 +47,8 @@ describe("RouteBar", () => {
     expect(html).toContain("Unverified: confirm it’s open");
     expect(html).not.toMatch(/simulated fire/i); // no demo fire or toggle in the app
     expect(html).not.toMatch(/🏠|🚗/); // row icons are drawn glyphs, not emoji
+    expect(html).toMatch(/<span class="ev-row-icon ev-row-icon-image" aria-hidden="true"><img alt=""[^>]*src="[^"]*shelter-icon[^"]*\.png"/);
+    expect(html.match(/ev-row-icon-image/g)).toHaveLength(1); // the escape row keeps its glyph
   });
 
   it("labels details with icons and gives each step a turn arrow, its distance in bold", () => {

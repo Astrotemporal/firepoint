@@ -53,8 +53,9 @@
 .ev-pin { padding: 0; border: 0; background: none; cursor: pointer; }
 .ev-pin-body { width: 34px; height: 34px; display: grid; place-items: center; border: 3px solid #fff; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 2px 6px rgba(0, 0, 0, .35); }
 .ev-pin-glyph { transform: rotate(45deg); font-size: 17px; font-weight: 800; color: #fff; line-height: 1; }
-.ev-pin-open .ev-pin-body { background: #15803d; }
-.ev-pin-closed .ev-pin-body { background: #6b7280; }
+.ev-pin-image { display: block; width: 38px; height: 38px; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .35)); transition: width .2s, height .2s; }
+.ev-pin-closed .ev-pin-image { filter: grayscale(1) drop-shadow(0 2px 3px rgba(0, 0, 0, .3)); opacity: .7; }
+.ev-pin-shelter.ev-pin-chosen .ev-pin-image { width: 50px; height: 50px; filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 3px 6px rgba(0, 0, 0, .45)); }
 .ev-pin-zone .ev-pin-body { background: #c2410c; }
 .ev-pin-chosen .ev-pin-body { outline: 3px solid var(--ev-ink); outline-offset: 1px; }
 .ev-popup { font: 14px/1.4 Arial, Helvetica, sans-serif; color: var(--ev-ink); }
@@ -148,7 +149,7 @@
 .ev-badge .ev-icon { width: 14px; height: 14px; }
 .ev-step-icon { width: 22px; height: 22px; margin-top: 1px; color: var(--ev-ink); }
 .ev-row-escape .ev-row-icon { background: var(--ev-escape-bg); }
-.ev-row-shelter .ev-row-icon { background: var(--ev-shelter-bg); }
+.ev-row-icon-image img { display: block; width: 40px; height: 40px; }
 .ev-row-main[aria-expanded="true"] .ev-row-chevron { transform: rotate(90deg); }
 .ev-row-summary { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 17px; font-weight: 600; line-height: 1.25; letter-spacing: -.02em; }
 .ev-row-chevron { flex: none; width: 8px; height: 14px; margin-left: auto; color: var(--ev-muted); opacity: .6; transition: transform .2s ease; }
