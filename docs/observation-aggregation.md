@@ -1,6 +1,6 @@
-# Community observation aggregation (contract only, not shipped)
+# Community observation aggregation
 
-**Status:** [`src/domain/observation-aggregate.ts`](../src/domain/observation-aggregate.ts) is a pure, Zod-backed contract with synthetic-only tests. Nothing imports it. There is **no** report submission route, report database, moderation queue, moderation owner, live aggregate endpoint, map layer, or routing hook. Until a named moderation owner, abuse policy, consent/retention/takedown path and source-rights review exist, this file is a decision gate, not a feature. Agency advisories and orders are a separate lane (`OfficialNoticeSchema`, issuer-sourced) and are **never** produced from resident input.
+**Status:** [`src/domain/observation-aggregate.ts`](../src/domain/observation-aggregate.ts) is a pure, Zod-backed contract with synthetic-only tests. The preview-only backend imports it only after route gates, database configuration, moderation attestation and rights-review checks; see [community reporting preview](community-reporting-preview.md). Without those owner-provisioned settings, the route returns a withheld aggregate or `503`, not empty success. Agency advisories and orders are a separate lane (`OfficialNoticeSchema`, issuer-sourced) and are **never** produced from resident input.
 
 ## What the aggregate is
 
