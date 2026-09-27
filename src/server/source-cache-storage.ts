@@ -49,9 +49,15 @@ export function assertCompleteSnapshotCommit(scope: SourceIssuerScope, input: Co
   const attempt = SourceFetchAttemptSchema.parse(input.attempt);
   const generation = SourceGenerationSchema.parse(input.generation);
   const records = input.records.map((record) => SourceRecordSchema.parse(record));
-  assertSourceIssuerScope(issuerScope, { ...attempt, issuer: issuerScope.issuer });
+  // Fetch attempts have no issuer field. Copying issuer from scope would NOT
+  // authenticate it. The adapter must verify the caller's authority and lock
+  // the matching issuer-bearing registry row in the same transaction.
+  if (attempt.tenantId !== issuerScope.tenantId || attempt.jurisdictionId !== issuerScope.jurisdictionId) {
+    throw new Error("source-cache attempt scope mismatch");
+  }
   assertSourceIssuerScope(issuerScope, generation);
-  if (attempt.status !== (records.length === 0 ? "succeeded-empty" : "succeeded-non-empty") ||
+  if (attempt.completedAt === null || Date.parse(attempt.completedAt) < Date.parse(attempt.startedAt) ||
+      attempt.status !== (records.length === 0 ? "succeeded-empty" : "succeeded-non-empty") ||
       !attempt.completeSnapshot || !generation.completeSnapshot ||
       attempt.sourceRegistryId !== generation.sourceRegistryId || generation.fetchAttemptId !== attempt.id ||
       generation.previousCompleteGenerationId !== attempt.lastGoodGenerationId ||
@@ -82,8 +88,11 @@ export function assertCompleteSnapshotCommit(scope: SourceIssuerScope, input: Co
 export function assertNonCompleteAttempt(scope: SourceIssuerScope, input: SourceFetchAttempt): SourceFetchAttempt {
   const issuerScope = SourceIssuerScopeSchema.parse(scope);
   const attempt = SourceFetchAttemptSchema.parse(input);
-  assertSourceIssuerScope(issuerScope, { ...attempt, issuer: issuerScope.issuer });
-  if (attempt.status === "started" || attempt.completeSnapshot) {
+  // No issuer is present on attempt rows. Only the future adapter can check
+  // caller authority and the locked registry's issuer; this checks scope only.
+  if (attempt.tenantId !== issuerScope.tenantId || attempt.jurisdictionId !== issuerScope.jurisdictionId ||
+      attempt.completedAt === null || Date.parse(attempt.completedAt) < Date.parse(attempt.startedAt) ||
+      attempt.status === "started" || attempt.completeSnapshot) {
     throw new Error("non-complete attempt cannot commit a generation or retraction");
   }
   return attempt;

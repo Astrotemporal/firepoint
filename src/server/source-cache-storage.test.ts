@@ -71,11 +71,21 @@ describe("atomic source-cache port proposal (no implementation)", () => {
       attempt: emptyAttempt, generation: { ...emptyGeneration, emptyResultMeaning: "all-clear" as "not-all-clear" }, records: [],
     })).toThrow();
   });
+  it("requires completed-at on successful complete snapshots and rejects time travel", () => {
+    expect(() => assertCompleteSnapshotCommit(scope, {
+      attempt: { ...attempt, completedAt: null }, generation, records: [record],
+    })).toThrow();
+    expect(() => assertCompleteSnapshotCommit(scope, {
+      attempt: { ...attempt, startedAt: "2026-09-27T01:01:00Z" }, generation, records: [record],
+    })).toThrow();
+  });
   it("allows failure without a generation; rejects completed success or completeness", () => {
     const failure = { ...attempt, status: "failed" as const, completeSnapshot: false,
       rowsSeen: 0, rowsAccepted: 0, failure: { kind: "network" as const, message: "synthetic failure", retryable: true } };
     expect(assertNonCompleteAttempt(scope, failure).lastGoodGenerationId).toBe(priorId);
     expect(() => assertNonCompleteAttempt(scope, attempt)).toThrow();
     expect(() => assertNonCompleteAttempt(scope, { ...failure, completeSnapshot: true })).toThrow();
+    expect(() => assertNonCompleteAttempt(scope, { ...failure, completedAt: null })).toThrow();
+    expect(() => assertNonCompleteAttempt(scope, { ...failure, startedAt: "2026-09-27T01:01:00Z" })).toThrow();
   });
 });
