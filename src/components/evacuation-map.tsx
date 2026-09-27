@@ -15,6 +15,7 @@ import type { Hazard, LatLng, SafeZone, Shelter } from "@/evacuation/types";
 import { MAPBOX_STYLES, MAPBOX_TOKEN } from "@/lib/mapbox";
 import { createPin, removePin, type PinHandlers, type PinView } from "./fire-pins";
 import { useMapText } from "./map-text";
+import shelterIcon from "./shelter-icon.png";
 
 /** What the screen needs from the map (dropping a fire mark), kept independent of the map library. */
 export type MapHandle = {
@@ -40,6 +41,10 @@ type EvacuationMapProps = {
   onReady: (map: MapHandle | null) => void;
   onMoveMark: (id: string, lat: number, lng: number) => void;
   onRemoveMark: (id: string) => void;
+  /** Accessible name of the map region; the public screen passes one that mentions no routes or shelters. */
+  ariaLabel?: string;
+  /** Load-failure notice; the public screen passes one that promises no routes. */
+  failedText?: string;
 };
 
 const COLORS = { shelterRoute: "#1d4ed8", escapeRoute: "#c2410c", hazard: "#b91c1c", you: "#007aff" };
@@ -65,6 +70,21 @@ function popupContent(lines: string[]): HTMLElement {
     box.append(element);
   });
   return box;
+}
+
+/** A shelter is marked by the house artwork itself (as fire marks are by the fire), its base on the location. */
+function shelterPinElement(className: string, label: string): HTMLButtonElement {
+  const element = document.createElement("button");
+  element.type = "button";
+  element.className = `ev-pin ev-pin-shelter ${className}`;
+  element.setAttribute("aria-label", label);
+  const image = document.createElement("img");
+  image.className = "ev-pin-image";
+  image.src = shelterIcon.src;
+  image.alt = "";
+  image.draggable = false;
+  element.append(image);
+  return element;
 }
 
 function pinElement(className: string, glyph: string, label: string): HTMLButtonElement {
@@ -136,6 +156,7 @@ function MapNotice({ text }: { text: string }) {
 
 function MapboxView({
   dark, origin, hazards, shelters, zones, plan, centerKey, fitKey, marks, onReady, onMoveMark, onRemoveMark,
+  ariaLabel, failedText,
 }: EvacuationMapProps) {
   const t = useMapText();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -259,9 +280,9 @@ function MapboxView({
       ...shelters.map((shelter) => {
         const open = isShelterAvailable(shelter);
         const nearHazard = hazards.some((hazard) => pointInHazard(shelter, hazard, DESTINATION_HAZARD_BUFFER_METERS));
-        const element = pinElement(
+        const element = shelterPinElement(
           `${open ? "ev-pin-open" : "ev-pin-closed"}${shelter.id === shelterTargetId ? " ev-pin-chosen" : ""}`,
-          "⌂", t.shelterPin(shelter.name, t.shelterStatus[open ? "open" : shelter.status]),
+          t.shelterPin(shelter.name, t.shelterStatus[open ? "open" : shelter.status]),
         );
         element.addEventListener("click", (event) => {
           event.stopPropagation();
@@ -356,9 +377,9 @@ function MapboxView({
         ref={containerRef}
         className="ev-map"
         role="region"
-        aria-label={t.mapLabel}
+        aria-label={ariaLabel ?? t.mapLabel}
       />
-      {failed && <MapNotice text={t.mapFailed} />}
+      {failed && <MapNotice text={failedText ?? t.mapFailed} />}
     </>
   );
 }

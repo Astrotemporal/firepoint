@@ -28,6 +28,16 @@ describe("Mapbox Directions provider", () => {
     expect(route.steps.map((s) => s.instruction)).toEqual(["Turn left onto North Isabel Street.", "You have arrived at your destination."]);
     expect(route.alternatives).toHaveLength(1);
     expect(route.alternatives?.[0].durationSeconds).toBe(610);
+    expect(route.steps.map((s) => s.turn)).toEqual([undefined, undefined]); // no maneuver type/modifier given
+  });
+
+  it("keeps each step's turn from Mapbox's maneuver type and modifier", () => {
+    const turn = (type: string, modifier?: string) => ({ distance: 10, duration: 1, maneuver: { instruction: "x", type, modifier } });
+    const route = parseMapboxDirections({ ...payload, routes: [{ ...payload.routes[0], legs: [{ steps: [
+      turn("depart", "left"), turn("turn", "slight right"), turn("end of road", "uturn"), turn("new name", "straight"),
+      turn("roundabout", "sideways"), turn("arrive", "right"),
+    ] }] }] });
+    expect(route.steps.map((s) => s.turn)).toEqual(["depart", "slight-right", "uturn", "straight", undefined, "arrive"]);
   });
 
   it("POSTs coordinates in the body, not the URL, with traffic-aware alternatives", async () => {

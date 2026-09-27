@@ -13,6 +13,7 @@ export const SOURCES = {
   brochure: { label: "Ready! Set! Go! Wildfire Action Plan (PDF, May 2026)", url: "https://fire.lacounty.gov/wp-content/uploads/2026/05/Ready-Set-Go_5.20.26.pdf" },
   terms: { label: "Cal OES · Standard evacuation terms", url: "https://calalerts.org/evacuations.html" },
   zone: { label: "Glendale Fire · Know Your Zone", url: "https://www.glendaleca.gov/government/departments/fire-department/other-links/emergency-preparedness-response/know-your-zone" },
+  genasys: { label: "Genasys Protect · external zone map", url: "https://protect.genasys.com/en?lat=34.2147&lng=-118.2629&z=11.3" },
   alerts: { label: "Glendale Alerts", url: "https://www.glendaleca.gov/government/departments/fire-department/other/emergency-preparedness-response/city-wide-emergency-communications" },
   nws: { label: "National Weather Service · Los Angeles/Oxnard", url: "https://www.weather.gov/lox/" },
   county: { label: "LA County emergency information", url: "https://lacounty.gov/emergency/" },
@@ -271,7 +272,12 @@ const GUIDE_EN_SHAPE = {
     { word: "Set", topic: "Your family", line: "Make a plan, pack a kit, and know what to do before you leave." },
     { word: "Go", topic: "Leaving", line: "Leave early, know the official terms, and what to do if trapped." },
   ],
-  sources: Object.fromEntries(Object.entries(SOURCES).map(([key, source]) => [key, source.label])) as { [K in keyof typeof SOURCES]: string },
+  // Shared translation contract; Genasys gets its English-only caution/link in the component.
+  sources: {
+    rsg: SOURCES.rsg.label, brochure: SOURCES.brochure.label, terms: SOURCES.terms.label,
+    zone: SOURCES.zone.label, alerts: SOURCES.alerts.label, nws: SOURCES.nws.label,
+    county: SOURCES.county.label,
+  },
   zones: ZONES.map(({ name, reach, items }) => ({ name, reach, items })),
   home: HOME,
   plan: PLAN,
