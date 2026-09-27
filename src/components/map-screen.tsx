@@ -14,6 +14,7 @@ import { haversine, nearestHazard } from "@/evacuation/routing";
 import { registerServiceWorker } from "@/lib/service-worker";
 import type { MapHandle } from "./evacuation-map";
 import { FirePanel } from "./fire-panel";
+import { HelpButton } from "./help-dialog";
 import { RouteBar } from "./route-bar";
 import { NavigationPanel } from "./navigation-panel";
 import { Navigator, type NavKind, type NavTarget } from "@/evacuation/navigation";
@@ -199,7 +200,16 @@ export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
         {!navigating && <FirePanel
           ready={ready} count={marks.length} hint={hint} map={mapRef} onPlace={place} onHint={setHint}
           onClear={() => { save([]); setHint(t.marksCleared); }}
-        />}
+          help={<HelpButton />}
+        >
+          {origin && (
+            <button type="button" className="ev-float-button ev-round ev-locate"
+              onClick={() => (askLocation ? tracker.start() : setLocateCount((n) => n + 1))}
+              aria-label={askLocation ? t.shareMyLocation : origin.source === "gps" ? t.centerOnMe : t.centerOnStart}>
+              <span className="ev-locate-icon" aria-hidden="true" />
+            </button>
+          )}
+        </FirePanel>}
         {!navigating && <div className="map-actions">
           <LanguageSelect current={locale} label={LANGUAGE_LABEL[locale]} returnTo="/" className="map-lang-select" />
           <button type="button" className="theme-toggle" onClick={() => applyTheme(theme === "dark" ? "light" : "dark", true)}
@@ -211,13 +221,6 @@ export function MapScreen({ locale = "en" }: { locale?: Locale } = {}) {
             <span>{t.prepLink} <span aria-hidden="true">↗</span></span>
           </Link>
         </div>}
-        {origin && !navigating && (
-          <button type="button" className="ev-float-button ev-round ev-locate"
-            onClick={() => (askLocation ? tracker.start() : setLocateCount((n) => n + 1))}
-            aria-label={askLocation ? t.shareMyLocation : origin.source === "gps" ? t.centerOnMe : t.centerOnStart}>
-            <span className="ev-locate-icon" aria-hidden="true" />
-          </button>
-        )}
         {!canStore && <p className="map-storage-warning" role="status">{t.storageWarning}</p>}
       </div>
       {navigating ? (

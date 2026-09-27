@@ -25,6 +25,16 @@ const PROTOTYPE_MARKERS = [
 ];
 
 describe("public homepage (release gate off)", () => {
+  it("stacks a help button above the fire whose guide covers only private marks and prep, in English", () => {
+    for (const locale of ["en", "es", "hy"] as const) {
+      const html = renderToStaticMarkup(<PublicMapScreen locale={locale} />);
+      expect(html).toMatch(/<div class="fire-stack"><button[^>]*class="map-help"[\s\S]*?<\/dialog><button[^>]*class="fire-token"/);
+      expect(html).toMatch(/<dialog lang="en" class="help-dialog"/);
+      expect(html).toContain("No live incidents, shelters or routes are shown.");
+      expect(html).not.toContain(mapText(locale).help.intro);
+    }
+  });
+
   it("renders the basemap shell, private marks and the exact no-data statement", () => {
     const html = renderToStaticMarkup(<PublicMapScreen />);
     expect(html).toMatch(/class="map-screen ev-shell ev-shell-static"/);
