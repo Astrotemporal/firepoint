@@ -43,10 +43,16 @@ export type SafeZone = LatLng & {
   priority: "primary" | "secondary";
 };
 
+/** The maneuver at the start of a step, for its turn arrow. */
+export type Turn =
+  | "depart" | "arrive" | "straight" | "uturn"
+  | "slight-left" | "left" | "sharp-left" | "slight-right" | "right" | "sharp-right";
+
 export type RouteStep = {
   instruction: string;
   distanceMeters: number;
   durationSeconds: number;
+  turn?: Turn;
 };
 
 export type Route = {

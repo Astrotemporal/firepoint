@@ -45,8 +45,8 @@ h1 em,h2 em { font-weight: 400; }
 .top-nav { display: flex; gap: 26px; }
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 /* Map screen theme tokens; <html data-theme> is set before paint by the layout's theme script. */
-.map-screen { --surface: #fffdf8; --surface-ink: #18312e; --surface-muted: #5d6c65; --surface-shadow: 0 2px 6px rgba(24,49,46,.18), 0 8px 24px rgba(24,49,46,.12); --note-bg: rgba(255,253,248,.94); --accent-bg: #18312e; --accent-hover: #35584c; --accent-ink: #fffdf8; --warn: #86452b; --glass-bg: rgba(255,253,248,.55); --glass-edge: rgba(255,255,255,.75); --glass-hover: rgba(255,253,248,.8); --glass-shadow: 0 1px 2px rgba(24,49,46,.14), 0 6px 18px rgba(24,49,46,.2); }
-:root[data-theme="dark"] .map-screen { color-scheme: dark; --surface: #17211f; --surface-ink: #eef2ea; --surface-muted: #a3b3a8; --surface-shadow: 0 2px 6px rgba(0,0,0,.45), 0 8px 24px rgba(0,0,0,.35); --note-bg: rgba(23,33,31,.92); --accent-bg: #d7ebac; --accent-hover: #edffc9; --accent-ink: #18312e; --warn: #f3a37f; --glass-bg: rgba(23,33,31,.5); --glass-edge: rgba(238,242,234,.18); --glass-hover: rgba(34,48,45,.75); --glass-shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.45); }
+.map-screen { --surface: #fffdf8; --surface-ink: #18312e; --surface-muted: #5d6c65; --surface-shadow: 0 2px 6px rgba(24,49,46,.18), 0 8px 24px rgba(24,49,46,.12); --note-bg: rgba(255,253,248,.94); --accent-bg: #0f3e5e; --accent-hover: #005996; --accent-ink: #ffffff; --warn: #86452b; --glass-bg: rgba(255,253,248,.55); --glass-edge: rgba(255,255,255,.75); --glass-hover: rgba(255,253,248,.8); --glass-shadow: 0 1px 2px rgba(24,49,46,.14), 0 6px 18px rgba(24,49,46,.2); }
+:root[data-theme="dark"] .map-screen { color-scheme: dark; --surface: #17211f; --surface-ink: #eef2ea; --surface-muted: #a3b3a8; --surface-shadow: 0 2px 6px rgba(0,0,0,.45), 0 8px 24px rgba(0,0,0,.35); --note-bg: rgba(23,33,31,.92); --accent-bg: #e39c25; --accent-hover: #efc57f; --accent-ink: #0f3e5e; --warn: #f3a37f; --glass-bg: rgba(23,33,31,.5); --glass-edge: rgba(238,242,234,.18); --glass-hover: rgba(34,48,45,.75); --glass-shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.45); }
 .map-screen { position: fixed; inset: 0; z-index: 0; isolation: isolate; overflow: hidden; background: #e7ebe0; color: var(--surface-ink); }
 :root[data-theme="dark"] .map-screen { background: #0f1716; }
 .map-loading { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--surface-muted); font-size: 13px; letter-spacing: .06em; }
@@ -80,7 +80,7 @@ h1 em,h2 em { font-weight: 400; }
 .map-actions .map-brand { min-width: 0; white-space: nowrap; }
 .map-actions .map-brand > span:last-child { overflow: hidden; text-overflow: ellipsis; }
 .map-brand .brand-mark { width: 24px; height: 24px; background: var(--accent-ink); }
-.map-brand .brand-mark span { width: 10px; height: 10px; }
+.map-brand .brand-mark span { width: 10px; height: 10px; background: #e39c25; }
 .map-storage-warning { position: absolute; z-index: 1000; left: 16px; top: calc(16px + env(safe-area-inset-top, 0px)); max-width: min(430px, calc(100% - 96px)); padding: 11px 14px; background: #fff1dc; border-left: 4px solid #c87537; font-size: 12px; line-height: 1.45; }
 .fire-ghost { position: fixed; z-index: 2000; width: 46px; height: 46px; pointer-events: none; transform: translate(-50%, -85%) scale(1.1); filter: drop-shadow(0 6px 8px rgba(24,49,46,.35)); }
 /* No position here: Mapbox's .mapboxgl-marker (absolute) anchors the pin; `relative` would detach it from the map. */
@@ -213,10 +213,10 @@ h2 { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(39px, 4.1v
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .source-card,.fire-token { transition: none; } }
 @media (prefers-reduced-motion: no-preference) { .theme-toggle,.map-brand { transition: background-color .25s, color .25s; } }
-.preloader { position: fixed; inset: 0; z-index: 100; display: grid; place-content: center; justify-items: center; gap: 6px; background: var(--ink); color: var(--white); transition: opacity .4s ease; animation: preloader-failsafe .4s ease 5s forwards; }
+.preloader { position: fixed; inset: 0; z-index: 100; display: grid; place-content: center; justify-items: center; gap: 6px; background: #0f3e5e radial-gradient(ellipse 60% 45% at 50% 45%, rgba(0,89,150,.55), transparent 70%); color: #ffffff; transition: opacity .4s ease; animation: preloader-failsafe .4s ease 5s forwards; }
 .preloader-leaving { opacity: 0; pointer-events: none; }
 .preloader-fire { width: 150px; aspect-ratio: 500 / 690; }
 .preloader-brand { font-size: 25px; font-weight: 800; letter-spacing: -1.7px; }
-.preloader-brand span { color: #e4744d; }
+.preloader-brand span { color: #e39c25; }
 @keyframes preloader-failsafe { to { opacity: 0; visibility: hidden; pointer-events: none; } }
 @media (prefers-reduced-motion: reduce) { .preloader { transition: none; } }
