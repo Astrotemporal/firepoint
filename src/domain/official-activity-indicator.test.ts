@@ -55,6 +55,9 @@ describe("official activity indicator policy", () => {
     expect(officialActivityIndicatorLayer([{ ...record, sourceUrl: null }], { now: "2026-01-01T02:00:00Z", maxAgeSeconds: 3600 })).toEqual({
       state: "empty", reason: "malformed", layer: null,
     });
+    expect(officialActivityIndicatorLayer([{ ...record, sourceUrl: "http://example.invalid/synthetic-official-record" }], { now: "2026-01-01T02:00:00Z", maxAgeSeconds: 3600 })).toEqual({
+      state: "empty", reason: "malformed", layer: null,
+    });
     expect(officialActivityIndicatorLayer([{ ...record, geometry: null }], { now: "2026-01-01T02:00:00Z", maxAgeSeconds: 3600 })).toEqual({
       state: "empty", reason: "malformed", layer: null,
     });
