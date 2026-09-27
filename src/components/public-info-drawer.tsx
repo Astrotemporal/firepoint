@@ -209,7 +209,7 @@ export function PublicInfoDrawer({
               <p className="ev-pub-legend-title">Map symbols</p>
               <ul className="ev-pub-legend-list">
                 <li><span className="ev-pub-legend-swatch ev-pub-legend-grey" aria-hidden="true" /><span>Grey dashed ring — private mark, this device only, not a report</span></li>
-                <li><span className="ev-pub-legend-swatch ev-pub-legend-yellow" aria-hidden="true" /><span>Yellow circle — moderated crowdsourced report, <strong>unverified</strong></span></li>
+                <li><span className="ev-pub-legend-swatch ev-pub-legend-yellow" aria-hidden="true" /><span>Yellow circle — 3+ unreviewed reports · may include repeat submissions · not a confirmed hazard</span></li>
                 <li><span className="ev-pub-legend-swatch ev-pub-legend-red" aria-hidden="true" /><span>Red — agency-confirmed active source notice</span></li>
               </ul>
             </div>

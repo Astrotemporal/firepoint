@@ -10,7 +10,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 const ORIGIN = "https://firepoint.example";
 const SOURCE = readFileSync("public/sw.js", "utf8");
 /** Namespaces the prototype worker used; a device that updates must lose them. */
-const RETIRED = ["firepoint-shell-v4", "firepoint-assets-v3", "firepoint-shell-v1", "firepoint-assets-v1"];
+const RETIRED = ["firepoint-shell-v5", "firepoint-shell-v4", "firepoint-assets-v3", "firepoint-shell-v1", "firepoint-assets-v1"];
 const PUBLIC_HOME = '<main lang="en" class="map-screen ev-shell"><section class="ev-pub-sheet ev-pub-sheet-peek"><script src="/_next/static/chunks/a.js"></script></section></main>';
 const PROTOTYPE_HOME = '<main class="map-screen ev-shell"><button class="ev-escape-cta">Escape</button></main>';
 

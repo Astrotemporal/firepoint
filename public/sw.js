@@ -9,7 +9,7 @@
    worker. That purge runs on the device only after it has reached the site online once and fetched this
    file; a device that has not reconnected keeps whatever its old worker cached, and nothing here can reach
    it remotely. */
-const CACHE = "firepoint-shell-v5"; // v4 and earlier may hold the pre-gate prototype homepage
+const CACHE = "firepoint-shell-v6"; // v5 and earlier may hold ev-shell-static public card; v6 gets ev-pub-sheet drawer
 const ASSETS = "firepoint-assets-v4";
 const SHELL = ["/offline.html", "/icon-192.png", "/icon-512.png"];
 const MAX_ASSETS = 120;

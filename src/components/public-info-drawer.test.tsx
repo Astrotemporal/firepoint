@@ -181,8 +181,10 @@ describe("PublicInfoDrawer map-symbol legend", () => {
     expect(html).toContain("ev-pub-legend-grey");
     expect(html).toContain("private mark, this device only, not a report");
     expect(html).toContain("ev-pub-legend-yellow");
-    expect(html).toContain("unverified");
-    expect(html).toContain("moderated crowdsourced report");
+    expect(html).toContain("unreviewed");
+    expect(html).toContain("3+ unreviewed reports");
+    expect(html).toContain("not a confirmed hazard");
+    expect(html).toContain("may include repeat submissions");
     expect(html).toContain("ev-pub-legend-red");
     expect(html).toContain("agency-confirmed active source");
     // Legend is explanation only — no map badge, no count, no live status
