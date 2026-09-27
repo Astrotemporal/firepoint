@@ -47,6 +47,16 @@ type EvacuationMapProps = {
   ariaLabel?: string;
   /** Load-failure notice; the public screen passes one that promises no routes. */
   failedText?: string;
+  /** In-app navigation: draw only this line and keep the camera on `center`, turned to `bearing`. */
+  navigation?: MapNavigation | null;
+};
+
+export type MapNavigation = {
+  path: readonly LatLng[];
+  /** "…-guide" draws the dashed straight-line style used when there is no road route. */
+  kind: "escape" | "shelter" | "escape-guide" | "shelter-guide";
+  center: LatLng | null;
+  bearing: number;
 };
 
 const COLORS = { shelterRoute: "#1d4ed8", escapeRoute: "#c2410c", hazard: "#b91c1c", you: "#007aff" };
@@ -162,7 +172,7 @@ function MapNotice({ text }: { text: string }) {
 
 function MapboxView({
   dark, origin, hazards, shelters, zones, plan, centerKey, fitKey, marks, onReady, onMoveMark, onRemoveMark,
-  ariaLabel, failedText,
+  ariaLabel, failedText, navigation = null,
 }: EvacuationMapProps) {
   const t = useMapText();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -315,7 +325,9 @@ function MapboxView({
     const source = mapRef.current?.getSource<GeoJSONSource>("routes");
     if (!loaded || !source) return;
     const features: GeoJSON.Feature[] = [];
-    if (plan) {
+    if (navigation) {
+      if (navigation.path.length >= 2) features.push(line(navigation.path, navigation.kind));
+    } else if (plan) {
       const { shelter, escape } = plan;
       if (shelter.kind === "route") features.push(line(shelter.route.path, "shelter"));
       else if (shelter.kind === "routing-unavailable" && origin) features.push(line([origin, shelter.shelter], "shelter-guide"));
@@ -328,7 +340,25 @@ function MapboxView({
       }
     }
     source.setData({ type: "FeatureCollection", features });
-  }, [plan, origin, hazards, loaded]);
+  }, [plan, origin, hazards, loaded, navigation]);
+
+  // Navigation camera: follow the position, tilted and turned to the direction of travel, like a maps app.
+  const navigating = navigation !== null;
+  const navCenter = navigation?.center ?? null;
+  const navBearing = navigation?.bearing ?? 0;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!loaded || !map) return;
+    if (!navigating) {
+      if (map.getPitch() !== 0 || map.getBearing() !== 0) map.easeTo({ pitch: 0, bearing: 0, duration: 600 });
+      return;
+    }
+    if (!navCenter) return;
+    map.easeTo({
+      center: toLngLat(navCenter), bearing: navBearing, pitch: 50, zoom: 17, duration: 900,
+      padding: navigationPadding(map.getContainer()),
+    });
+  }, [navigating, navCenter, navBearing, loaded]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -389,6 +419,12 @@ function MapboxView({
       {failed && <MapNotice text={failedText ?? t.mapFailed} />}
     </>
   );
+}
+
+/** While navigating, keep the position below the maneuver banner and above the trip card. */
+function navigationPadding(container: HTMLElement) {
+  const height = container.clientHeight;
+  return { top: Math.min(160, height * 0.25), bottom: Math.min(260, height * 0.35), left: 24, right: 24 };
 }
 
 /** Keep fitted routes clear of the directions drawer: the side card on wide screens, the raised sheet on phones. */

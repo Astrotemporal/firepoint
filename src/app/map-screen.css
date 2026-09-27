@@ -316,3 +316,32 @@
 .ev-pub-legend-grey { background: none; border: 2px dashed var(--ev-muted); }
 .ev-pub-legend-yellow { background: #f59e0b; border: 2px solid #d97706; opacity: .85; }
 .ev-pub-legend-red { background: var(--ev-escape-bg, #9a3412); border: 2px solid var(--ev-escape-bg, #7c2d12); opacity: .85; }
+
+/* In-app navigation (routing prototype): maneuver banner over the map, trip card along the bottom. */
+.ev-nav { position: absolute; inset: 0; z-index: 1100; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 12px calc(12px + env(safe-area-inset-bottom, 0px)); }
+.ev-nav > * { pointer-events: auto; }
+.ev-nav-banner { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: 18px; color: #fff; box-shadow: 0 4px 18px rgba(0, 0, 0, .28); }
+.ev-nav-escape .ev-nav-banner { background: var(--ev-escape-bg); }
+.ev-nav-shelter .ev-nav-banner { background: var(--ev-shelter-bg); }
+.ev-nav-banner-done { background: #166534 !important; }
+.ev-nav-turn { flex: none; width: 52px; height: 52px; display: grid; place-items: center; }
+.ev-nav-turn .ev-step-icon, .ev-nav-turn .ev-icon { width: 46px; height: 46px; margin: 0; color: #fff; }
+.ev-nav-instruction { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ev-nav-distance { font-size: 30px; line-height: 1.05; font-weight: 800; letter-spacing: -.02em; }
+.ev-nav-text { font-size: 19px; line-height: 1.3; font-weight: 700; overflow-wrap: anywhere; }
+.ev-nav-status { font-size: 13px; font-weight: 700; opacity: .85; }
+.ev-nav-card { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px 14px; padding: 16px 18px; border-radius: 18px;
+  background: var(--ev-surface); color: var(--ev-ink); box-shadow: 0 4px 18px rgba(0, 0, 0, .22); }
+.ev-nav-trip { min-width: 0; }
+.ev-nav-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; color: var(--ev-text); font-size: 15px; }
+.ev-nav-summary strong { color: var(--ev-ink); font-size: 24px; font-weight: 800; }
+.ev-nav-destination { display: block; margin-top: 2px; color: var(--ev-muted); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ev-nav-end { min-width: 84px; min-height: 48px; padding: 0 20px; border: 0; border-radius: 999px; background: #b91c1c; color: #fff; font-size: 17px; font-weight: 700; }
+.ev-nav-end:hover { background: #991b1b; }
+.ev-nav-note { grid-column: 1 / -1; margin: 2px 0 0; font-size: 13px; line-height: 1.45; color: var(--ev-text); }
+.ev-nav-caution { color: var(--ev-muted); }
+@media (min-width: 760px) {
+  .ev-nav { align-items: flex-start; padding-left: 16px; }
+  .ev-nav-banner, .ev-nav-card { width: 400px; }
+}
