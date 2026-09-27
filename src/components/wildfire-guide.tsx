@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { DEFENSIBLE_SPACE_BANDS, RING_DASH, ringStack } from "@/domain/ring-visual";
 import { PHOTOS, SOURCES, TERMS, ZONES, type GuideContent, type Source } from "@/domain/wildfire-guide";
 import { guideContent } from "@/domain/guide-content";
 import type { Locale } from "@/i18n/locales";
@@ -70,10 +71,13 @@ function Columns({ groups, tone }: { groups: readonly Group[]; tone?: "dark" }) 
 /** Concentric defensible-space rings, drawn to scale (30 / 100 / 200 ft). */
 function ZoneRings({ c }: { c: GuideContent }) {
   const scale = 0.9;
+  // The ring-visual contract sets the drawing order and the dashed outer edge (shared with the map's private halos).
+  const bands = ringStack(DEFENSIBLE_SPACE_BANDS);
   return (
     <svg className="g-rings" viewBox="-190 -190 380 380" role="img" aria-label={c.ui.ringsLabel}>
-      {[...ZONES].reverse().map((zone, i) => (
-        <circle key={zone.name} r={zone.feet * scale} className={`g-ring g-ring-${3 - i}`} />
+      {bands.map((edge) => (
+        <circle key={edge.ring.name} r={edge.radius * scale} className={`g-ring g-ring-${edge.ring.band}`}
+          strokeDasharray={edge.dashed ? RING_DASH.join(" ") : undefined} />
       ))}
       <rect x="-9" y="-9" width="18" height="18" className="g-house" />
       {ZONES.map((zone) => (

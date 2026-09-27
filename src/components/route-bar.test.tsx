@@ -124,7 +124,7 @@ describe("RouteBar", () => {
     const html = render({ hazards: [], threat: null, escapeFirst: false, escapeRequested: false,
       plan: { ...plan, escape: { kind: "not-requested" } } });
     expect(html).toContain('lang="en"');
-    expect(html).toContain("Dashed private mark halos are sketches, not reports, fire extents, evacuation zones or routing hazards.");
+    expect(html).toContain("Dashed grey private mark halos are sketches, not reports, fire extents, evacuation zones or routing hazards.");
     expect(html).toContain("this is not an all-clear");
     expect(html).not.toContain("Take the escape route.");
   });
