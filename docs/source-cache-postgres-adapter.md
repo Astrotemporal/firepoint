@@ -15,17 +15,24 @@ A generation cannot become visible before its records and retractions. The
 to a shared or production Neon database without a separate audited plan.
 
 The adapter verifies issuer with a registry row lock and scopes database
-queries by tenant, jurisdiction, registry ID, and issuer. The port's attempt
-value has no issuer field. The adapter receives a trusted server-side scope;
-it is **not an authentication layer**. Any future caller or route must verify
-its authority to supply that issuer scope. There is no route or composition
-factory in this draft.
+queries by tenant, jurisdiction, registry ID, and issuer. A complete generation
+must carry the exact registry source URL, but this only enforces stored lineage;
+it does **not** authenticate a publisher or prove that its data were fetched.
+The port's attempt value has no issuer field. The adapter receives a trusted
+server-side scope; it is **not an authentication layer**. Verified caller
+issuer authority and a vetted publisher URL/source allowlist are **hard
+activation blockers** for any live adapter wiring or public route. There is
+no route or composition factory in this draft.
 
 `getLastGoodGeneration` returns historical provenance. It is **not** a live
-status or all-clear. `listCurrentRecords` returns only latest complete snapshot
-records with strictly future generation and provenance expiry. Null expiry or
-expired data are hidden, including standing reference records until a separate
-reviewed freshness policy exists. Missing or malformed rows raise errors via
+status or all-clear. The potentially public-facing `listCurrentRecords` returns
+records **only** when registry rights are `redistribution-approved`; storage-only
+approval permits snapshot storage but does not permit readout through this port.
+A complete commit also requires `validated-complete-for-scope` coverage before
+any empty-result or missing-ID retraction. It returns only latest complete
+snapshot records with strictly future generation
+and provenance expiry. Null expiry or expired data are hidden, including standing
+reference records until a separate reviewed freshness policy exists. Missing or malformed rows raise errors via
 Zod rather than becoming a success state. Zero-row complete snapshots remain
 `not-all-clear`; failed/incomplete attempts preserve last-good and do not
 retract. Readers must still show source issue/update times and source-health
@@ -36,5 +43,8 @@ fixtures and 0100/0101. Local equivalent (only against your own disposable DB):
 `SOURCE_CACHE_TEST_DATABASE_URL=postgres://... npx vitest run src/server/source-cache-postgres.integration.test.ts`.
 It covers rollback after a later insert fails, stale concurrent commits,
 issuer isolation, synthetic malformed stored data, failure preservation,
-zero complete snapshot retraction, and expired reads. It does not prove
+zero complete snapshot retraction, storage-only rights denial, denied partial/unverified
+coverage, disallowed kinds, denied empty snapshots, forged registry URL, and
+expired/null-TTL reads. Separate synthetic tests discard connections on failed
+ROLLBACK/indeterminate COMMIT. It does not prove
 hosted Neon TCP operation, publisher coverage/rights, or production readiness.

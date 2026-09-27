@@ -52,17 +52,31 @@ export class PostgresSourceCacheStorage implements SourceCacheStorage {
   constructor(private readonly pool: Pool) {}
   private async transaction<T>(operation: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
+    let begun = false;
+    let committing = false;
+    let discard = false;
     try {
       await client.query("BEGIN");
-      try {
-        const result = await operation(client);
-        await client.query("COMMIT");
-        return result;
-      } catch (error) {
-        try { await client.query("ROLLBACK"); } catch { /* original error takes priority */ }
+      begun = true;
+      const result = await operation(client);
+      committing = true;
+      await client.query("COMMIT");
+      begun = false;
+      return result;
+    } catch (error) {
+      // COMMIT transport failure has indeterminate outcome; do not claim rollback.
+      // Never reuse that client or a connection whose ROLLBACK fails.
+      if (committing || !begun) {
+        discard = true;
         throw error;
       }
-    } finally { client.release(); }
+      try { await client.query("ROLLBACK"); }
+      catch (rollbackError) {
+        discard = true;
+        throw new AggregateError([error, rollbackError], "source transaction failed and rollback failed");
+      }
+      throw error;
+    } finally { client.release(discard); }
   }
   private async lockedRegistry(client: PoolClient, s: SourceIssuerScope, id: string): Promise<SourceRegistry> {
     const found = await client.query<Row>(`select * from source_registry where id=$1 and tenant_id=$2
@@ -97,7 +111,7 @@ export class PostgresSourceCacheStorage implements SourceCacheStorage {
       and g.source_registry_id=rec.source_registry_id and g.tenant_id=rec.tenant_id
       and g.jurisdiction_id=rec.jurisdiction_id and g.issuer=rec.provenance_issuer
       where rec.source_registry_id=$1 and rec.tenant_id=$2 and rec.jurisdiction_id=$3
-      and rec.provenance_issuer=$4 and r.rights_status in ('storage-approved','redistribution-approved')
+      and rec.provenance_issuer=$4 and r.rights_status='redistribution-approved'
       and rec.status='current' and g.complete_snapshot=true
       and rec.provenance_expires_at > now() and g.expires_at > now()
       and g.id = (select latest.id from source_generation latest where latest.source_registry_id=$1
@@ -163,6 +177,14 @@ export class PostgresSourceCacheStorage implements SourceCacheStorage {
       const registry = await this.lockedRegistry(client, s, g.sourceRegistryId);
       if (registry.rightsStatus !== "storage-approved" && registry.rightsStatus !== "redistribution-approved")
         throw new Error("source storage rights not approved");
+      // A partial/unverified registry cannot claim exhaustive omission or empty
+      // retraction even if the attempt payload asserts completeSnapshot=true.
+      if (registry.coverageStatus !== "validated-complete-for-scope")
+        throw new Error("complete snapshot requires validated registry coverage");
+      // Registry identity is immutable for issuer/scope; exact stored URL is
+      // required too. This is lineage consistency, NOT source authentication.
+      if (g.sourceUrl !== registry.sourceUrl)
+        throw new Error("source generation URL differs from registry");
       if (records.some((record) => !registry.recordKinds.includes(record.kind)) ||
         (records.length === 0 && (!a.emptyOk || !registry.emptyOk)))
         throw new Error("source kind or empty snapshot not approved");

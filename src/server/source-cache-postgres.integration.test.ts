@@ -20,7 +20,7 @@ let firstRecordId = "";
 let firstAttemptId = "";
 let firstGenerationId = "";
 
-function snapshot(number: number, minute: number, names: string[], expiry = stamp(120)) {
+function snapshot(number: number, minute: number, names: string[], expiry: string | null = stamp(120)) {
   const id = randomUUID(), attemptId = randomUUID();
   const attempt: SourceFetchAttempt = {
     tenantId, jurisdictionId: scope.jurisdictionId, id: attemptId, sourceRegistryId: registryId,
@@ -61,7 +61,7 @@ describe.skipIf(!url || !storage || !pool)("source cache atomic adapter on dispo
       rights_status,empty_ok,empty_result_meaning,production_auto_polling_enabled,
       notes,created_at,updated_at)
       values ($1,$2,$3,'synthetic-fixture','official-live-candidate','Synthetic fixture',$4,$5,
-      array['shelter-status'],'validated-complete-for-scope','storage-approved',true,
+      array['shelter-status'],'validated-complete-for-scope','redistribution-approved',true,
       'not-all-clear',false,'disposable tests only',$6,$6)`,
     [registryId,tenantId,scope.jurisdictionId,scope.issuer,sourceUrl,stamp(-130)]);
   });
@@ -91,9 +91,12 @@ describe.skipIf(!url || !storage || !pool)("source cache atomic adapter on dispo
     expect(await storage!.listCurrentRecords(alternate, registryId)).toEqual([]);
     const state = await pool!.query("select status from source_fetch_attempt where id=$1", [firstAttemptId]);
     expect(state.rows[0].status).toBe("succeeded-non-empty");
+    await pool!.query("update source_registry set rights_status='storage-approved' where id=$1", [registryId]);
+    expect(await storage!.listCurrentRecords(scope, registryId)).toEqual([]);
+    expect((await storage!.getLastGoodGeneration(scope, registryId))?.id).toBe(firstGenerationId);
     await pool!.query("update source_registry set rights_status='unresolved' where id=$1", [registryId]);
     expect(await storage!.listCurrentRecords(scope, registryId)).toEqual([]);
-    await pool!.query("update source_registry set rights_status='storage-approved' where id=$1", [registryId]);
+    await pool!.query("update source_registry set rights_status='redistribution-approved' where id=$1", [registryId]);
   });
   it("rolls back attempt transition, generation, and first insert if a later insert fails", async () => {
     const input = snapshot(2, -90, ["gamma", "delta"]);
@@ -135,6 +138,44 @@ describe.skipIf(!url || !storage || !pool)("source cache atomic adapter on dispo
     const old = await pool!.query("select status from source_record where id=$1", [firstRecordId]);
     expect(["superseded", "retracted"]).toContain(old.rows[0].status);
   });
+  it("rejects complete omissions under unverified, incomplete, or partial coverage without mutating current data", async () => {
+    const candidate = snapshot(3, -65, []);
+    await storage!.createFetchAttempt(scope, started(candidate.attempt));
+    const before = await storage!.listCurrentRecords(scope, registryId);
+    expect(before.length).toBeGreaterThan(0);
+    for (const coverage of ["unverified", "incomplete", "validated-partial"]) {
+      await pool!.query("update source_registry set coverage_status=$1 where id=$2", [coverage, registryId]);
+      await expect(storage!.commitCompleteSnapshot(scope, candidate)).rejects.toThrow("coverage");
+      expect((await pool!.query("select status from source_fetch_attempt where id=$1", [candidate.attempt.id])).rows[0].status).toBe("started");
+      expect((await pool!.query("select id from source_generation where id=$1", [candidate.generation.id])).rows).toEqual([]);
+      expect((await storage!.getLastGoodGeneration(scope, registryId))?.id).toBe(lastGood);
+      expect(await storage!.listCurrentRecords(scope, registryId)).toEqual(before);
+    }
+    await pool!.query("update source_registry set coverage_status='validated-complete-for-scope' where id=$1", [registryId]);
+  });
+  it("rejects storage rights, disallowed kinds, empty opt-in, and forged registry URL without mutation", async () => {
+    const empty = snapshot(3, -64, []);
+    const nonempty = snapshot(3, -63, ["synthetic-disallowed-kind"]);
+    const forged = snapshot(3, -62, ["synthetic-forged-url"]);
+    forged.generation.sourceUrl = "https://example.org/forged-synthetic-only";
+    forged.records[0]!.provenance.sourceUrl = forged.generation.sourceUrl;
+    const before = await storage!.listCurrentRecords(scope, registryId);
+    for (const candidate of [empty, nonempty, forged]) await storage!.createFetchAttempt(scope, started(candidate.attempt));
+    await pool!.query("update source_registry set rights_status='preview-only' where id=$1", [registryId]);
+    await expect(storage!.commitCompleteSnapshot(scope, empty)).rejects.toThrow("rights");
+    await pool!.query("update source_registry set rights_status='redistribution-approved', empty_ok=false where id=$1", [registryId]);
+    await expect(storage!.commitCompleteSnapshot(scope, empty)).rejects.toThrow("empty");
+    await pool!.query("update source_registry set empty_ok=true, record_kinds=array['standing-reference'] where id=$1", [registryId]);
+    await expect(storage!.commitCompleteSnapshot(scope, nonempty)).rejects.toThrow("kind");
+    await pool!.query("update source_registry set record_kinds=array['shelter-status'] where id=$1", [registryId]);
+    await expect(storage!.commitCompleteSnapshot(scope, forged)).rejects.toThrow("URL");
+    for (const candidate of [empty, nonempty, forged]) {
+      expect((await pool!.query("select status from source_fetch_attempt where id=$1", [candidate.attempt.id])).rows[0].status).toBe("started");
+      expect((await pool!.query("select id from source_generation where id=$1", [candidate.generation.id])).rows).toEqual([]);
+    }
+    expect((await storage!.getLastGoodGeneration(scope, registryId))?.id).toBe(lastGood);
+    expect(await storage!.listCurrentRecords(scope, registryId)).toEqual(before);
+  });
   it("retracts every absent current ID on a complete zero-row snapshot; never all-clear", async () => {
     const input = snapshot(3, -60, []);
     await storage!.createFetchAttempt(scope, started(input.attempt));
@@ -152,6 +193,14 @@ describe.skipIf(!url || !storage || !pool)("source cache atomic adapter on dispo
     await storage!.createFetchAttempt(scope, started(input.attempt));
     await storage!.commitCompleteSnapshot(scope, input);
     expect((await storage!.getLastGoodGeneration(scope, registryId))?.expiresAt).toBe(stamp(-1));
+    expect(await storage!.listCurrentRecords(scope, registryId)).toEqual([]);
+    lastGood = input.generation.id;
+  });
+  it("keeps null TTL provenance historical but unavailable to public current reads", async () => {
+    const input = snapshot(5, -20, ["no-explicit-expiry"], null);
+    await storage!.createFetchAttempt(scope, started(input.attempt));
+    await storage!.commitCompleteSnapshot(scope, input);
+    expect((await storage!.getLastGoodGeneration(scope, registryId))?.expiresAt).toBeNull();
     expect(await storage!.listCurrentRecords(scope, registryId)).toEqual([]);
   });
 });
