@@ -108,6 +108,7 @@ export function PublicMapScreen({ locale = "en", localized = null }: PublicMapSc
             ariaLabel={PUBLIC_MAP_LABEL} failedText={PUBLIC_MAP_FAILED}
             onMoveMark={(id, lat, lng) => save(moveMark(marks, id, lat, lng))}
             onRemoveMark={(id) => { save(marks.filter((mark) => mark.id !== id)); setHint(t.markRemoved); }}
+            reportActivity={null}
           />
         ) : (
           <div lang="en" className="ev-map ev-map-notice" role="status"><p>{PUBLIC_NO_TOKEN}</p></div>
