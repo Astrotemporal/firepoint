@@ -42,7 +42,10 @@ export const AggregationConfigSchema = z.object({
   minReportsPerCell: z.number().int().min(3).max(50),
   /** Counts saturate here so that volume cannot visually escalate authority. Must be >= minReportsPerCell. */
   countCap: z.number().int().min(3).max(100),
-  /** Named service coverage. Observations outside are excluded, never silently mapped elsewhere. */
+  /**
+   * Named service coverage, half-open on the east/north edge. Every bound must sit on the cell
+   * grid so no published cell can extend beyond coverage. Observations outside are excluded.
+   */
   coverage: z.object({
     description: z.string().min(1),
     bounds: z.tuple([z.tuple([Longitude, Latitude]), z.tuple([Longitude, Latitude])]), // [[west, south], [east, north]]
@@ -51,6 +54,13 @@ export const AggregationConfigSchema = z.object({
   const [[west, south], [east, north]] = config.coverage.bounds;
   if (west >= east || south >= north) {
     ctx.addIssue({ code: "custom", path: ["coverage", "bounds"], message: "bounds must be [[west, south], [east, north]]" });
+  }
+  for (const [index, value] of [west, south, east, north].entries()) {
+    const ratio = value / config.cellSizeDegrees;
+    if (Math.abs(ratio - Math.round(ratio)) > 1e-9) {
+      ctx.addIssue({ code: "custom", path: ["coverage", "bounds", Math.floor(index / 2), index % 2],
+        message: "coverage bounds must be multiples of cellSizeDegrees" });
+    }
   }
   if (config.minReportsPerCell > config.countCap) {
     ctx.addIssue({ code: "custom", path: ["minReportsPerCell"], message: "threshold cannot exceed the count cap" });
@@ -82,12 +92,19 @@ export const AggregationInputSchema = z.object({
   rightsReviewed: z.boolean(),
   /** Only moderated, published observations. Raw submissions and private marks do not parse. */
   observations: z.array(PublishedObservationSchema).max(10_000),
-}).strict();
+}).strict().superRefine((input, ctx) => {
+  // A repeated id is a caller bug (or a replay), not a record to pick from. Reject the whole input.
+  const ids = new Set<string>();
+  for (const [index, item] of input.observations.entries()) {
+    if (ids.has(item.id)) ctx.addIssue({ code: "custom", path: ["observations", index, "id"], message: `duplicate observation id ${item.id}` });
+    ids.add(item.id);
+  }
+});
 export type AggregationInput = z.infer<typeof AggregationInputSchema>;
 
 export const ExclusionReasonSchema = z.enum([
   "no-public-point", "precision-coarser-than-cell", "outside-coverage", "expired",
-  "future-dated", "published-after-attestation", "duplicate-id",
+  "future-dated", "published-after-attestation",
 ]);
 export type ExclusionReason = z.infer<typeof ExclusionReasonSchema>;
 
@@ -218,7 +235,8 @@ function cellIndex(config: AggregationConfig, point: readonly [number, number]) 
 function insideBounds(config: AggregationConfig, point: readonly [number, number]): boolean {
   const [[west, south], [east, north]] = config.coverage.bounds;
   const [longitude, latitude] = point;
-  return longitude >= west && longitude <= east && latitude >= south && latitude <= north;
+  // Half-open on the max edge: a point exactly on east/north would floor into a cell outside coverage.
+  return longitude >= west && longitude < east && latitude >= south && latitude < north;
 }
 
 function countBin(count: number): z.infer<typeof CountBin> {
@@ -237,17 +255,16 @@ export function aggregateObservations(rawInput: unknown): AggregationResult {
   const input = AggregationInputSchema.parse(rawInput);
   const { config, moderation, now, rightsReviewed } = input;
   const nowMs = Date.parse(now);
-  const inputObservationIds = input.observations.map((item) => item.id).sort();
-  const seen = new Set<string>();
+  // Ids are unique (schema) so id order is a total order: every later step is independent of input order.
+  const observations = [...input.observations].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  const inputObservationIds = observations.map((item) => item.id);
   const excluded: { id: string; reason: ExclusionReason }[] = [];
   const counted: typeof input.observations = [];
   const cellSizeMeters = config.cellSizeDegrees * METERS_PER_DEGREE;
   const attestedAtMs = moderation.status === "attested" ? Date.parse(moderation.attestedAt) : null;
 
-  for (const item of input.observations) {
+  for (const item of observations) {
     const exclude = (reason: ExclusionReason) => excluded.push({ id: item.id, reason });
-    if (seen.has(item.id)) { exclude("duplicate-id"); continue; }
-    seen.add(item.id);
     const effectiveAt = Date.parse(item.observedAt ?? item.publishedAt);
     if (item.approximatePoint === null || item.precisionMeters === null) { exclude("no-public-point"); continue; }
     if (item.precisionMeters > cellSizeMeters) { exclude("precision-coarser-than-cell"); continue; }

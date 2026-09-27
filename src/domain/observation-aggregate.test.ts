@@ -99,16 +99,25 @@ describe("observation aggregate", () => {
     expect(audit.sourceTimes.latestPublishedAt).toBe("2026-01-01T01:30:00.000Z");
   });
 
-  it("saturates counts so volume cannot escalate, and treats one id repeated as one observation", () => {
+  it("saturates counts so volume cannot escalate", () => {
     const many = Array.from({ length: 14 }, () => observation());
-    const { aggregate, audit } = run([...many, { ...many[0] }]);
+    const { aggregate, audit } = run(many);
     expect(aggregate.state).toBe("published");
     if (aggregate.state !== "published") return;
     expect(aggregate.cells[0]).toMatchObject({ reportCount: 10, countSaturated: true, countBin: "10+" });
-    expect(aggregate.provenance.exclusionCounts["duplicate-id"]).toBe(1);
     expect(aggregate.provenance.countedObservationCount).toBe(14);
-    expect(aggregate.provenance.offeredObservationCount).toBe(15);
-    expect(audit.excluded).toEqual([{ id: many[0]!.id, reason: "duplicate-id" }]);
+    expect(aggregate.provenance.offeredObservationCount).toBe(14);
+    expect(audit.excluded).toEqual([]);
+  });
+
+  it("rejects the whole input on a repeated id, whatever the order or eligibility of the copies", () => {
+    const valid = observation();
+    const outside = { ...observation(), id: valid.id, approximatePoint: [5, 5] };
+    const others = [observation(), observation()];
+    expect(() => run([valid, outside, ...others])).toThrow(/duplicate observation id/);
+    expect(() => run([outside, valid, ...others])).toThrow(/duplicate observation id/);
+    expect(() => run([...others, { ...valid }, valid])).toThrow(/duplicate observation id/);
+    expect(run([valid, ...others]).aggregate.state).toBe("published");
   });
 
   it("excludes each ineligible observation with a named reason, publicly as nothing when withheld", () => {
@@ -189,8 +198,42 @@ describe("observation aggregate", () => {
     expect(AggregationConfigSchema.safeParse({ ...config, configVersion: "" }).success).toBe(false);
   });
 
-  it("is deterministic regardless of input order", () => {
-    const inputs = [observation(), observation(), observation()];
-    expect(run([...inputs].reverse())).toEqual(run(inputs));
+  it("is deterministic across every permutation of eligible and ineligible inputs, audit included", () => {
+    const inputs = [
+      observation(), observation({ approximatePoint: [5, 5] }), observation(),
+      observation({ observedAt: "2025-12-31T10:00:00Z" }), observation(),
+    ];
+    const permutations = (items: typeof inputs): (typeof inputs)[] => items.length <= 1 ? [items]
+      : items.flatMap((item, i) => permutations([...items.slice(0, i), ...items.slice(i + 1)]).map((rest) => [item, ...rest]));
+    const reference = run(inputs);
+    expect(reference.aggregate.state).toBe("published");
+    for (const order of permutations(inputs)) expect(run(order)).toEqual(reference);
+    expect(reference.audit.excluded.map((item) => item.id)).toEqual([inputs[1]!.id, inputs[3]!.id].sort());
+  });
+
+  it("treats coverage as half-open so no published cell can extend beyond it, on every edge", () => {
+    const square = { cellSizeDegrees: 0.5, coverage: { description: "SYNTHETIC TEST ONLY", bounds: [[-1, -1], [1, 1]] } };
+    const cellsFor = (point: [number, number]) => {
+      const { aggregate } = run([observation({ approximatePoint: point }), observation({ approximatePoint: point }), observation({ approximatePoint: point })], attested, square);
+      return aggregate.state === "published" ? aggregate.cells.map((cell) => cell.cellBounds) : aggregate.reason;
+    };
+    expect(cellsFor([1, 1])).toBe("no-eligible-observations");
+    expect(cellsFor([1, 0])).toBe("no-eligible-observations");
+    expect(cellsFor([0, 1])).toBe("no-eligible-observations");
+    expect(cellsFor([0.999999, 0.999999])).toEqual([[[0.5, 0.5], [1, 1]]]);
+    expect(cellsFor([-1, -1])).toEqual([[[-1, -1], [-0.5, -0.5]]]);
+    expect(cellsFor([-0.25, 0.75])).toEqual([[[-0.5, 0.5], [0, 1]]]);
+    expect(cellsFor([-1.000001, 0])).toBe("no-eligible-observations");
+    expect(cellsFor([0, -1.000001])).toBe("no-eligible-observations");
+    for (const point of [[-1, -1], [-0.5, 0.5], [0.999999, -1], [0, 0]] as [number, number][]) {
+      const bounds = cellsFor(point);
+      expect(Array.isArray(bounds)).toBe(true);
+      if (!Array.isArray(bounds)) continue;
+      for (const [[w, s], [e, n]] of bounds) {
+        expect(w).toBeGreaterThanOrEqual(-1); expect(s).toBeGreaterThanOrEqual(-1);
+        expect(e).toBeLessThanOrEqual(1); expect(n).toBeLessThanOrEqual(1);
+      }
+    }
+    expect(AggregationConfigSchema.safeParse({ ...config, ...square, coverage: { description: "x", bounds: [[-1, -1], [0.75, 1]] } }).success).toBe(false);
   });
 });
