@@ -30,7 +30,18 @@ describe("wildfire guide page", () => {
     for (const { term } of TERMS) expect(text).toContain(term);
     expect(html).toContain(SOURCES.terms.url);
     expect(html).toContain(SOURCES.zone.url);
+    expect(html).toContain(SOURCES.genasys.url.replaceAll("&", "&amp;"));
+    expect(text).toContain("centered on Glendale");
+    expect(text).toContain("not a Firepoint zone lookup");
     expect(html).toContain(SOURCES.alerts.url);
+  });
+
+  it("keeps the unreviewed English Genasys caution out of translated source lists", () => {
+    for (const locale of ["es", "hy"] as const) {
+      const localized = renderToStaticMarkup(<WildfireGuide locale={locale} />);
+      expect(localized).not.toContain(SOURCES.genasys.url.replaceAll("&", "&amp;"));
+      expect(localized).toContain(SOURCES.zone.url);
+    }
   });
 
   it("shows each photo with alt text and a public-domain credit link", () => {
@@ -90,6 +101,8 @@ describe("offline fallback", () => {
     expect(sw).toContain('url.pathname.startsWith("/api/")');
     expect(sw).toContain('caches.match("/offline.html")');
     expect(offline).toContain("not checked");
+    expect(offline).toContain(SOURCES.genasys.url.replaceAll("&", "&amp;"));
+    expect(offline).toContain("It is not a Firepoint zone lookup");
     expect(offline).not.toContain('type="checkbox"');
   });
 });
