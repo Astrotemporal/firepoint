@@ -183,7 +183,8 @@ export type StandingHazardFeed = z.infer<typeof StandingHazardFeedSchema>;
 export const PublishedObservationSchema = z.object({
   kind: z.literal("community-observation"),
   id: Id,
-  topic: z.enum(["smoke", "flooding", "road-obstruction", "utility", "other"]),
+  /** What the resident says they saw. A topic is a claim, not a confirmed hazard type. */
+  topic: z.enum(["fire", "smoke", "flooding", "wind-damage", "road-obstruction", "utility", "other"]),
   redactedText: z.string().min(1).max(1200),
   observedAt: Instant.nullable(),
   publishedAt: Instant,
