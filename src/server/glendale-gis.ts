@@ -9,7 +9,19 @@ import { isoOrNull } from "./calfire";
 export const GLENDALE_GIS_DEFAULT_URL = "https://glendale-gis-mcp-1053589358088.us-west2.run.app/mcp";
 export const GLENDALE_GIS_PROJECT_URL = "https://github.com/HackerFund/GlendaleGisMcp";
 
-export type GisFailure = "http_error" | "unauthorized" | "rate_limited" | "timeout" | "network_error" | "invalid_response" | "tool_error";
+export type GisFailure =
+  | "http_error" | "unauthorized" | "rate_limited" | "timeout" | "network_error" | "invalid_response" | "tool_error"
+  | "redirected" | "bad_content_type" | "oversize";
+
+/**
+ * Bounds on one adapter call. The request is one fixed `tools/call` (about 150 bytes); the
+ * reply is seven hazard layers with nearest-zone attributes, tens of kilobytes in the pinned
+ * upstream (59beb340). 1 MiB leaves an order of magnitude of headroom while keeping a broken
+ * or hostile upstream from filling a serverless function's memory. Reads stop at the limit.
+ */
+export const GIS_MAX_RESPONSE_BYTES = 1024 * 1024;
+export const GIS_DEFAULT_TIMEOUT_MS = 10_000;
+const ACCEPTED_CONTENT_TYPES = ["application/json", "text/event-stream"] as const;
 
 const text = z.string().nullable().optional();
 const layerSchema = z.object({
@@ -43,11 +55,17 @@ const hazardsSchema = z.object({
 
 export type GisHazardsResult =
   | { status: "ok"; checkedAt: string; snapshotAsOf: string | null; anyStale: boolean; inCity: boolean | null; hazards: StandingHazard[] }
-  | { status: "unavailable"; attemptedAt: string; reason: GisFailure; httpStatus?: number };
+  | { status: "unavailable"; attemptedAt: string; reason: GisFailure; httpStatus?: number; retryAfterSeconds?: number };
 
 /** Extract the JSON-RPC reply from a JSON or text/event-stream body. */
 export function parseRpcBody(body: string, contentType: string, id: number): unknown {
-  if (!contentType.includes("text/event-stream")) return JSON.parse(body);
+  if (!contentType.includes("text/event-stream")) {
+    const message: unknown = JSON.parse(body);
+    if (typeof message !== "object" || message === null || (message as { id?: unknown }).id !== id) {
+      throw new SyntaxError("JSON-RPC reply id does not match the request");
+    }
+    return message;
+  }
   for (const block of body.split(/\r?\n\r?\n/)) {
     const data = block.split(/\r?\n/).filter((line) => line.startsWith("data:")).map((line) => line.slice(5).trimStart()).join("\n");
     if (!data) continue;
@@ -65,6 +83,52 @@ const rpcReplySchema = z.union([
   }) }),
   z.object({ error: z.object({ message: z.string().optional() }).passthrough() }),
 ]);
+
+/** Media type without parameters, lower-cased: "text/event-stream; charset=utf-8" -> "text/event-stream". */
+export function mediaType(contentType: string | null): string {
+  return (contentType ?? "").split(";")[0]?.trim().toLowerCase() ?? "";
+}
+
+export type BoundedRead = { ok: true; text: string } | { ok: false; reason: "oversize" | "aborted" };
+
+/**
+ * Read a response body as UTF-8 text, stopping as soon as it exceeds `maxBytes`. A declared
+ * Content-Length above the limit is refused before any byte is read; an undeclared or lying
+ * length is caught while streaming, and the remaining body is cancelled, not drained.
+ */
+export async function readBounded(response: Response, maxBytes: number, signal?: AbortSignal): Promise<BoundedRead> {
+  const declared = Number(response.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > maxBytes) return { ok: false, reason: "oversize" };
+  if (!response.body) {
+    const text = await response.text();
+    return new TextEncoder().encode(text).byteLength > maxBytes ? { ok: false, reason: "oversize" } : { ok: true, text };
+  }
+  const reader = response.body.getReader();
+  const cancel = () => { reader.cancel().catch(() => undefined); };
+  signal?.addEventListener("abort", cancel, { once: true });
+  const decoder = new TextDecoder("utf-8");
+  let received = 0;
+  let text = "";
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (signal?.aborted) return { ok: false, reason: "aborted" };
+      if (done) break;
+      received += value.byteLength;
+      if (received > maxBytes) { cancel(); return { ok: false, reason: "oversize" }; }
+      text += decoder.decode(value, { stream: true });
+    }
+    text += decoder.decode();
+    return { ok: true, text };
+  } finally {
+    signal?.removeEventListener("abort", cancel);
+  }
+}
+
+function retryAfterSeconds(response: Response): number | undefined {
+  const value = Number(response.headers.get("retry-after"));
+  return Number.isInteger(value) && value > 0 && value <= 3600 ? value : undefined;
+}
 
 function httpsUrl(value: string | null | undefined): string | null {
   try {
@@ -118,21 +182,33 @@ export type FetchGisOptions = {
   apiKey: string;
   url?: string;
   fetcher?: typeof fetch;
+  /** Whole-call budget: connect, headers and body read. */
   timeoutMs?: number;
+  /** Upper bound on the reply body in bytes; larger replies are `oversize`, never partially parsed. */
+  maxResponseBytes?: number;
   now?: () => Date;
 };
 
-/** Mapped hazard designations at a point. Failures are explicit, never "not in a zone". */
+/**
+ * Mapped hazard designations at a point. Failures are explicit, never "not in a zone".
+ * Exactly one upstream request is made: redirects are refused rather than followed, so the
+ * bearer key only ever goes to the configured origin.
+ */
 export async function fetchGlendaleHazards({
-  point, apiKey, url = GLENDALE_GIS_DEFAULT_URL, fetcher = fetch, timeoutMs = 10_000, now = () => new Date(),
+  point, apiKey, url = GLENDALE_GIS_DEFAULT_URL, fetcher = fetch, timeoutMs = GIS_DEFAULT_TIMEOUT_MS,
+  maxResponseBytes = GIS_MAX_RESPONSE_BYTES, now = () => new Date(),
 }: FetchGisOptions): Promise<GisHazardsResult> {
   const key = apiKey.trim();
   if (!key || /[\r\n]/.test(key)) throw new TypeError("GLENDALE_GIS_MCP_KEY is not a usable key");
   if (!httpsUrl(url) && !/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(url)) {
     throw new TypeError("GLENDALE_GIS_MCP_URL must be HTTPS (or local HTTP for testing)");
   }
-  const failed = (reason: GisFailure, httpStatus?: number): GisHazardsResult => ({
-    status: "unavailable", attemptedAt: now().toISOString(), reason, ...(httpStatus !== undefined ? { httpStatus } : {}),
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1) throw new RangeError("timeoutMs must be a positive integer");
+  if (!Number.isSafeInteger(maxResponseBytes) || maxResponseBytes < 1) throw new RangeError("maxResponseBytes must be a positive integer");
+  const failed = (reason: GisFailure, extra: { httpStatus?: number; retryAfterSeconds?: number } = {}): GisHazardsResult => ({
+    status: "unavailable", attemptedAt: now().toISOString(), reason,
+    ...(extra.httpStatus !== undefined ? { httpStatus: extra.httpStatus } : {}),
+    ...(extra.retryAfterSeconds !== undefined ? { retryAfterSeconds: extra.retryAfterSeconds } : {}),
   });
   const id = 1;
   const controller = new AbortController();
@@ -153,11 +229,21 @@ export async function fetchGlendaleHazards({
       }),
       signal: controller.signal,
       cache: "no-store",
+      redirect: "manual",
     });
-    if (response.status === 401 || response.status === 403) return failed("unauthorized", response.status);
-    if (response.status === 429) return failed("rate_limited", 429);
-    if (!response.ok) return failed("http_error", response.status);
-    const reply = rpcReplySchema.safeParse(parseRpcBody(await response.text(), response.headers.get("content-type") ?? "", id));
+    if (response.type === "opaqueredirect" || (response.status >= 300 && response.status < 400)) {
+      return failed("redirected", { httpStatus: response.status || undefined });
+    }
+    if (response.status === 401 || response.status === 403) return failed("unauthorized", { httpStatus: response.status });
+    if (response.status === 429) return failed("rate_limited", { httpStatus: 429, retryAfterSeconds: retryAfterSeconds(response) });
+    if (!response.ok) return failed("http_error", { httpStatus: response.status });
+    const contentType = response.headers.get("content-type");
+    if (!(ACCEPTED_CONTENT_TYPES as readonly string[]).includes(mediaType(contentType))) {
+      return failed("bad_content_type", { httpStatus: response.status });
+    }
+    const body = await readBounded(response, maxResponseBytes, controller.signal);
+    if (!body.ok) return failed(body.reason === "oversize" ? "oversize" : "timeout", { httpStatus: response.status });
+    const reply = rpcReplySchema.safeParse(parseRpcBody(body.text, mediaType(contentType), id));
     if (!reply.success) return failed("invalid_response");
     if ("error" in reply.data || reply.data.result.isError) return failed("tool_error");
     const { result } = reply.data;

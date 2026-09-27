@@ -48,7 +48,7 @@ npm run build
 # or: make check
 ```
 
-The `Makefile` also has `make gis-fetch`/`make gis-local` developer-only MCP steps. GitHub Actions runs these four web checks for PRs and for `main` and `staging/source-backed` pushes, with no secret-dependent source calls. Report the result of each command separately. Lint, typecheck, tests, and build do not establish agency source coverage or operational readiness.
+The `Makefile` also has `make gis-fetch`/`make gis-local`/`make gis-stub`/`make gis-smoke` developer-only MCP steps. GitHub Actions runs these four web checks plus `npm run gis:smoke` (a loopback-only synthetic GIS stub; see [docs/glendale-gis-integration.md](docs/glendale-gis-integration.md)) for PRs and for `main` and `staging/source-backed` pushes, with no secret-dependent source calls. Report the result of each command separately. Lint, typecheck, tests, and build do not establish agency source coverage or operational readiness.
 
 **Branch trust boundary.** `main` is the public release lane. `staging/source-backed` is an integration lane for source-backed work before a public release decision. A successful GitHub Actions run on `staging/source-backed` certifies only that GitHub built, tested, smoke-checked, and captured artifacts for that exact staging commit. It is not proof that a Vercel Preview deployment exists, finished, or matches that commit; check Vercel separately.
 
