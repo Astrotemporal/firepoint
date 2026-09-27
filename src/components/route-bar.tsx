@@ -7,7 +7,7 @@ import { Icon, TurnIcon } from "./detail-icons";
 import shelterIcon from "./shelter-icon.png";
 import { useSheet } from "./use-sheet";
 import {
-  compassDirection, directionsUrl, formatDuration, formatMiles, formatShortDistance,
+  compassDirection, formatDuration, formatMiles, formatShortDistance,
 } from "@/evacuation/format";
 import { geocode, type GeocodeResult } from "@/evacuation/geocode";
 import { isApproximate, type LocationFix, type LocationState } from "@/evacuation/location";
@@ -31,7 +31,6 @@ export type RouteBarProps = {
   plan: RoutePlan<LocationFix> | null;
   pending: boolean;
   online: boolean;
-  appleMaps: boolean;
   /** The user has asked for an escape route; until then the button, not a route, is shown. */
   escapeRequested: boolean;
   onUseLocation: () => void;
@@ -39,6 +38,8 @@ export type RouteBarProps = {
   onRetryRoutes: () => void;
   onRequestEscape: () => void;
   onClearEscape: () => void;
+  /** Start in-app turn-by-turn navigation to that row's destination. */
+  onGo: (kind: "escape" | "shelter") => void;
 };
 
 type RowView = {
@@ -48,7 +49,7 @@ type RowView = {
   /** A quieter second line (time in bold, then distance). */
   sub?: ReactNode;
   danger?: boolean;
-  /** Where "Go" opens native directions; absent when no usable route should be offered. */
+  /** Where "Go" starts in-app navigation to; absent when no usable route should be offered. */
   goTo?: Shelter | SafeZone;
   details: ReactNode;
 };
@@ -106,7 +107,7 @@ export function RouteBar(props: RouteBarProps) {
             {escapeRequested ? (
               <ul className="ev-rows">
                 <EscapeRow
-                  view={escapeRow(props, t)} appleMaps={props.appleMaps} expanded={open === "escape"}
+                  view={escapeRow(props, t)} onGo={props.onGo} expanded={open === "escape"}
                   onToggle={() => setOpen(open === "escape" ? null : "escape")} onClear={clearEscape}
                 />
               </ul>
@@ -122,7 +123,7 @@ export function RouteBar(props: RouteBarProps) {
             {location.status !== "idle" && (
               <ul className="ev-rows">
                 <RouteRow
-                  kind="shelter" view={shelterRow(props, t)} appleMaps={props.appleMaps}
+                  kind="shelter" view={shelterRow(props, t)} onGo={props.onGo}
                   expanded={open === "shelter"} onToggle={() => setOpen(open === "shelter" ? null : "shelter")}
                 />
               </ul>
@@ -163,14 +164,6 @@ function EscapeFire() {
     </span>
   );
 }
-
-const FALLBACK_COPY = {
-  denied: "From Glendale City Hall · Location off",
-  prompt: "From Glendale City Hall",
-  unavailable: "Couldn’t find your location. Routes start from Glendale City Hall for now.",
-  insecure: "Location needs a secure (https://) page. Routes start from Glendale City Hall.",
-  unsupported: "This browser can’t share location. Routes start from Glendale City Hall.",
-} as const;
 
 function StatusLine({ location, outsideAreaMeters, online, pending, onUseLocation, onManualLocation, onEditing }: RouteBarProps & {
   onEditing: (editing: boolean) => void;
@@ -291,13 +284,13 @@ function AddressForm({ onLocated }: { onLocated: (place: GeocodeResult) => void 
 }
 
 /** Escape row: the normal route row plus a close control that brings the Escape button back (side card only; phones swipe down). */
-function EscapeRow({ view, appleMaps, expanded, onToggle, onClear }: {
-  view: RowView; appleMaps: boolean; expanded: boolean; onToggle: () => void; onClear: () => void;
+function EscapeRow({ view, onGo, expanded, onToggle, onClear }: {
+  view: RowView; onGo: RouteBarProps["onGo"]; expanded: boolean; onToggle: () => void; onClear: () => void;
 }) {
   const t = useMapText();
   return (
     <RouteRow
-      kind="escape" view={view} appleMaps={appleMaps} expanded={expanded} onToggle={onToggle}
+      kind="escape" view={view} onGo={onGo} expanded={expanded} onToggle={onToggle}
       action={
         <button type="button" className="ev-escape-close" aria-label={t.hideEscapeRoute} onClick={onClear}>
           <span aria-hidden="true">✕</span>
@@ -307,8 +300,8 @@ function EscapeRow({ view, appleMaps, expanded, onToggle, onClear }: {
   );
 }
 
-function RouteRow({ kind, view, appleMaps, expanded, onToggle, action }: {
-  kind: "escape" | "shelter"; view: RowView; appleMaps: boolean; expanded: boolean; onToggle: () => void; action?: ReactNode;
+function RouteRow({ kind, view, onGo, expanded, onToggle, action }: {
+  kind: "escape" | "shelter"; view: RowView; onGo: RouteBarProps["onGo"]; expanded: boolean; onToggle: () => void; action?: ReactNode;
 }) {
   const t = useMapText();
   const detailsId = useId();
@@ -331,9 +324,9 @@ function RouteRow({ kind, view, appleMaps, expanded, onToggle, action }: {
         </svg>
       </button>
       {view.goTo && (
-        <a className={`ev-go ev-go-${kind}`} href={directionsUrl(view.goTo, appleMaps)} target="_blank" rel="noopener noreferrer">
-          {t.go}<span className="ev-sr-only">{t.goTo(view.goTo.name, appleMaps ? "Apple Maps" : "Google Maps")}</span>
-        </a>
+        <button type="button" className={`ev-go ev-go-${kind}`} onClick={() => onGo(kind)}>
+          {t.go}<span className="ev-sr-only">{t.goTo(view.goTo.name)}</span>
+        </button>
       )}
       {action}
       <div id={detailsId} className="ev-row-details" hidden={!expanded}>{view.details}</div>
