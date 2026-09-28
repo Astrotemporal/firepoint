@@ -98,7 +98,7 @@ describe("early original-source links in English only", () => {
     expect(section).toContain(guideContent("en").ui.footerDisclaimer);
     expect(section).toContain("may fail offline");
     expect(section).toContain("coverage or jurisdiction for your location");
-    expect(section).toContain("does not check current orders or status");
+    expect(section).toContain("This page does not check current orders or status");
     expect(section).toContain("does not look up your evacuation zone");
     expect(section).toContain("do not imply a partnership");
     expect(section).not.toContain(guideContent("en").ui.sourcesLede);
