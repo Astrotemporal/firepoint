@@ -18,7 +18,7 @@ Set aside water, food, medicine, important contacts and document copies, a light
 
 #### Reduce risks at home
 
-Clear accumulated dry material where you can do so safely. Review roofs, vents, nearby plants and stored combustibles with a qualified local professional before changing structures or vegetation. Follow applicable local rules and property boundaries. This page does **not** calculate a defensible-space boundary or certify that a home will survive a fire. See the [LA County Fire Department's wildfire preparation page](https://fire.lacounty.gov/rsg/) (accessed 2026-09-27) and its [May 20, 2026 action-plan PDF](https://fire.lacounty.gov/wp-content/uploads/2026/05/Ready-Set-Go_5.20.26.pdf) for the publisher's detailed instructions; review the PDF's edition and rights before publication. Do not reproduce its diagrams, zone measurements, quotations, or checklists here without review.
+Clear accumulated dry material where you can do so safely. Review roofs, vents, nearby plants and stored combustibles with a qualified local professional before changing structures or vegetation. Follow applicable local rules and property boundaries. This page does **not** calculate a defensible-space boundary or certify that a home will survive a fire. For more information, visit the [LA County Fire Department's wildfire preparation page](https://fire.lacounty.gov/rsg/) and [linked action-plan PDF](https://fire.lacounty.gov/wp-content/uploads/2026/05/Ready-Set-Go_5.20.26.pdf).
 
 ### When conditions change
 
@@ -26,7 +26,7 @@ Look for notices from the agency responsible for *your* location. Follow any app
 
 ### Check the original source
 
-For Glendale, the [City Fire Department's Know Your Zone page](https://www.glendaleca.gov/government/departments/fire-department/other-links/emergency-preparedness-response/know-your-zone) and [City emergency communications page](https://www.glendaleca.gov/government/departments/fire-department/other/emergency-preparedness-response/city-wide-emergency-communications) are external starting points; *confirm the pages and their current instructions with the publisher*. Firepoint has not verified your address or zone. [California's evacuation-terms page](https://calalerts.org/evacuations.html) is a reference to consult at the source, not an order for this address. A link may not open offline. A saved copy is not a live notice or an all-clear.
+Find notices from the agency responsible for your location and check them at the original source. Firepoint has not verified your address or zone. A link may not open offline. A saved copy is not a live notice or an all-clear.
 
 ## Evidence and rights checks (2026-09-27 America/Los_Angeles)
 
@@ -34,10 +34,10 @@ For Glendale, the [City Fire Department's Know Your Zone page](https://www.glend
 | --- | --- | --- |
 | FEMA [Ready.gov: Wildfires](https://www.ready.gov/wildfires) | HTTP HEAD 200; page title `Wildfires \| Ready.gov` checked by GET. | Link to the original; original prose above, not an agency quotation or reproduction. |
 | [LA County Fire preparation page](https://fire.lacounty.gov/rsg/) | HEAD 200, but GET returned 403 to this environment. | Link only; human review needed for content and rights. |
-| [LA County Fire PDF](https://fire.lacounty.gov/wp-content/uploads/2026/05/Ready-Set-Go_5.20.26.pdf) | HEAD 200, `application/pdf`; dated *May 20, 2026* in the linked file name and existing guide attribution, not independently authenticated as publication date. | Link only; verify file edition, attribution, and rights with publisher. |
+| [LA County Fire action-plan PDF](https://fire.lacounty.gov/wp-content/uploads/2026/05/Ready-Set-Go_5.20.26.pdf) | HEAD 200, `application/pdf`; filename includes `5.20.26`. No publication/revision date independently verified. | Link only; verify edition, date, attribution, and rights with publisher. |
 | [LA County emergency information](https://lacounty.gov/emergency/) | HEAD and GET 200; page title `Emergency – COUNTY OF LOS ANGELES`. | Navigation link only; not an ingested live feed. |
 | [NWS Los Angeles/Oxnard](https://www.weather.gov/lox/) | HEAD and GET 200; page title `Los Angeles, CA`. | Navigation link only; not a live alert in Firepoint. |
-| [Glendale Know Your Zone](https://www.glendaleca.gov/government/departments/fire-department/other-links/emergency-preparedness-response/know-your-zone), [City emergency communications](https://www.glendaleca.gov/government/departments/fire-department/other/emergency-preparedness-response/city-wide-emergency-communications), [Cal OES terms](https://calalerts.org/evacuations.html) | HEAD 403 in this environment. No page content verified. | Candidate external links only. Confirm with a human browser/publisher before using as definitive source. No zone inference. |
+| Candidate [Glendale City link 1 (URL suggests Know Your Zone)](https://www.glendaleca.gov/government/departments/fire-department/other-links/emergency-preparedness-response/know-your-zone), [Glendale City link 2 (URL suggests emergency communications)](https://www.glendaleca.gov/government/departments/fire-department/other/emergency-preparedness-response/city-wide-emergency-communications), [Cal OES link (URL suggests evacuation terms)](https://calalerts.org/evacuations.html) | HEAD 403 in this environment. Page titles, content, current advice, and publisher control not verified. | Unverified link candidates, **excluded from proposed reader copy**. Confirm with publisher or human browser review before publication. No zone inference. |
 
 A successful HEAD request shows only reachability at that moment, not currency, coverage, safety, content licensing, or agency endorsement. No source is polled here for an incident status.
 
@@ -50,8 +50,8 @@ A successful HEAD request shows only reachability at that moment, not currency, 
 
 ### Publication checklist
 
-1. A safety editor checks every claim against current official source pages and confirms jurisdiction, dates, and link targets in a browser. Keep any agency order *verbatim* only where policy permits, with issuing agency, jurisdiction, issue time, source link, and staleness; this proposed general guide contains no notice.
-2. Rights reviewer checks the PDF, agency content, and all four photo files; records license/attribution evidence or replaces assets. This original draft has no copied quotes or diagrams.
+1. A safety editor checks every claim against current official source pages and confirms jurisdiction, dates, and link targets in a browser. The Glendale and Cal OES URLs above returned 403; verify their page names, content, current advice, and publisher control before considering them for reader-facing links. Keep any agency order *verbatim* only where policy permits, with issuing agency, jurisdiction, issue time, source link, and staleness; this proposed general guide contains no notice.
+2. Rights reviewer checks the linked PDF's edition, date, and reuse terms with the publisher, agency content, and all four photo files; records license/attribution evidence or replaces assets. Do not reproduce agency diagrams, zone measurements, quotations, or checklists without review. This original draft has no copied quotes or diagrams.
 3. Qualified human reviewers prepare and approve **both** Spanish and Eastern Armenian versions against the approved English, including emergencies, negations, numbers, and external-link caveats; record reviewer, date, and version. If a locale cannot be approved, do not display a mismatched guide under that locale; provide a reviewed notice and a plain link to the reviewed language instead. No automatic safety translation.
 4. Update the three locale modules, component, metadata, offline fallback, source list, and tests in one reviewed change. Test EN/ES/HY rendering, screen-reader labels, quoted terms, online and offline states, freshness language, source failures, and the no-all-clear invariant. The link hub must never imply a municipal partnership or that an outgoing link is an official Firepoint lookup.
 5. Only after the review, consider static offline prep content with locale-specific versions, explicit publication/review date, and versioned invalidation. A service worker update cannot reach devices that stay offline; plan for old content to persist.
