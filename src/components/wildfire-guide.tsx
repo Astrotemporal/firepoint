@@ -121,6 +121,20 @@ export function WildfireGuide({ locale = "en" }: { locale?: Locale } = {}) {
           </p>
         )}
 
+        {/* English-only navigation until a human safety editor reviews equivalent ES/HY copy. */}
+        {locale === "en" && (
+          <section className="g-source-shortcuts g-card" aria-labelledby="source-shortcuts-title">
+            <h2 id="source-shortcuts-title">{c.ui.sourcesTitle}</h2>
+            <p className="g-source-shortcuts-status">{c.ui.footerDisclaimer}</p>
+            <p>These links open external publishers&apos; pages and may fail offline. Firepoint has not validated their coverage or jurisdiction for your location. This page does not check current orders or status, and does not look up your evacuation zone. Firepoint is independent of these agencies; these links do not imply a partnership.</p>
+            <ul>
+              {(["county", "nws", "rsg"] as const).map((key) => (
+                <li key={key}><Out source={SOURCES[key]} label={c.sources[key]} c={c} /></li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         <section className="g-cover" aria-labelledby="guide-title">
           <figure>
             <div className="g-photo g-photo-cover">
