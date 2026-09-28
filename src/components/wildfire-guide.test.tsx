@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { existsSync, readFileSync } from "node:fs";
 import { WildfireGuide } from "./wildfire-guide";
 import { GO, KIT, PHOTOS, SIX_PS, SOURCES, TERMS, TRAPPED } from "@/domain/wildfire-guide";
+import { guideContent } from "@/domain/guide-content";
 import manifest from "../app/manifest";
 
 const html = renderToStaticMarkup(<WildfireGuide />);
@@ -83,6 +84,44 @@ describe.each(["es", "hy"] as const)("wildfire guide in %s", (locale) => {
       expect(page).not.toContain(`alt="${photo.alt}"`);
     }
     expect(page).not.toContain("<form");
+  });
+});
+
+describe("early original-source links in English only", () => {
+  const page = renderToStaticMarkup(<WildfireGuide locale="en" />);
+  const start = page.indexOf('class="g-source-shortcuts g-card"');
+  const section = page.slice(start, page.indexOf('class="g-cover"'));
+
+  it("places independent, non-live notice and external-link caveat before the guide", () => {
+    expect(start).toBeGreaterThan(-1);
+    expect(start).toBeLessThan(page.indexOf('class="g-photo g-photo-cover"'));
+    expect(section).toContain(guideContent("en").ui.footerDisclaimer);
+    expect(section).toContain("may fail offline");
+    expect(section).toContain("coverage or jurisdiction for your location");
+    expect(section).toContain("does not check current orders or status");
+    expect(section).toContain("does not look up your evacuation zone");
+    expect(section).toContain("do not imply a partnership");
+    expect(section).not.toContain(guideContent("en").ui.sourcesLede);
+    expect(section).not.toMatch(/last checked|last updated|checked at|checked on/i);
+  });
+
+  it("links each original publisher directly with safe new-tab attributes", () => {
+    for (const source of [SOURCES.county, SOURCES.nws, SOURCES.rsg]) {
+      expect(section).toContain(`<a href="${source.url}" target="_blank" rel="noopener noreferrer">`);
+    }
+    expect(section).not.toContain(SOURCES.genasys.url.replaceAll("&", "&amp;"));
+    expect(section).not.toContain("<form");
+  });
+});
+
+describe.each(["es", "hy"] as const)("no unreviewed early shortcut card in %s", (locale) => {
+  const page = renderToStaticMarkup(<WildfireGuide locale={locale} />);
+
+  it("keeps the existing translation notice and guide links but no English-only card", () => {
+    expect(page).not.toContain('class="g-source-shortcuts g-card"');
+    expect(page).not.toContain("These links open external publishers");
+    expect(page.indexOf(guideContent(locale).ui.translationNotice)).toBeLessThan(page.indexOf('class="g-photo g-photo-cover"'));
+    expect(page).toContain(SOURCES.county.url);
   });
 });
 

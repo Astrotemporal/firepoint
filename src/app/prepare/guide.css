@@ -47,6 +47,15 @@
 .g-main { max-width: 720px; margin: 0 auto; padding: 16px 16px calc(40px + env(safe-area-inset-bottom, 0px)); }
 .g-card { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px 20px; margin-top: 14px; }
 .guide .g-lede { font-size: 15px; line-height: 1.65; margin-bottom: 14px; }
+/* Source links and existing non-live disclaimer appear before the long guide and its photos. */
+.g-source-shortcuts { margin: 0 0 16px; border: 2px solid var(--ink); }
+.guide .g-source-shortcuts h2 { margin: 0 0 10px; color: var(--ink); font-size: 25px; }
+.g-source-shortcuts p { line-height: 1.55; }
+.g-source-shortcuts p + p { margin-top: 10px; }
+.g-source-shortcuts-status { font-weight: 700; }
+.g-source-shortcuts ul { display: grid; gap: 8px; margin-top: 16px; }
+.guide .g-source-shortcuts li a { display: flex; align-items: center; min-height: 44px; padding: 10px 12px; border-radius: 10px; border: 1px solid #b6cbd9; font-weight: 700; line-height: 1.35; }
+.guide .g-source-shortcuts li a:hover { background: #f4f8fb; }
 
 /* Photos */
 .guide figure { margin: 0; }
